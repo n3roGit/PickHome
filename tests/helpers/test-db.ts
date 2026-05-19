@@ -47,6 +47,61 @@ export async function createTestProject(prisma: PrismaClient, userId: string) {
   });
 }
 
+export async function createTestPartner(
+  prisma: PrismaClient,
+  username = "partner",
+  name = "Partner User"
+) {
+  return prisma.user.create({
+    data: {
+      username,
+      name,
+      passwordHash: await bcrypt.hash("testpass", 10),
+      role: ROLE_USER,
+    },
+  });
+}
+
+export async function addTestProjectMember(
+  prisma: PrismaClient,
+  projectId: string,
+  userId: string,
+  role = "partner"
+) {
+  return prisma.projectMember.create({
+    data: { projectId, userId, role },
+  });
+}
+
+/** Fixed criteria for predictable scoring integration tests. */
+export async function seedScoringTestCriteria(prisma: PrismaClient, projectId: string) {
+  const group = await prisma.criterionGroup.create({
+    data: { projectId, name: "Scoring test", sortOrder: 0 },
+  });
+  const mustHave = await prisma.criterion.create({
+    data: {
+      groupId: group.id,
+      name: "Must have",
+      weight: 5,
+      isDealbreaker: true,
+      sortOrder: 0,
+    },
+  });
+  const nice = await prisma.criterion.create({
+    data: {
+      groupId: group.id,
+      name: "Nice to have",
+      weight: 3,
+      isDealbreaker: false,
+      sortOrder: 1,
+    },
+  });
+  return [
+    { id: mustHave.id, weight: 5, isDealbreaker: true },
+    { id: nice.id, weight: 3, isDealbreaker: false },
+  ] as const;
+}
+
 export async function seedTestProjectCriteria(prisma: PrismaClient, projectId: string) {
   let groupOrder = 0;
   for (const g of DEFAULT_CRITERIA_GROUPS) {

@@ -42,6 +42,73 @@ describe("computeScore", () => {
     expect(result.rated).toBe(1);
     expect(result.total).toBe(2);
   });
+
+  it("does not trigger dealbreaker above threshold (score 4)", () => {
+    const result = computeScore(criteria, [
+      { criterionId: "a", score: 4 },
+      { criterionId: "b", score: 10 },
+    ]);
+    expect(result.dealbreaker).toBe(false);
+    expect(result.score).toBeGreaterThan(0);
+  });
+
+  it("triggers dealbreaker exactly at threshold (score 3)", () => {
+    const result = computeScore(criteria, [{ criterionId: "a", score: 3 }]);
+    expect(result.dealbreaker).toBe(true);
+    expect(result.score).toBe(0);
+  });
+
+  it("low non-dealbreaker score does not zero the total", () => {
+    const result = computeScore(criteria, [
+      { criterionId: "a", score: 10 },
+      { criterionId: "b", score: 1 },
+    ]);
+    expect(result.dealbreaker).toBe(false);
+    // (5*1.0 + 3*0.1) / 8 * 100 = 66.25 -> 66
+    expect(result.score).toBe(66);
+  });
+
+  it("weights higher-impact criteria more in the total", () => {
+    const heavyLow = computeScore(criteria, [
+      { criterionId: "a", score: 4 },
+      { criterionId: "b", score: 10 },
+    ]);
+    const lightLow = computeScore(criteria, [
+      { criterionId: "a", score: 10 },
+      { criterionId: "b", score: 4 },
+    ]);
+    expect(heavyLow.score).toBeLessThan(lightLow.score);
+  });
+});
+
+describe("computeScore ranking scenarios", () => {
+  const criteria = [
+    { id: "location", weight: 5, isDealbreaker: false },
+    { id: "price", weight: 3, isDealbreaker: false },
+  ];
+
+  it("ranks fully rated apartment above partially weaker ratings", () => {
+    const strong = computeScore(criteria, [
+      { criterionId: "location", score: 9 },
+      { criterionId: "price", score: 8 },
+    ]);
+    const weak = computeScore(criteria, [
+      { criterionId: "location", score: 5 },
+      { criterionId: "price", score: 6 },
+    ]);
+    expect(strong.score).toBeGreaterThan(weak.score);
+  });
+
+  it("dealbreaker apartment sorts below any non-dealbreaker score", () => {
+    const rejected = computeScore(
+      [{ id: "must", weight: 4, isDealbreaker: true }],
+      [{ criterionId: "must", score: 2 }]
+    );
+    const acceptable = computeScore(criteria, [{ criterionId: "location", score: 5 }]);
+    expect(rejected.score).toBe(0);
+    expect(rejected.dealbreaker).toBe(true);
+    expect(acceptable.score).toBeGreaterThan(rejected.score);
+  });
 });
 
 describe("scoreColor", () => {
