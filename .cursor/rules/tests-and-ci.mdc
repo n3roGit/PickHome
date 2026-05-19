@@ -1,6 +1,6 @@
 ---
-description: Vitest, test database, and CI conventions
-globs: tests/**/*,vitest.config.ts,.github/**/*
+description: Vitest, test database, CI conventions, and required test updates for code changes
+globs: src/**/*,tests/**/*,vitest.config.ts,.github/**/*
 ---
 
 # Tests and CI
@@ -21,6 +21,10 @@ Use `resetTestDatabase()` before integration tests that need a clean DB.
 
 ## What to test
 
+- Code changes should include matching tests in the same change unless the edit is clearly test-neutral (copy, docs, styling-only, or configuration with no runtime behavior).
+- New or changed behavior needs focused unit tests for pure logic and integration tests when Prisma relations, auth/access checks, server actions, or cross-module flows are affected.
+- Bug fixes should add or update a regression test that would fail before the fix.
+- If tests are intentionally not added, state the reason explicitly in the final response.
 - Unit: pure logic in `src/lib/` (`scoring`, `totp`, `backup`, `project-data`, `viewings`, `dates`).
 - Integration: Prisma flows in `tests/integration/database.test.ts`.
 - Add tests only when they cover real behavior; avoid trivial assertions.
