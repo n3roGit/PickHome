@@ -11,6 +11,7 @@ import { CriteriaEditor } from "@/components/CriteriaEditor";
 import { ProjectMembersPanel } from "@/components/ProjectMembersPanel";
 import { ProjectSettingsPanel } from "@/components/ProjectSettingsPanel";
 import { DeleteProjectButton } from "@/components/DeleteProjectButton";
+import { ApartmentDeleteButton } from "@/components/ApartmentDeleteButton";
 import { CompareView } from "@/components/CompareView";
 import { ProjectMap } from "@/components/ProjectMap";
 import { ProjectCalendar } from "@/components/ProjectCalendar";
@@ -303,6 +304,7 @@ export default async function ProjectPage({
                     >
                       Bearbeiten / Bewerten
                     </Link>
+                    {tab === "archived" && <ApartmentDeleteButton apartmentId={a.id} compact />}
                   </div>
                 </li>
               ))}

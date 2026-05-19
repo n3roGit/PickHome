@@ -43,7 +43,7 @@ export function ApartmentCommutePanel({
     <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6">
       <h2 className="font-semibold mb-1">Anfahrt</h2>
       <p className="text-sm text-pn-text-secondary mb-4">
-        Schätzung per OpenStreetMap-Routing ({travelModeLabel(travelMode)}).
+        Geschätzte Anfahrt ({travelModeLabel(travelMode)}).
       </p>
       <ul className="space-y-3">
         {legs.map((leg) => (

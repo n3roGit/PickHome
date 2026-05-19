@@ -10,7 +10,10 @@ import { ViewingAppointments } from "@/components/ViewingAppointments";
 import { formatDateDe } from "@/lib/dates";
 import { getSessionUser, isAdmin } from "@/lib/auth";
 import { ApartmentArchiveButton } from "@/components/ApartmentArchiveButton";
+import { ApartmentDeleteButton } from "@/components/ApartmentDeleteButton";
+import { ApartmentDescriptionForm } from "@/components/ApartmentDescriptionForm";
 import { ApartmentListingUrlForm } from "@/components/ApartmentListingUrlForm";
+import { ApartmentNotesForm } from "@/components/ApartmentNotesForm";
 import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
 import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
 import { computeCommuteLegs } from "@/lib/commute";
@@ -30,7 +33,12 @@ export default async function ApartmentPage({
   searchParams,
 }: {
   params: Promise<{ id: string; aptId: string }>;
-  searchParams: Promise<{ listing_saved?: string; listing_error?: string }>;
+  searchParams: Promise<{
+    listing_saved?: string;
+    listing_error?: string;
+    notes_saved?: string;
+    description_saved?: string;
+  }>;
 }) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
@@ -140,12 +148,10 @@ export default async function ApartmentPage({
                 Inserat öffnen ↗
               </a>
             )}
-            {apartment.description && (
-              <p className="text-sm text-pn-text-secondary mt-3 whitespace-pre-wrap">{apartment.description}</p>
-            )}
           </div>
           <div className="flex items-center gap-3">
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />
+            <ApartmentDeleteButton apartmentId={apartment.id} />
             <ScoreBadge score={myScore.score} dealbreaker={myScore.dealbreaker} />
           </div>
         </div>
@@ -184,6 +190,16 @@ export default async function ApartmentPage({
           listingUrl={apartment.listingUrl}
           saved={resolvedSearchParams.listing_saved === "1"}
           invalid={resolvedSearchParams.listing_error === "invalid"}
+        />
+        <ApartmentNotesForm
+          apartmentId={apartment.id}
+          notes={apartment.notes}
+          saved={resolvedSearchParams.notes_saved === "1"}
+        />
+        <ApartmentDescriptionForm
+          apartmentId={apartment.id}
+          description={apartment.description}
+          saved={resolvedSearchParams.description_saved === "1"}
         />
         <ApartmentDocuments
           apartmentId={apartment.id}

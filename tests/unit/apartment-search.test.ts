@@ -11,6 +11,7 @@ const sample = {
   title: "Altbau Mitte",
   address: "Hauptstraße 1",
   description: "Renoviert 2020",
+  notes: "Verhandlung möglich",
   yearBuilt: 1910,
   ratings: [{ criterionId: "c1", score: 8, note: "ruhige Seitenstraße" }],
   viewings: [{ scheduledAt: new Date("2026-05-22T14:00:00"), note: "mit Makler" }],
@@ -22,6 +23,7 @@ describe("apartment search", () => {
   it("finds text in description and notes", () => {
     const blob = buildApartmentSearchBlob(sample, criteria);
     expect(matchesApartmentSearch(blob, "renoviert")).toBe(true);
+    expect(matchesApartmentSearch(blob, "verhandlung")).toBe(true);
     expect(matchesApartmentSearch(blob, "ruhige")).toBe(true);
     expect(matchesApartmentSearch(blob, "expose")).toBe(true);
   });

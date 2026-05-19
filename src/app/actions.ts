@@ -201,6 +201,31 @@ export async function unarchiveApartmentAction(apartmentId: string) {
   revalidatePath(`/project/${apt.projectId}/apartment/${apartmentId}`);
 }
 
+export async function deleteApartmentAction(apartmentId: string) {
+  const user = await requireUser();
+  const apt = await prisma.apartment.findFirst({
+    where: {
+      id: apartmentId,
+      project: { members: { some: { userId: user.id } } },
+    },
+    select: { id: true, projectId: true, archivedAt: true },
+  });
+  if (!apt) redirect("/dashboard");
+
+  try {
+    await rm(join(getApartmentUploadsRoot(), apt.id), {
+      recursive: true,
+      force: true,
+    });
+  } catch {
+    // upload folder may not exist
+  }
+
+  await prisma.apartment.delete({ where: { id: apartmentId } });
+  revalidatePath(`/project/${apt.projectId}`);
+  redirect(apt.archivedAt ? `/project/${apt.projectId}?tab=archived` : `/project/${apt.projectId}`);
+}
+
 export async function createApartmentAction(projectId: string, formData: FormData) {
   const user = await requireUser();
   const project = await assertProjectAccess(projectId, user.id);
@@ -272,6 +297,40 @@ export async function updateApartmentListingUrlAction(apartmentId: string, formD
   });
   revalidateApartment(apt.projectId, apartmentId);
   redirect(`${base}?listing_saved=1`);
+}
+
+export async function updateApartmentNotesAction(apartmentId: string, formData: FormData) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user.id);
+  if (!apt) redirect("/dashboard");
+
+  const raw = String(formData.get("notes") ?? "");
+  const notes = raw.trim() || null;
+  const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
+
+  await prisma.apartment.update({
+    where: { id: apartmentId },
+    data: { notes },
+  });
+  revalidateApartment(apt.projectId, apartmentId);
+  redirect(`${base}?notes_saved=1`);
+}
+
+export async function updateApartmentDescriptionAction(apartmentId: string, formData: FormData) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user.id);
+  if (!apt) redirect("/dashboard");
+
+  const raw = String(formData.get("description") ?? "");
+  const description = raw.trim() || null;
+  const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
+
+  await prisma.apartment.update({
+    where: { id: apartmentId },
+    data: { description },
+  });
+  revalidateApartment(apt.projectId, apartmentId);
+  redirect(`${base}?description_saved=1`);
 }
 
 function uploadErrorFromCaught(e: unknown): UploadApartmentFileResult {

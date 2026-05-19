@@ -60,7 +60,7 @@ export function UserCommuteSettings({
       <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5">
         <h2 className="font-semibold mb-1">Standard-Verkehrsmittel</h2>
         <p className="text-sm text-pn-text-secondary mb-4">
-          Für Entfernung und Fahrzeit zu deinen Adressen (OSRM: Fuß, Rad, Auto).
+          Für Entfernung und Fahrzeit zu deinen Adressen (Fuß, Rad, Auto).
         </p>
         <form action={updateTravelModeAction} className="flex flex-wrap gap-2 items-end">
           <label className="block flex-1 min-w-[180px]">

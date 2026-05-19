@@ -4,6 +4,7 @@ export type ApartmentSearchInput = {
   title: string;
   address?: string | null;
   description?: string | null;
+  notes?: string | null;
   listingUrl?: string | null;
   price?: number | null;
   sizeSqm?: number | null;
@@ -37,6 +38,7 @@ export function buildApartmentSearchBlob(
 
   push(apartment.address);
   push(apartment.description);
+  push(apartment.notes);
   push(apartment.listingUrl);
   push(apartment.price);
   push(apartment.sizeSqm);

@@ -110,6 +110,7 @@ model Apartment {
   floor       Int?
   yearBuilt   Int?
   description String?
+  notes       String?
   listingUrl  String?
   viewedAt    DateTime?
   archivedAt  DateTime?
