@@ -23,22 +23,23 @@ const errors: Record<string, string> = {
 export default async function SecurityPage({
   searchParams,
 }: {
-  searchParams: {
+  searchParams: Promise<{
     error?: string;
     step?: string;
     codes?: string;
     disabled?: string;
-  };
+  }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const user = await requireUser();
   const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
   const enabled = isTotpEnabled(fresh);
   const pendingSetup = !!fresh.totpSecret && !enabled;
-  const err = searchParams.error ? errors[searchParams.error] : null;
-  const showConfirm = searchParams.step === "confirm" && pendingSetup;
+  const err = resolvedSearchParams.error ? errors[resolvedSearchParams.error] : null;
+  const showConfirm = resolvedSearchParams.step === "confirm" && pendingSetup;
   const recoveryCodes =
-    searchParams.step === "recovery" && searchParams.codes
-      ? searchParams.codes.split(",").filter(Boolean)
+    resolvedSearchParams.step === "recovery" && resolvedSearchParams.codes
+      ? resolvedSearchParams.codes.split(",").filter(Boolean)
       : null;
   const unusedRecoveryCount = enabled
     ? await prisma.userRecoveryCode.count({
@@ -66,7 +67,7 @@ export default async function SecurityPage({
           Zwei-Faktor-Authentifizierung (TOTP) mit Authenticator-App und Wiederherstellungscodes.
         </p>
 
-        {searchParams.disabled === "1" && (
+        {resolvedSearchParams.disabled === "1" && (
           <p className="mb-4 text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
             Zwei-Faktor-Authentifizierung wurde deaktiviert.
           </p>

@@ -1,24 +1,13 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import * as OTPAuth from "otpauth";
-import { hashPassword, verifyPassword } from "@/lib/auth";
+import { authSecret, hashPassword, verifyPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const PENDING_TOTP_COOKIE = "ph_totp_pending";
 const PENDING_MAX_AGE_SEC = 300;
 const RECOVERY_CODE_COUNT = 10;
 const TOTP_ISSUER = "PickHome";
-
-function authSecret() {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || secret === "change-me-in-production") {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("SESSION_SECRET must be set in production");
-    }
-    return "pickhome-dev-totp-secret";
-  }
-  return secret;
-}
 
 export function isTotpEnabled(user: { totpEnabledAt: Date | null }) {
   return user.totpEnabledAt != null;
@@ -59,16 +48,19 @@ export async function setPendingTotpLogin(userId: string) {
   const issuedAt = Date.now();
   const payload = `${userId}:${issuedAt}`;
   const token = `${payload}:${signPendingPayload(payload)}`;
-  cookies().set(PENDING_TOTP_COOKIE, token, {
+  const cookieStore = await cookies();
+  cookieStore.set(PENDING_TOTP_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: PENDING_MAX_AGE_SEC,
   });
 }
 
-export function getPendingTotpUserId(): string | null {
-  const raw = cookies().get(PENDING_TOTP_COOKIE)?.value;
+export async function getPendingTotpUserId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(PENDING_TOTP_COOKIE)?.value;
   if (!raw) return null;
   const lastColon = raw.lastIndexOf(":");
   if (lastColon < 0) return null;
@@ -91,8 +83,9 @@ export function getPendingTotpUserId(): string | null {
   return userId;
 }
 
-export function clearPendingTotpLogin() {
-  cookies().delete(PENDING_TOTP_COOKIE);
+export async function clearPendingTotpLogin() {
+  const cookieStore = await cookies();
+  cookieStore.delete(PENDING_TOTP_COOKIE);
 }
 
 function randomRecoverySegment() {

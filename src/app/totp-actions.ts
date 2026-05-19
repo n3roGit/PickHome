@@ -23,14 +23,25 @@ import {
   verifyTotpCode,
   verifyTotpOrRecovery,
 } from "@/lib/totp";
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
+
+const LOGIN_LIMIT = 10;
+const TOTP_LIMIT = 10;
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
 
 export async function loginAction(formData: FormData) {
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const loginKey = `login:${username || "unknown"}`;
+  if (!checkRateLimit(loginKey, LOGIN_LIMIT, AUTH_WINDOW_MS)) {
+    redirect("/login?error=rate_limited");
+  }
+
   const user = await prisma.user.findUnique({ where: { username } });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     redirect("/login?error=invalid");
   }
+  resetRateLimit(loginKey);
   if (isTotpEnabled(user)) {
     await destroySession();
     await setPendingTotpLogin(user.id);
@@ -41,12 +52,16 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function verifyTotpLoginAction(formData: FormData) {
-  const userId = getPendingTotpUserId();
+  const userId = await getPendingTotpUserId();
   if (!userId) redirect("/login?error=totp_expired");
+  const totpKey = `totp:${userId}`;
+  if (!checkRateLimit(totpKey, TOTP_LIMIT, AUTH_WINDOW_MS)) {
+    redirect("/login/totp?error=rate_limited");
+  }
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || !isTotpEnabled(user) || !user.totpSecret) {
-    clearPendingTotpLogin();
+    await clearPendingTotpLogin();
     redirect("/login?error=invalid");
   }
 
@@ -55,13 +70,14 @@ export async function verifyTotpLoginAction(formData: FormData) {
     redirect("/login/totp?error=invalid");
   }
 
-  clearPendingTotpLogin();
+  await clearPendingTotpLogin();
+  resetRateLimit(totpKey);
   await createSession(user.id);
   redirectAfterLogin(user);
 }
 
 export async function cancelTotpLoginAction() {
-  clearPendingTotpLogin();
+  await clearPendingTotpLogin();
   redirect("/login");
 }
 

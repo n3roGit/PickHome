@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(
   _req: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
+  const resolvedParams = await params;
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -14,7 +15,7 @@ export async function POST(
 
   const project = await prisma.project.findFirst({
     where: {
-      id: params.projectId,
+      id: resolvedParams.projectId,
       members: { some: { userId: user.id } },
     },
     include: {
@@ -45,7 +46,7 @@ export async function POST(
   }
 
   const updated = await prisma.apartment.findMany({
-    where: { projectId: params.projectId, archivedAt: null },
+    where: { projectId: resolvedParams.projectId, archivedAt: null },
     select: { id: true, title: true, address: true, latitude: true, longitude: true },
   });
 

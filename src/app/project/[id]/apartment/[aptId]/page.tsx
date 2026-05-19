@@ -23,17 +23,19 @@ export default async function ApartmentPage({
   params,
   searchParams,
 }: {
-  params: { id: string; aptId: string };
-  searchParams: { listing_saved?: string; listing_error?: string };
+  params: Promise<{ id: string; aptId: string }>;
+  searchParams: Promise<{ listing_saved?: string; listing_error?: string }>;
 }) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (isAdmin(user)) redirect("/admin");
 
-  const project = await getProjectMetaForUser(params.id, user.id);
+  const project = await getProjectMetaForUser(resolvedParams.id, user.id);
   if (!project) redirect("/dashboard");
 
-  const apartment = await getApartmentForUser(params.id, params.aptId, user.id);
+  const apartment = await getApartmentForUser(resolvedParams.id, resolvedParams.aptId, user.id);
   if (!apartment) redirect(`/project/${project.id}`);
 
   const criteria = flattenCriteria(project.groups);
@@ -109,8 +111,8 @@ export default async function ApartmentPage({
         <ApartmentListingUrlForm
           apartmentId={apartment.id}
           listingUrl={apartment.listingUrl}
-          saved={searchParams.listing_saved === "1"}
-          invalid={searchParams.listing_error === "invalid"}
+          saved={resolvedSearchParams.listing_saved === "1"}
+          invalid={resolvedSearchParams.listing_error === "invalid"}
         />
         <ApartmentPhotos
           apartmentId={apartment.id}

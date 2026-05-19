@@ -151,6 +151,9 @@ export async function unarchiveApartmentAction(apartmentId: string) {
 
 export async function createApartmentAction(projectId: string, formData: FormData) {
   const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user.id);
+  if (!project) redirect("/dashboard");
+
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return;
   const priceRaw = String(formData.get("price") ?? "").trim();
@@ -318,8 +321,16 @@ export async function saveRatingAction(
   note?: string | null
 ) {
   const user = await requireUser();
-  const apt = await prisma.apartment.findUnique({ where: { id: apartmentId } });
+  const apt = await assertApartmentAccess(apartmentId, user.id);
   if (!apt) return;
+  if (!Number.isInteger(score) || score < 0 || score > 10) return;
+
+  const criterion = await prisma.criterion.findFirst({
+    where: { id: criterionId, group: { projectId: apt.projectId } },
+    select: { id: true },
+  });
+  if (!criterion) return;
+
   await prisma.rating.upsert({
     where: {
       apartmentId_criterionId_userId: {
@@ -339,13 +350,28 @@ export async function updateCriterionAction(
   criterionId: string,
   data: { weight?: number; isDealbreaker?: boolean; name?: string }
 ) {
-  await requireUser();
+  const user = await requireUser();
   const c = await prisma.criterion.findUnique({
     where: { id: criterionId },
     include: { group: true },
   });
   if (!c) return;
-  await prisma.criterion.update({ where: { id: criterionId }, data });
+  const group = await assertCriterionGroupAccess(c.groupId, user.id);
+  if (!group) return;
+
+  const update: typeof data = {};
+  if (data.weight !== undefined) {
+    if (!Number.isInteger(data.weight) || data.weight < 1 || data.weight > 5) return;
+    update.weight = data.weight;
+  }
+  if (data.isDealbreaker !== undefined) update.isDealbreaker = data.isDealbreaker;
+  if (data.name !== undefined) {
+    const name = data.name.trim();
+    if (!name) return;
+    update.name = name;
+  }
+
+  await prisma.criterion.update({ where: { id: criterionId }, data: update });
   revalidatePath(`/project/${c.group.projectId}`);
 }
 

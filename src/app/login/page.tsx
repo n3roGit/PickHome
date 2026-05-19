@@ -5,14 +5,16 @@ import { Footer } from "@/components/Footer";
 const errors: Record<string, string> = {
   invalid: "Benutzername oder Passwort falsch.",
   totp_expired: "Zwei-Faktor-Anmeldung abgelaufen. Bitte erneut anmelden.",
+  rate_limited: "Zu viele Versuche. Bitte später erneut versuchen.",
 };
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const err = searchParams.error ? errors[searchParams.error] : null;
+  const resolvedSearchParams = await searchParams;
+  const err = resolvedSearchParams.error ? errors[resolvedSearchParams.error] : null;
 
   return (
     <>

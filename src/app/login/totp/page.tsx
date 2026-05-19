@@ -7,18 +7,20 @@ import { redirect } from "next/navigation";
 
 const errors: Record<string, string> = {
   invalid: "Code ungültig. Authenticator-App oder Wiederherstellungscode prüfen.",
+  rate_limited: "Zu viele Versuche. Bitte später erneut versuchen.",
 };
 
-export default function TotpLoginPage({
+export default async function TotpLoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: Promise<{ error?: string }>;
 }) {
-  if (!getPendingTotpUserId()) {
+  if (!(await getPendingTotpUserId())) {
     redirect("/login?error=totp_expired");
   }
 
-  const err = searchParams.error ? errors[searchParams.error] : null;
+  const resolvedSearchParams = await searchParams;
+  const err = resolvedSearchParams.error ? errors[resolvedSearchParams.error] : null;
 
   return (
     <>

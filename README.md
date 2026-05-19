@@ -26,11 +26,12 @@ services:
     image: n3ro88/pickhome:latest
     container_name: pickhome
     ports:
-      - "${PICKHOME_PORT:-3000}:3000"
+      - "127.0.0.1:${PICKHOME_PORT:-3000}:3000"
     environment:
       DATABASE_URL: "file:/app/data/pickhome.db"
       PICKHOME_DATA_DIR: "/app/data"
       NODE_ENV: production
+      SESSION_SECRET: "${SESSION_SECRET:?set SESSION_SECRET in .env}"
       NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
     volumes:
       - ./data:/app/data

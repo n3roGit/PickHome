@@ -15,8 +15,9 @@ const messages: Record<string, string> = {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: { error?: string; created?: string };
+  searchParams: Promise<{ error?: string; created?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const admin = await requireAdmin();
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
@@ -30,8 +31,8 @@ export default async function AdminPage({
     },
   });
 
-  const msg = searchParams.error ? messages[searchParams.error] : null;
-  const created = searchParams.created === "1";
+  const msg = resolvedSearchParams.error ? messages[resolvedSearchParams.error] : null;
+  const created = resolvedSearchParams.created === "1";
 
   return (
     <>

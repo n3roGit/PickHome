@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: Request,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
+  const resolvedParams = await params;
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   if (!token) {
@@ -13,7 +14,7 @@ export async function GET(
   }
 
   const project = await prisma.project.findFirst({
-    where: { id: params.projectId, icalToken: token },
+    where: { id: resolvedParams.projectId, icalToken: token },
     include: {
       apartments: {
         include: {

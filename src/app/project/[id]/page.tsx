@@ -28,36 +28,39 @@ export default async function ProjectPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{
     tab?: string;
     member_added?: string;
     member_removed?: string;
     member_error?: string;
     settings_saved?: string;
     settings_error?: string;
-  };
+  }>;
 }) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const projectId = resolvedParams.id;
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (isAdmin(user)) redirect("/admin");
 
-  const tab = searchParams.tab ?? "apartments";
+  const tab = resolvedSearchParams.tab ?? "apartments";
   const isArchivedTab = tab === "archived";
 
-  const project = await getProjectForUser(params.id, user.id, { archived: isArchivedTab });
+  const project = await getProjectForUser(projectId, user.id, { archived: isArchivedTab });
   if (!project) redirect("/dashboard");
 
   const needsActiveList = tab === "compare" || tab === "map" || tab === "calendar";
   const activeProject = needsActiveList
-    ? await getProjectForUser(params.id, user.id, { archived: false })
+    ? await getProjectForUser(projectId, user.id, { archived: false })
     : null;
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const icalToken =
-    tab === "calendar" && activeProject ? await ensureProjectIcalToken(params.id) : null;
+    tab === "calendar" && activeProject ? await ensureProjectIcalToken(projectId) : null;
   const icalUrl = icalToken
-    ? `${baseUrl}/api/projects/${params.id}/calendar.ics?token=${icalToken}`
+    ? `${baseUrl}/api/projects/${projectId}/calendar.ics?token=${icalToken}`
     : "";
 
   const criteriaWithGroup = (activeProject ?? project).groups.flatMap((g) =>
@@ -83,9 +86,9 @@ export default async function ProjectPage({
 
   const memberFilter = { project: { members: { some: { userId: user.id } } } };
   const [activeCount, archivedCount] = await Promise.all([
-    prisma.apartment.count({ where: { projectId: params.id, archivedAt: null, ...memberFilter } }),
+    prisma.apartment.count({ where: { projectId, archivedAt: null, ...memberFilter } }),
     prisma.apartment.count({
-      where: { projectId: params.id, archivedAt: { not: null }, ...memberFilter },
+      where: { projectId, archivedAt: { not: null }, ...memberFilter },
     }),
   ]);
 
@@ -98,10 +101,10 @@ export default async function ProjectPage({
 
   apartments.sort((a, b) => b.score - a.score);
 
-  const memberMessage = searchParams.member_added
-    ? `${searchParams.member_added} wurde zum Projekt hinzugefügt.`
-    : searchParams.member_removed
-      ? `${searchParams.member_removed} wurde aus dem Projekt entfernt.`
+  const memberMessage = resolvedSearchParams.member_added
+    ? `${resolvedSearchParams.member_added} wurde zum Projekt hinzugefügt.`
+    : resolvedSearchParams.member_removed
+      ? `${resolvedSearchParams.member_removed} wurde aus dem Projekt entfernt.`
       : undefined;
 
   return (
@@ -243,8 +246,8 @@ export default async function ProjectPage({
             projectId={project.id}
             name={project.name}
             budget={project.budget}
-            saved={searchParams.settings_saved === "1"}
-            error={searchParams.settings_error}
+            saved={resolvedSearchParams.settings_saved === "1"}
+            error={resolvedSearchParams.settings_error}
           />
         )}
 
@@ -254,7 +257,7 @@ export default async function ProjectPage({
             members={project.members}
             currentUserId={user.id}
             message={memberMessage}
-            error={searchParams.member_error}
+            error={resolvedSearchParams.member_error}
           />
         )}
 

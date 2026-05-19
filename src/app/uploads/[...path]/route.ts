@@ -23,9 +23,10 @@ function safePath(segments: string[]) {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const filePath = safePath(params.path);
+  const resolvedParams = await params;
+  const filePath = safePath(resolvedParams.path);
   if (!filePath) {
     return new NextResponse(null, { status: 400 });
   }
