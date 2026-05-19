@@ -2,6 +2,9 @@
 
 export const NOTARY_REGISTRY_RATE = 0.02;
 
+/** Fallback when no project interest rate is set (rough estimate only). */
+export const DEFAULT_INTEREST_RATE = 0.035;
+
 export type FederalStateCode =
   | "BY"
   | "SN"
@@ -84,6 +87,29 @@ export function brokerBuyerShareRate(stateCode: FederalStateCode): number {
     : BROKER_BUYER_SHARE_DEFAULT;
 }
 
+/** Parse buyer share from form input (percent, e.g. "2,975" → 0.02975). */
+export function parseBrokerBuyerRatePercent(raw: string | null | undefined): number | null {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return null;
+  const pct = parseFloat(trimmed.replace(",", "."));
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) return null;
+  return Number((pct / 100).toFixed(6));
+}
+
+export function formatBrokerBuyerRateForInput(rate: number | null | undefined): string {
+  if (rate == null) return "";
+  const pct = Math.round(rate * 100_000) / 1000;
+  return String(pct).replace(".", ",");
+}
+
+export function resolveBrokerBuyerRate(
+  stateCode: FederalStateCode,
+  projectRate: number | null | undefined
+): number {
+  if (projectRate != null) return projectRate;
+  return brokerBuyerShareRate(stateCode);
+}
+
 export type PurchaseCostLine = {
   key: "landTransferTax" | "notaryRegistry" | "broker";
   label: string;
@@ -103,11 +129,14 @@ export function estimatePurchaseCosts(input: {
   price: number;
   federalStateCode: FederalStateCode;
   brokerInvolved: boolean;
+  brokerBuyerRate?: number | null;
 }): PurchaseCostEstimate {
   const state = federalStateByCode(input.federalStateCode);
   const landTransferTax = Math.round(input.price * state.landTransferTaxRate);
   const notaryRegistry = Math.round(input.price * NOTARY_REGISTRY_RATE);
-  const brokerRate = input.brokerInvolved ? brokerBuyerShareRate(state.code) : 0;
+  const brokerRate = input.brokerInvolved
+    ? resolveBrokerBuyerRate(state.code, input.brokerBuyerRate)
+    : 0;
   const broker = input.brokerInvolved ? Math.round(input.price * brokerRate) : 0;
 
   const lines: PurchaseCostLine[] = [
@@ -149,4 +178,71 @@ export function formatPercent(rate: number): string {
   const pct = rate * 100;
   const rounded = Math.round(pct * 1000) / 1000;
   return `${String(rounded).replace(".", ",")} %`;
+}
+
+/** Parse annual interest from form input (percent, e.g. "3,5" → 0.035). */
+export function parseInterestRatePercent(raw: string | null | undefined): number | null {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return null;
+  const pct = parseFloat(trimmed.replace(",", "."));
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) return null;
+  return Number((pct / 100).toFixed(6));
+}
+
+export function formatInterestRateForInput(rate: number | null | undefined): string {
+  if (rate == null) return "";
+  const pct = Math.round(rate * 1000) / 10;
+  return String(pct).replace(".", ",");
+}
+
+export function parsePositiveInt(raw: string | null | undefined): number | null {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return null;
+  const value = parseInt(trimmed.replace(/\D/g, ""), 10);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+export type FinancingEstimate = {
+  totalCost: number;
+  equityAmount: number;
+  loanAmount: number;
+  loanTermYears: number;
+  interestRate: number;
+  interestRateIsDefault: boolean;
+  monthlyPayment: number;
+};
+
+/** Fixed-rate annuity: monthly payment for full amortization over termYears. */
+export function estimateMonthlyPayment(
+  loanAmount: number,
+  annualInterestRate: number,
+  termYears: number
+): number {
+  if (loanAmount <= 0 || termYears <= 0) return 0;
+  const months = termYears * 12;
+  const monthlyRate = annualInterestRate / 12;
+  if (monthlyRate === 0) return Math.round(loanAmount / months);
+  const factor = Math.pow(1 + monthlyRate, months);
+  return Math.round((loanAmount * monthlyRate * factor) / (factor - 1));
+}
+
+export function estimateFinancing(input: {
+  totalCost: number;
+  equityAmount: number;
+  loanTermYears: number;
+  interestRate?: number | null;
+}): FinancingEstimate | null {
+  if (input.loanTermYears <= 0 || input.equityAmount < 0) return null;
+  const loanAmount = Math.max(0, input.totalCost - input.equityAmount);
+  const interestRateIsDefault = input.interestRate == null;
+  const interestRate = input.interestRate ?? DEFAULT_INTEREST_RATE;
+  return {
+    totalCost: input.totalCost,
+    equityAmount: input.equityAmount,
+    loanAmount,
+    loanTermYears: input.loanTermYears,
+    interestRate,
+    interestRateIsDefault,
+    monthlyPayment: estimateMonthlyPayment(loanAmount, interestRate, input.loanTermYears),
+  };
 }

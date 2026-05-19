@@ -37,6 +37,10 @@ model Project {
   name              String
   budget            Int?
   federalStateCode  String?
+  brokerBuyerRate   Float?
+  equityAmount      Int?
+  loanTermYears     Int?
+  interestRate      Float?
   icalToken         String?          @unique
   createdAt   DateTime         @default(now())
   archivedAt  DateTime?

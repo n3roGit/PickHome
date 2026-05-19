@@ -313,6 +313,10 @@ export default async function ProjectPage({
             name={project.name}
             budget={project.budget}
             federalStateCode={project.federalStateCode}
+            brokerBuyerRate={project.brokerBuyerRate}
+            equityAmount={project.equityAmount}
+            loanTermYears={project.loanTermYears}
+            interestRate={project.interestRate}
             saved={resolvedSearchParams.settings_saved === "1"}
             error={resolvedSearchParams.settings_error}
           />

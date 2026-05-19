@@ -1,5 +1,9 @@
 import { updateProjectAction } from "@/app/actions";
-import { FEDERAL_STATES } from "@/lib/purchase-costs";
+import {
+  FEDERAL_STATES,
+  formatBrokerBuyerRateForInput,
+  formatInterestRateForInput,
+} from "@/lib/purchase-costs";
 
 const settingsErrors: Record<string, string> = {
   name: "Bitte einen Projektnamen angeben.",
@@ -10,6 +14,10 @@ export function ProjectSettingsPanel({
   name,
   budget,
   federalStateCode,
+  brokerBuyerRate,
+  equityAmount,
+  loanTermYears,
+  interestRate,
   saved,
   error,
 }: {
@@ -17,6 +25,10 @@ export function ProjectSettingsPanel({
   name: string;
   budget: number | null;
   federalStateCode: string | null;
+  brokerBuyerRate: number | null;
+  equityAmount: number | null;
+  loanTermYears: number | null;
+  interestRate: number | null;
   saved?: boolean;
   error?: string;
 }) {
@@ -33,12 +45,12 @@ export function ProjectSettingsPanel({
         </p>
       )}
 
-      <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 max-w-lg">
-        <h2 className="font-semibold mb-1">Projekt</h2>
-        <p className="text-sm text-pn-text-secondary mb-4">
-          Name, Budget und Bundesland für die Schätzung der Kaufnebenkosten.
-        </p>
-        <form action={updateProjectAction.bind(null, projectId)} className="space-y-4">
+      <form action={updateProjectAction.bind(null, projectId)} className="space-y-6 max-w-lg">
+        <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
+          <div>
+            <h2 className="font-semibold mb-1">Projekt</h2>
+            <p className="text-sm text-pn-text-secondary">Name und Budget für die Suche.</p>
+          </div>
           <label className="block">
             <span className="text-sm font-medium text-pn-text-secondary">Projektname</span>
             <input
@@ -57,8 +69,15 @@ export function ProjectSettingsPanel({
               className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
           </label>
+        </section>
+
+        <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
+          <div>
+            <h2 className="font-semibold mb-1">Kaufnebenkosten</h2>
+            <p className="text-sm text-pn-text-secondary">Annahmen für die Schätzung pro Immobilie.</p>
+          </div>
           <label className="block">
-            <span className="text-sm font-medium text-pn-text-secondary">Bundesland (Kaufnebenkosten)</span>
+            <span className="text-sm font-medium text-pn-text-secondary">Bundesland</span>
             <select
               name="federalStateCode"
               defaultValue={federalStateCode ?? ""}
@@ -72,14 +91,68 @@ export function ProjectSettingsPanel({
               ))}
             </select>
           </label>
-          <button
-            type="submit"
-            className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm"
-          >
-            Speichern
-          </button>
-        </form>
-      </section>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">
+              Makleranteil Käufer (optional, %)
+            </span>
+            <input
+              name="brokerBuyerRate"
+              defaultValue={formatBrokerBuyerRateForInput(brokerBuyerRate)}
+              placeholder="z. B. 2,975 — leer = Schätzung nach Bundesland"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+            <span className="text-xs text-pn-text-tertiary mt-1 block">
+              Nur der Käuferanteil der Provision (nicht die Gesamtprovision).
+            </span>
+          </label>
+        </section>
+
+        <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
+          <div>
+            <h2 className="font-semibold mb-1">Finanzierung</h2>
+            <p className="text-sm text-pn-text-secondary">
+              Für die grobe Monatsrate pro Immobilie (Annuitätendarlehen).
+            </p>
+          </div>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">Eigenkapital</span>
+            <input
+              name="equityAmount"
+              defaultValue={equityAmount != null ? String(equityAmount) : ""}
+              placeholder="z. B. 80000"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">Abzahlungszeitraum (Jahre)</span>
+            <input
+              name="loanTermYears"
+              type="number"
+              min={1}
+              max={50}
+              defaultValue={loanTermYears ?? ""}
+              placeholder="z. B. 25"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">Sollzins (optional, % p.a.)</span>
+            <input
+              name="interestRate"
+              defaultValue={formatInterestRateForInput(interestRate)}
+              placeholder="z. B. 3,5 — leer = 3,5 % Standard"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+          </label>
+        </section>
+
+        <button
+          type="submit"
+          className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm"
+        >
+          Speichern
+        </button>
+      </form>
     </div>
   );
 }

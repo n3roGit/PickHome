@@ -132,7 +132,11 @@ export default async function ApartmentPage({
           apartmentId={apartment.id}
           price={apartment.price}
           federalStateCode={project.federalStateCode}
+          brokerBuyerRate={project.brokerBuyerRate}
           brokerInvolved={apartment.brokerInvolved}
+          equityAmount={project.equityAmount}
+          loanTermYears={project.loanTermYears}
+          interestRate={project.interestRate}
           settingsHref={`/project/${project.id}?tab=settings`}
         />
         <ApartmentPhotos

@@ -35,7 +35,7 @@ import {
   assertProjectAccess,
   seedProjectCriteria,
 } from "@/lib/project-data";
-import { parseFederalStateCode } from "@/lib/purchase-costs";
+import { parseBrokerBuyerRatePercent, parseFederalStateCode, parseInterestRatePercent, parsePositiveInt } from "@/lib/purchase-costs";
 import { syncApartmentViewedAt } from "@/lib/viewings";
 
 function revalidateApartment(projectId: string, apartmentId: string) {
@@ -106,6 +106,15 @@ export async function updateProjectAction(projectId: string, formData: FormData)
   const federalStateCode = parseFederalStateCode(
     String(formData.get("federalStateCode") ?? "")
   );
+  const brokerBuyerRate = parseBrokerBuyerRatePercent(
+    String(formData.get("brokerBuyerRate") ?? "")
+  );
+  const equityAmountRaw = String(formData.get("equityAmount") ?? "").trim();
+  const equityAmount = equityAmountRaw
+    ? parseInt(equityAmountRaw.replace(/\D/g, ""), 10)
+    : null;
+  const loanTermYears = parsePositiveInt(String(formData.get("loanTermYears") ?? ""));
+  const interestRate = parseInterestRatePercent(String(formData.get("interestRate") ?? ""));
 
   const project = await prisma.project.findFirst({
     where: { id: projectId, members: { some: { userId: user.id } } },
@@ -118,6 +127,10 @@ export async function updateProjectAction(projectId: string, formData: FormData)
       name,
       budget: Number.isFinite(budget) ? budget : null,
       federalStateCode,
+      brokerBuyerRate,
+      equityAmount: Number.isFinite(equityAmount) ? equityAmount : null,
+      loanTermYears,
+      interestRate,
     },
   });
 
