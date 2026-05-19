@@ -57,7 +57,7 @@ export function ApartmentDocuments({
       <FileDropzone
         name="document"
         accept="application/pdf,.pdf"
-        hint="PDF, max. 15 MB"
+        hint="PDF, max. 30 MB"
         disabled={pending}
         onFiles={onUpload}
       />

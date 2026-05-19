@@ -6,7 +6,7 @@ import { getApartmentUploadsRoot, publicPhotoPath } from "@/lib/pickhome-data";
 export { publicPhotoPath };
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
+const MAX_DOCUMENT_BYTES = 30 * 1024 * 1024;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DOCUMENT_TYPES = new Set([
   "image/jpeg",
