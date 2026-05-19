@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { CriteriaEditor } from "@/components/CriteriaEditor";
 import { ProjectMembersPanel } from "@/components/ProjectMembersPanel";
+import { ProjectSettingsPanel } from "@/components/ProjectSettingsPanel";
 import { DeleteProjectButton } from "@/components/DeleteProjectButton";
 import { CompareView } from "@/components/CompareView";
 import { ProjectMap } from "@/components/ProjectMap";
@@ -33,6 +34,8 @@ export default async function ProjectPage({
     member_added?: string;
     member_removed?: string;
     member_error?: string;
+    settings_saved?: string;
+    settings_error?: string;
   };
 }) {
   const user = await getSessionUser();
@@ -106,7 +109,12 @@ export default async function ProjectPage({
       <Nav userName={user.name} />
       <main className="max-w-6xl mx-auto px-4 py-8 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-bold">{project.name}</h1>
+          <div>
+            <h1 className="text-2xl font-bold">{project.name}</h1>
+            {project.budget != null && (
+              <p className="text-sm text-pn-text-secondary mt-1">Budget: {formatPrice(project.budget)}</p>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <DeleteProjectButton projectId={project.id} projectName={project.name} />
           </div>
@@ -121,6 +129,9 @@ export default async function ProjectPage({
           </TabLink>
           <TabLink href={`/project/${project.id}?tab=team`} active={tab === "team"}>
             Team ({project.members.length})
+          </TabLink>
+          <TabLink href={`/project/${project.id}?tab=settings`} active={tab === "settings"}>
+            Einstellungen
           </TabLink>
           <TabLink href={`/project/${project.id}?tab=criteria`} active={tab === "criteria"}>
             Kriterien ({criteria.length})
@@ -214,6 +225,16 @@ export default async function ProjectPage({
               </p>
             )}
           </>
+        )}
+
+        {tab === "settings" && (
+          <ProjectSettingsPanel
+            projectId={project.id}
+            name={project.name}
+            budget={project.budget}
+            saved={searchParams.settings_saved === "1"}
+            error={searchParams.settings_error}
+          />
         )}
 
         {tab === "team" && (

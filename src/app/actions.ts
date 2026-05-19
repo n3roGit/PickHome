@@ -85,6 +85,35 @@ export async function createProjectAction(formData: FormData) {
   redirect(`/project/${project.id}`);
 }
 
+export async function updateProjectAction(projectId: string, formData: FormData) {
+  const user = await requireUser();
+  if (isAdmin(user)) redirect("/admin");
+
+  const base = `/project/${projectId}?tab=settings`;
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) redirect(`${base}&settings_error=name`);
+
+  const budgetRaw = String(formData.get("budget") ?? "").trim();
+  const budget = budgetRaw ? parseInt(budgetRaw.replace(/\D/g, ""), 10) : null;
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, members: { some: { userId: user.id } } },
+  });
+  if (!project) redirect("/dashboard");
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      name,
+      budget: Number.isFinite(budget) ? budget : null,
+    },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/project/${projectId}`);
+  redirect(`${base}&settings_saved=1`);
+}
+
 export async function archiveApartmentAction(apartmentId: string) {
   const user = await requireUser();
   const apt = await prisma.apartment.findFirst({
