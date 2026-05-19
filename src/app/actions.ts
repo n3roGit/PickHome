@@ -21,6 +21,7 @@ import {
 } from "@/lib/apartment-media";
 import { geocodeAddress } from "@/lib/geocode";
 import { normalizeListingUrl } from "@/lib/listing-url";
+import { readPasswordPair } from "@/lib/password";
 import { getApartmentUploadsRoot } from "@/lib/pickhome-data";
 import { join } from "path";
 import {
@@ -534,14 +535,39 @@ export async function reorderCriterionGroupsAction(projectId: string, orderedIds
   revalidatePath(`/project/${projectId}`);
 }
 
+export async function changeOwnPasswordAction(formData: FormData) {
+  const user = await requireUser();
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const pair = readPasswordPair(formData, "newPassword", "newPasswordConfirm");
+  if (!pair.ok) {
+    redirect(`/account/settings?error=${pair.error}`);
+  }
+
+  const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+  if (!(await verifyPassword(currentPassword, fresh.passwordHash))) {
+    redirect("/account/settings?error=bad_current_password");
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await hashPassword(pair.password) },
+  });
+  revalidatePath("/account/settings");
+  redirect("/account/settings?password_changed=1");
+}
+
 export async function createUserAction(formData: FormData) {
   await requireAdmin();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  if (!username || !name || password.length < 4) {
+  const pair = readPasswordPair(formData);
+  if (!username || !name) {
     redirect("/admin?error=fields");
   }
+  if (!pair.ok) {
+    redirect(`/admin?error=${pair.error}`);
+  }
+  const password = pair.password;
   const existing = await prisma.user.findUnique({ where: { username } });
   if (existing) redirect("/admin?error=exists");
   await prisma.user.create({
@@ -570,11 +596,16 @@ export async function deleteUserAction(userId: string) {
 
 export async function resetUserPasswordAction(userId: string, formData: FormData) {
   await requireAdmin();
-  const password = String(formData.get("password") ?? "");
-  if (password.length < 4) redirect("/admin?error=password");
+  const pair = readPasswordPair(formData);
+  if (!pair.ok) {
+    redirect(`/admin?error=${pair.error}`);
+  }
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) redirect("/admin");
   await prisma.user.update({
     where: { id: userId },
-    data: { passwordHash: await hashPassword(password) },
+    data: { passwordHash: await hashPassword(pair.password) },
   });
   revalidatePath("/admin");
+  redirect(`/admin?password_reset=${encodeURIComponent(target.username)}`);
 }

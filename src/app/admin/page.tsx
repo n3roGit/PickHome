@@ -3,19 +3,21 @@ import { AdminBackupPanel } from "@/components/AdminBackupPanel";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { requireAdmin, isAdmin } from "@/lib/auth";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
 const messages: Record<string, string> = {
-  fields: "Bitte alle Felder ausfüllen (Passwort min. 4 Zeichen).",
+  fields: "Bitte alle Felder ausfüllen.",
   exists: "Benutzername existiert bereits.",
-  password: "Passwort zu kurz (min. 4 Zeichen).",
+  password_too_short: `Passwort zu kurz (min. ${MIN_PASSWORD_LENGTH} Zeichen).`,
+  password_mismatch: "Die Passwörter stimmen nicht überein.",
   lastadmin: "Der letzte Administrator kann nicht gelöscht werden.",
 };
 
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; created?: string }>;
+  searchParams: Promise<{ error?: string; created?: string; password_reset?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const admin = await requireAdmin();
@@ -33,6 +35,7 @@ export default async function AdminPage({
 
   const msg = resolvedSearchParams.error ? messages[resolvedSearchParams.error] : null;
   const created = resolvedSearchParams.created === "1";
+  const passwordResetUser = resolvedSearchParams.password_reset;
 
   return (
     <>
@@ -49,6 +52,11 @@ export default async function AdminPage({
         {created && (
           <p className="mb-4 text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
             Benutzer wurde angelegt.
+          </p>
+        )}
+        {passwordResetUser && (
+          <p className="mb-4 text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
+            Passwort für <span className="font-mono">{passwordResetUser}</span> wurde gesetzt.
           </p>
         )}
 
@@ -74,10 +82,18 @@ export default async function AdminPage({
             <input
               name="password"
               type="password"
-              placeholder="Passwort (min. 4 Zeichen)"
+              placeholder="Passwort"
               required
-              minLength={4}
-              className="border border-pn-border rounded-lg px-3 py-2 text-sm sm:col-span-2"
+              minLength={MIN_PASSWORD_LENGTH}
+              className="border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              name="passwordConfirm"
+              type="password"
+              placeholder="Passwort bestätigen"
+              required
+              minLength={MIN_PASSWORD_LENGTH}
+              className="border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
             <button
               type="submit"
@@ -125,17 +141,25 @@ export default async function AdminPage({
                         </summary>
                         <form
                           action={resetUserPasswordAction.bind(null, u.id)}
-                          className="mt-2 flex gap-2"
+                          className="mt-2 flex flex-col gap-2 min-w-[12rem]"
                         >
                           <input
                             name="password"
                             type="password"
                             placeholder="Neues Passwort"
-                            minLength={4}
+                            minLength={MIN_PASSWORD_LENGTH}
                             required
                             className="border border-pn-border rounded px-2 py-1 text-xs"
                           />
-                          <button type="submit" className="text-xs bg-pn-bg-subtle px-2 py-1 rounded border">
+                          <input
+                            name="passwordConfirm"
+                            type="password"
+                            placeholder="Passwort bestätigen"
+                            minLength={MIN_PASSWORD_LENGTH}
+                            required
+                            className="border border-pn-border rounded px-2 py-1 text-xs"
+                          />
+                          <button type="submit" className="text-xs bg-pn-bg-subtle px-2 py-1 rounded border self-start">
                             Setzen
                           </button>
                         </form>

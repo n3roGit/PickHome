@@ -29,7 +29,7 @@ Path alias: `@/*` → `src/*`.
 - `src/lib/auth.ts`: `getSessionUser()`, `requireUser()`, `requireAdmin()`, `isAdmin()`, `ROLE_ADMIN` / `ROLE_USER`.
 - Cookie: `ph_session`.
 - Regular users: projects via `ProjectMember`. Admins use `/admin`; redirect admins away from user dashboards (`if (isAdmin(user)) redirect("/admin")`).
-- Login and TOTP: `src/app/totp-actions.ts`, `/login`, `/login/totp`, `/account/security`.
+- Login and TOTP: `src/app/totp-actions.ts`, `/login`, `/login/totp`, `/account/settings`.
 
 ## Data and security
 
@@ -59,6 +59,6 @@ Path alias: `@/*` → `src/*`.
 | Project | `/project/[id]` — tabs: apartments, archived, team, settings, criteria, compare, map, calendar |
 | Apartment | `/project/[id]/apartment/[aptId]` |
 | Admin | `/admin` — users, backup export/import |
-| Security | `/account/security` — TOTP |
+| Settings | `/account/settings` — password, TOTP |
 
 Project access: always verify membership (`members: { some: { userId } }` or helpers in `src/lib/project-data.ts`).

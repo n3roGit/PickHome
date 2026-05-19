@@ -96,7 +96,7 @@ export async function cancelTotpLoginAction(): Promise<{ ok: true; redirectTo: s
 export async function beginTotpSetupAction() {
   const user = await requireUser();
   if (isTotpEnabled(user)) {
-    redirect("/account/security?error=already_enabled");
+    redirect("/account/settings?error=already_enabled");
   }
 
   const totpSecret = generateTotpSecret();
@@ -105,19 +105,19 @@ export async function beginTotpSetupAction() {
     data: { totpSecret, totpEnabledAt: null },
   });
 
-  revalidatePath("/account/security");
-  redirect("/account/security?step=confirm");
+  revalidatePath("/account/settings");
+  redirect("/account/settings?step=confirm");
 }
 
 export async function confirmTotpSetupAction(formData: FormData) {
   const user = await requireUser();
   if (!user.totpSecret || isTotpEnabled(user)) {
-    redirect("/account/security");
+    redirect("/account/settings");
   }
 
   const code = String(formData.get("code") ?? "").trim();
   if (!verifyTotpCode({ username: user.username, totpSecret: user.totpSecret }, code)) {
-    redirect("/account/security?step=confirm&error=invalid_code");
+    redirect("/account/settings?step=confirm&error=invalid_code");
   }
 
   const recoveryCodes = generateRecoveryCodesPlain();
@@ -127,8 +127,8 @@ export async function confirmTotpSetupAction(formData: FormData) {
   });
   await replaceRecoveryCodes(user.id, recoveryCodes);
 
-  revalidatePath("/account/security");
-  redirect(`/account/security?step=recovery&codes=${encodeURIComponent(recoveryCodes.join(","))}`);
+  revalidatePath("/account/settings");
+  redirect(`/account/settings?step=recovery&codes=${encodeURIComponent(recoveryCodes.join(","))}`);
 }
 
 export async function cancelTotpSetupAction() {
@@ -140,23 +140,23 @@ export async function cancelTotpSetupAction() {
     });
     await prisma.userRecoveryCode.deleteMany({ where: { userId: user.id } });
   }
-  revalidatePath("/account/security");
-  redirect("/account/security");
+  revalidatePath("/account/settings");
+  redirect("/account/settings");
 }
 
 export async function disableTotpAction(formData: FormData) {
   const user = await requireUser();
   if (!isTotpEnabled(user) || !user.totpSecret) {
-    redirect("/account/security");
+    redirect("/account/settings");
   }
 
   const password = String(formData.get("password") ?? "");
   const code = String(formData.get("code") ?? "").trim();
   if (!(await verifyPassword(password, user.passwordHash))) {
-    redirect("/account/security?error=bad_password");
+    redirect("/account/settings?error=bad_password");
   }
   if (!verifyTotpCode({ username: user.username, totpSecret: user.totpSecret }, code)) {
-    redirect("/account/security?error=bad_code");
+    redirect("/account/settings?error=bad_code");
   }
 
   await prisma.user.update({
@@ -165,30 +165,30 @@ export async function disableTotpAction(formData: FormData) {
   });
   await prisma.userRecoveryCode.deleteMany({ where: { userId: user.id } });
 
-  revalidatePath("/account/security");
-  redirect("/account/security?disabled=1");
+  revalidatePath("/account/settings");
+  redirect("/account/settings?disabled=1");
 }
 
 export async function regenerateRecoveryCodesAction(formData: FormData) {
   const user = await requireUser();
   if (!isTotpEnabled(user) || !user.totpSecret) {
-    redirect("/account/security");
+    redirect("/account/settings");
   }
 
   const password = String(formData.get("password") ?? "");
   const code = String(formData.get("code") ?? "").trim();
   if (!(await verifyPassword(password, user.passwordHash))) {
-    redirect("/account/security?error=bad_password");
+    redirect("/account/settings?error=bad_password");
   }
   if (!verifyTotpCode({ username: user.username, totpSecret: user.totpSecret }, code)) {
-    redirect("/account/security?error=bad_code");
+    redirect("/account/settings?error=bad_code");
   }
 
   const recoveryCodes = generateRecoveryCodesPlain();
   await replaceRecoveryCodes(user.id, recoveryCodes);
 
-  revalidatePath("/account/security");
-  redirect(`/account/security?step=recovery&codes=${encodeURIComponent(recoveryCodes.join(","))}`);
+  revalidatePath("/account/settings");
+  redirect(`/account/settings?step=recovery&codes=${encodeURIComponent(recoveryCodes.join(","))}`);
 }
 
 export async function getTotpQrDataUrl(user: { username: string; totpSecret: string }) {

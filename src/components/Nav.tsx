@@ -28,10 +28,10 @@ export function Nav({
                 </Link>
               )}
               <Link
-                href="/account/security"
+                href="/account/settings"
                 className="text-sm text-pn-text-secondary hover:text-pn-text-primary"
               >
-                Sicherheit
+                Einstellungen
               </Link>
               <span className="text-sm text-pn-text-secondary">{userName}</span>
               <form action={logoutAction}>

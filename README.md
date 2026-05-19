@@ -61,7 +61,7 @@ Open **http://localhost:3000**
 
 Change the admin password after first login (Admin → user → new password).
 
-Optional **two-factor authentication (TOTP)** with recovery codes: **Sicherheit** in the navigation (or `/account/security`).
+Optional **two-factor authentication (TOTP)** with recovery codes and password change: **Einstellungen** in the navigation (or `/account/settings`).
 
 ### Data persistence
 
