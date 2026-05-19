@@ -1,0 +1,34 @@
+---
+description: Vitest, test database, and CI conventions
+globs: tests/**/*,vitest.config.ts,.github/**/*
+---
+
+# Tests and CI
+
+## Vitest
+
+- Config: `vitest.config.ts` — Node environment, `tests/**/*.test.ts`, `setupFiles: ["tests/setup.ts"]`.
+- `fileParallelism: false`, `pool: "forks"`, `hookTimeout: 60_000`.
+- Run: `npm test` / `npm run test:watch`.
+
+## Database in tests
+
+- `tests/setup.ts` sets `DATABASE_URL` to `file:<cwd>/data/test.db` if unset.
+- CI (`.github/workflows/test.yml`): `DATABASE_URL=file:../data/test.db`.
+- Integration helpers: `tests/helpers/test-db.ts` — `resetTestDatabase()`, `createTestPrisma()`, fixtures.
+
+Use `resetTestDatabase()` before integration tests that need a clean DB.
+
+## What to test
+
+- Unit: pure logic in `src/lib/` (`scoring`, `totp`, `backup`, `project-data`, `viewings`, `dates`).
+- Integration: Prisma flows in `tests/integration/database.test.ts`.
+- Add tests only when they cover real behavior; avoid trivial assertions.
+
+## CI
+
+- Workflow runs `npm test` on push/PR.
+- Docker publish: `.github/workflows/docker-publish.yml` → `n3ro88/pickhome`.
+- Docker build needs `DATABASE_URL` at build time; data dir via `PICKHOME_DATA_DIR`.
+
+After schema or action changes, run `npm test` locally before push.

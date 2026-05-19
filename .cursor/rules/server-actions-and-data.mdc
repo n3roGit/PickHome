@@ -1,0 +1,55 @@
+---
+description: Server actions, API routes, Prisma, and lib conventions
+globs: src/app/**/*.{ts,tsx},src/lib/**/*.ts,prisma/**/*
+---
+
+# Server actions and data layer
+
+## Server actions
+
+- Place in `src/app/actions.ts` (main) or `src/app/totp-actions.ts` (auth/TOTP only).
+- Start file with `"use server"`.
+- Name: `*Action` (e.g. `createProjectAction`, `updateProjectAction`).
+- Start with `requireUser()` or `requireAdmin()`; redirect admins from user flows when applicable.
+- After mutations: `revalidatePath(...)` and often `redirect(...)` with query params for flash messages (e.g. `?tab=team&member_added=...`).
+- Read `FormData` in actions; validate and trim strings; parse numbers like budget with `parseInt(...replace(/\D/g, ""), 10)`.
+
+## Project access
+
+Use `src/lib/project-data.ts`:
+
+- `getProjectForUser`, `getProjectMetaForUser`, `getApartmentForUser`
+- `assertProjectAccess`, `assertApartmentAccess`
+- `seedProjectCriteria`, `apartmentScore`, `flattenCriteria`
+
+Do not query projects without a membership check.
+
+## Prisma
+
+- Single client: `src/lib/prisma.ts`.
+- Schema changes: edit `prisma/schema.prisma`, then `npm run db:push` (no migration files in routine dev).
+- Cascade deletes are defined on relations; deleting a project removes members, apartments, criteria.
+
+## API routes
+
+- `src/app/api/admin/backup/` — admin-only ZIP export/import
+- `src/app/api/projects/[projectId]/calendar.ics` — token auth via `icalToken`
+- `src/app/api/projects/[projectId]/geocode` — geocoding
+- `src/app/uploads/[...path]/route.ts` — serve files from data dir
+
+## Lib modules (extend, do not duplicate)
+
+| Module | Purpose |
+|--------|---------|
+| `scoring.ts` | Weights, dealbreakers, `formatPrice`, score math |
+| `viewings.ts` | Viewing dates, `nextViewing` |
+| `defaults.ts` | Default criterion groups for new projects |
+| `backup.ts` | Admin ZIP backup (DB + uploads) |
+| `totp.ts` | TOTP secret, QR, recovery codes |
+| `ical.ts` / `ical-token.ts` | Calendar feed |
+| `geocode.ts` | Address → coordinates |
+
+## Backups
+
+- Use `adm-zip` (not `archiver`) for Next.js compatibility.
+- Raw SQL via `$queryRawUnsafe` when needed for SQLite pragmas during export.

@@ -1,0 +1,48 @@
+---
+description: UI, Tailwind tokens, and React component patterns
+globs: src/**/*.tsx,tailwind.config.ts,src/app/globals.css
+---
+
+# UI and components
+
+## Styling
+
+Use design tokens from `tailwind.config.ts` — prefix `pn-`:
+
+- Surfaces: `bg-pn-bg-base`, `bg-pn-bg-surface`, `bg-pn-bg-subtle`
+- Text: `text-pn-text-primary`, `text-pn-text-secondary`, `text-pn-text-tertiary`
+- Borders: `border-pn-border`, `divide-pn-border`
+- Accent / CTA: `bg-pn-accent text-white`, links `text-pn-accent hover:underline`
+- Feedback: `text-pn-score-high bg-pn-score-high-bg`, `pn-score-low`, etc.
+
+Common patterns:
+
+- Cards: `bg-pn-bg-surface border border-pn-border rounded-xl p-4` or `p-5`
+- Inputs: `border border-pn-border rounded-lg px-3 py-2 text-sm`
+- Primary button: `bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm`
+- Tabs: border-bottom active state with `border-pn-accent text-pn-accent` (see `TabLink` in project page)
+
+Do not introduce one-off hex colors; extend `tailwind.config.ts` if a new token is needed.
+
+## Components
+
+- Server Components by default in `src/app/**/page.tsx`.
+- `"use client"` only when needed (maps, transitions, interactive editors like `CriteriaEditor.tsx`).
+- Props: explicit types; pass serializable data from server pages.
+- Reusable panels: `ProjectMembersPanel`, `ProjectSettingsPanel`, `CriteriaEditor`, `CompareView`, `ProjectMap`, `ProjectCalendar`.
+
+## Forms
+
+- Prefer server actions bound with `.bind(null, id)` on forms.
+- German labels and placeholders; English `name` attributes and field keys.
+- Success/error via redirect query params and small message banners (green/red score token backgrounds).
+
+## Images and maps
+
+- `next/image` for apartment photos; URLs under `/uploads/...`.
+- Leaflet: `ProjectMap.tsx` (client component).
+
+## Pages
+
+- Layout: `Nav` + `main.max-w-6xl.mx-auto.px-4.py-8` + `Footer`.
+- Project tabs use `?tab=` (`apartments` default, `team`, `settings`, `criteria`, `compare`, `map`, `calendar`, `archived`).

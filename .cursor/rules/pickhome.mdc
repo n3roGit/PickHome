@@ -1,0 +1,64 @@
+---
+description: PickHome project context, stack, and global conventions
+alwaysApply: true
+---
+
+# PickHome
+
+Self-hosted apartment scoring for house hunting (German UI). Next.js 14 App Router, React 18, TypeScript, Tailwind, Prisma + SQLite. No payment integration.
+
+## Repository layout
+
+- `src/app/` — pages, API routes, server actions (`actions.ts`, `totp-actions.ts`)
+- `src/lib/` — domain logic (kebab-case filenames)
+- `src/components/` — React components (PascalCase)
+- `prisma/schema.prisma` — database schema
+- `scripts/` — CLI helpers (backup, data dirs)
+- `tests/` — Vitest (`unit/`, `integration/`, `helpers/`)
+- `data/` — runtime data (gitignored): `pickhome.db`, `uploads/`, `backups/`
+
+Path alias: `@/*` → `src/*`.
+
+## Language
+
+- **UI copy and page metadata:** German (`lang="de"`).
+- **Code:** English only — identifiers, comments, commit messages, error keys, tests.
+
+## Auth and roles
+
+- `src/lib/auth.ts`: `getSessionUser()`, `requireUser()`, `requireAdmin()`, `isAdmin()`, `ROLE_ADMIN` / `ROLE_USER`.
+- Cookie: `ph_session`.
+- Regular users: projects via `ProjectMember`. Admins use `/admin`; redirect admins away from user dashboards (`if (isAdmin(user)) redirect("/admin")`).
+- Login and TOTP: `src/app/totp-actions.ts`, `/login`, `/login/totp`, `/account/security`.
+
+## Data and security
+
+- `PICKHOME_DATA_DIR` (default `./data`), `DATABASE_URL` (SQLite `file:` paths relative to `prisma/`).
+- Uploads: `src/lib/pickhome-data.ts`, `src/lib/apartment-media.ts`, served at `/uploads/...`.
+- Never commit: `data/`, `.env*`, secrets, `node_modules/`, `.next/`, user databases or backup ZIPs.
+
+## Git workflow
+
+- Commit and push when the user asks or after completing a feature batch.
+- Do not force-push `main` unless explicitly requested.
+- Do not amend commits that were already pushed.
+
+## Commands
+
+- Dev: `npm run dev` (runs `predev` → ensures data dirs)
+- DB: `npm run db:push`, `npm run db:seed`
+- Tests: `npm test`
+- Backup: `npm run data:export` / `data:import`
+- Docker image: `n3ro88/pickhome` (see `docker-compose.yml`)
+
+## Feature map (routes)
+
+| Area | Route / tab |
+|------|-------------|
+| Dashboard | `/dashboard` |
+| Project | `/project/[id]` — tabs: apartments, archived, team, settings, criteria, compare, map, calendar |
+| Apartment | `/project/[id]/apartment/[aptId]` |
+| Admin | `/admin` — users, backup export/import |
+| Security | `/account/security` — TOTP |
+
+Project access: always verify membership (`members: { some: { userId } }` or helpers in `src/lib/project-data.ts`).
