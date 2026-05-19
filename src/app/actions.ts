@@ -304,6 +304,46 @@ export async function updateApartmentListingUrlAction(apartmentId: string, formD
   redirect(`${base}?listing_saved=1`);
 }
 
+async function geocodeApartmentAddressFields(address: string) {
+  const trimmed = address.trim();
+  if (!trimmed) {
+    return { address: null as string | null, latitude: null as number | null, longitude: null as number | null };
+  }
+  const coords = await geocodeAddress(trimmed);
+  return {
+    address: trimmed,
+    latitude: coords?.latitude ?? null,
+    longitude: coords?.longitude ?? null,
+  };
+}
+
+export async function updateApartmentBasicsAction(apartmentId: string, formData: FormData) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user.id);
+  if (!apt) redirect("/dashboard");
+
+  const priceRaw = String(formData.get("price") ?? "").trim();
+  const price = priceRaw ? parseInt(priceRaw.replace(/\D/g, ""), 10) : null;
+  const addressRaw = String(formData.get("address") ?? "").trim();
+  const geocoded = addressRaw
+    ? await geocodeApartmentAddressFields(addressRaw)
+    : { address: null, latitude: null, longitude: null };
+  const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
+
+  await prisma.apartment.update({
+    where: { id: apartmentId },
+    data: {
+      price: Number.isFinite(price) ? price : null,
+      address: geocoded.address,
+      latitude: geocoded.latitude,
+      longitude: geocoded.longitude,
+    },
+  });
+  revalidateApartment(apt.projectId, apartmentId);
+  revalidatePath(`/project/${apt.projectId}`);
+  redirect(`${base}?basics_saved=1`);
+}
+
 export async function updateApartmentNotesAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
   const apt = await assertApartmentAccess(apartmentId, user.id);

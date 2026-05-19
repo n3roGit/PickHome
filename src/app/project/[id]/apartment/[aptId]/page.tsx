@@ -9,6 +9,7 @@ import { RatingSliders } from "@/components/RatingSliders";
 import { ViewingAppointments } from "@/components/ViewingAppointments";
 import { formatDateDe } from "@/lib/dates";
 import { getSessionUser, isAdmin } from "@/lib/auth";
+import { ApartmentBasicsForm } from "@/components/ApartmentBasicsForm";
 import { ApartmentArchiveButton } from "@/components/ApartmentArchiveButton";
 import { ApartmentDeleteButton } from "@/components/ApartmentDeleteButton";
 import { ApartmentDescriptionForm } from "@/components/ApartmentDescriptionForm";
@@ -26,7 +27,7 @@ import {
   getProjectMetaForUser,
 } from "@/lib/project-data";
 import { ScoreLegend } from "@/components/ScoreLegend";
-import { formatBudgetHint, formatPrice, resolveDealbreakerThreshold } from "@/lib/scoring";
+import { resolveDealbreakerThreshold } from "@/lib/scoring";
 
 export default async function ApartmentPage({
   params,
@@ -38,6 +39,7 @@ export default async function ApartmentPage({
     listing_error?: string;
     notes_saved?: string;
     description_saved?: string;
+    basics_saved?: string;
   }>;
 }) {
   const resolvedParams = await params;
@@ -125,27 +127,8 @@ export default async function ApartmentPage({
                 Archiviert
               </span>
             )}
-            {apartment.address && <p className="text-pn-text-secondary">{apartment.address}</p>}
-            {apartment.price != null && (
-              <p className="text-lg font-semibold mt-1">
-                {formatPrice(apartment.price)}
-                {project.budget != null && (
-                  <span
-                    className={`block text-sm font-normal mt-0.5 ${
-                      apartment.price > project.budget
-                        ? "text-pn-score-low"
-                        : apartment.price < project.budget
-                          ? "text-pn-score-high"
-                          : "text-pn-text-tertiary"
-                    }`}
-                  >
-                    {formatBudgetHint(apartment.price, project.budget)}
-                  </span>
-                )}
-              </p>
-            )}
             {apartment.listingUrl && (
-              <a href={apartment.listingUrl} target="_blank" rel="noreferrer" className="text-sm text-pn-accent hover:underline">
+              <a href={apartment.listingUrl} target="_blank" rel="noreferrer" className="text-sm text-pn-accent hover:underline mt-2 inline-block">
                 Inserat öffnen ↗
               </a>
             )}
@@ -161,6 +144,13 @@ export default async function ApartmentPage({
           {apartment.viewedAt && ` · zuletzt besichtigt: ${formatDateDe(apartment.viewedAt)}`}
         </p>
         <ScoreLegend className="mb-6" />
+        <ApartmentBasicsForm
+          apartmentId={apartment.id}
+          address={apartment.address}
+          price={apartment.price}
+          budget={project.budget}
+          saved={resolvedSearchParams.basics_saved === "1"}
+        />
         <ApartmentCommutePanel
           legs={commuteLegs}
           travelMode={travelMode}
