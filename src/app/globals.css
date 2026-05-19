@@ -5,3 +5,32 @@
 body {
   @apply bg-pn-bg-base text-pn-text-primary antialiased;
 }
+
+@layer components {
+  .rating-range {
+    @apply w-full h-10 cursor-grab active:cursor-grabbing touch-none;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+
+  .rating-range::-webkit-slider-runnable-track {
+    @apply h-2 rounded-full bg-pn-border;
+  }
+
+  .rating-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    @apply w-6 h-6 rounded-full bg-pn-accent shadow-md;
+    margin-top: -8px;
+    border: 2px solid #fff;
+  }
+
+  .rating-range::-moz-range-track {
+    @apply h-2 rounded-full bg-pn-border;
+  }
+
+  .rating-range::-moz-range-thumb {
+    @apply w-6 h-6 rounded-full bg-pn-accent shadow-md;
+    border: 2px solid #fff;
+  }
+}

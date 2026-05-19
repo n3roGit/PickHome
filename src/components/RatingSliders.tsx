@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { saveRatingAction } from "@/app/actions";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ScoreLegend } from "@/components/ScoreLegend";
@@ -64,6 +64,8 @@ export function RatingSliders({
     return init;
   });
   const [pending, startTransition] = useTransition();
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
 
   const myScore = apartmentScore(
     criteriaFlat,
@@ -78,10 +80,19 @@ export function RatingSliders({
     return partner.ratings.find((r) => r.criterionId === criterionId);
   }
 
-  function onChange(criterionId: string, score: number) {
+  function onSlide(criterionId: string, score: number) {
+    setScores((s) => ({ ...s, [criterionId]: score }));
+  }
+
+  function onCommit(criterionId: string, score: number) {
     setScores((s) => ({ ...s, [criterionId]: score }));
     startTransition(() =>
-      saveRatingAction(apartmentId, criterionId, score, notes[criterionId] || null)
+      saveRatingAction(
+        apartmentId,
+        criterionId,
+        score,
+        notesRef.current[criterionId] || null
+      )
     );
   }
 
@@ -155,9 +166,13 @@ export function RatingSliders({
                         max={10}
                         step={1}
                         value={scores[c.id] ?? 0}
-                        disabled={pending}
-                        onChange={(e) => onChange(c.id, parseInt(e.target.value, 10))}
-                        className="flex-1 accent-pn-accent"
+                        onInput={(e) =>
+                          onSlide(c.id, parseInt(e.currentTarget.value, 10))
+                        }
+                        onChange={(e) =>
+                          onCommit(c.id, parseInt(e.currentTarget.value, 10))
+                        }
+                        className="rating-range flex-1"
                       />
                       <span className="w-8 text-center font-bold tabular-nums">
                         {scores[c.id] == null ? "—" : scores[c.id]}
