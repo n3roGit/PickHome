@@ -1,4 +1,4 @@
-import { updateProjectAction } from "@/app/actions";
+import { reindexProjectDocumentsAction, updateProjectAction } from "@/app/actions";
 import {
   FEDERAL_STATES,
   formatBrokerBuyerRateForInput,
@@ -18,8 +18,10 @@ export function ProjectSettingsPanel({
   equityAmount,
   loanTermYears,
   interestRate,
+  netHouseholdIncome,
   saved,
   error,
+  reindexResult,
 }: {
   projectId: string;
   name: string;
@@ -29,8 +31,15 @@ export function ProjectSettingsPanel({
   equityAmount: number | null;
   loanTermYears: number | null;
   interestRate: number | null;
+  netHouseholdIncome: number | null;
   saved?: boolean;
   error?: string;
+  reindexResult?: {
+    processed: number;
+    withText: number;
+    withoutText: number;
+    missingFile: number;
+  };
 }) {
   return (
     <div className="space-y-6">
@@ -111,7 +120,7 @@ export function ProjectSettingsPanel({
           <div>
             <h2 className="font-semibold mb-1">Finanzierung</h2>
             <p className="text-sm text-pn-text-secondary">
-              Für die grobe Monatsrate pro Immobilie (Annuitätendarlehen).
+              Für die grobe Monatsrate und Belastbarkeit pro Immobilie.
             </p>
           </div>
           <label className="block">
@@ -144,6 +153,20 @@ export function ProjectSettingsPanel({
               className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
           </label>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">
+              Haushaltsnetto (optional, €/Monat)
+            </span>
+            <input
+              name="netHouseholdIncome"
+              defaultValue={netHouseholdIncome != null ? String(netHouseholdIncome) : ""}
+              placeholder="z. B. 5500"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+            <span className="text-xs text-pn-text-tertiary mt-1 block">
+              Für den Anteil der Monatsrate am Einkommen (Richtwert: max. ca. 35&nbsp;%).
+            </span>
+          </label>
         </section>
 
         <button
@@ -153,6 +176,30 @@ export function ProjectSettingsPanel({
           Speichern
         </button>
       </form>
+
+      <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 max-w-lg space-y-4">
+        <div>
+          <h2 className="font-semibold mb-1">Volltextsuche</h2>
+          <p className="text-sm text-pn-text-secondary">
+            PDF-Exposés nachträglich einlesen, damit der Inhalt in der Suche gefunden wird.
+          </p>
+        </div>
+        {reindexResult && (
+          <p className="text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
+            {reindexResult.processed === 0
+              ? "Keine PDFs in diesem Projekt."
+              : `${reindexResult.processed} PDF(s) verarbeitet: ${reindexResult.withText} mit Text, ${reindexResult.withoutText} ohne Textlayer${reindexResult.missingFile > 0 ? `, ${reindexResult.missingFile} Datei(en) fehlen` : ""}.`}
+          </p>
+        )}
+        <form action={reindexProjectDocumentsAction.bind(null, projectId)}>
+          <button
+            type="submit"
+            className="bg-pn-bg-subtle border border-pn-border text-pn-text-primary font-medium px-4 py-2 rounded-lg text-sm hover:bg-pn-border/40"
+          >
+            PDFs neu einlesen
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

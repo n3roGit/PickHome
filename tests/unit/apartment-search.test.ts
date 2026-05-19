@@ -26,6 +26,18 @@ describe("apartment search", () => {
     expect(matchesApartmentSearch(blob, "expose")).toBe(true);
   });
 
+  it("finds text in uploaded PDF extract", () => {
+    const blob = buildApartmentSearchBlob(
+      {
+        ...sample,
+        documents: [{ fileName: "expose.pdf", extractedText: "Energieklasse B Gasheizung 1998" }],
+      },
+      criteria
+    );
+    expect(matchesApartmentSearch(blob, "energieklasse")).toBe(true);
+    expect(matchesApartmentSearch(blob, "gasheizung")).toBe(true);
+  });
+
   it("requires all tokens", () => {
     const blob = buildApartmentSearchBlob(sample, criteria);
     expect(matchesApartmentSearch(blob, "altbau mitte")).toBe(true);

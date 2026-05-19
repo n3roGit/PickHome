@@ -3,7 +3,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ["adm-zip"],
+  serverExternalPackages: ["adm-zip", "pdf-parse"],
   experimental: {
     serverActions: {
       bodySizeLimit: "200mb",

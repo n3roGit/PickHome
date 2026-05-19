@@ -41,6 +41,7 @@ model Project {
   equityAmount      Int?
   loanTermYears     Int?
   interestRate      Float?
+  netHouseholdIncome Int?
   icalToken         String?          @unique
   createdAt   DateTime         @default(now())
   archivedAt  DateTime?
@@ -111,6 +112,7 @@ model ApartmentDocument {
   url         String
   mimeType    String
   kind        String    @default("expose")
+  extractedText String?
   sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())
   apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)

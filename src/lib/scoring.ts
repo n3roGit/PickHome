@@ -79,6 +79,15 @@ export function pricePerPoint(price: number | null | undefined, score: number): 
   }).format(perPoint);
 }
 
+export function formatPricePerSqm(
+  price: number | null | undefined,
+  sizeSqm: number | null | undefined
+): string {
+  if (price == null || sizeSqm == null || sizeSqm <= 0) return "—";
+  const perSqm = Math.round(price / sizeSqm);
+  return `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(perSqm)} €/m²`;
+}
+
 export type ApartmentSortKey = "score" | "price" | "ppp" | "date";
 
 export function parseApartmentSort(value: string | undefined): ApartmentSortKey {

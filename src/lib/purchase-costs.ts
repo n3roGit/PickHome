@@ -2,6 +2,9 @@
 
 export const NOTARY_REGISTRY_RATE = 0.02;
 
+/** Rough guideline: monthly housing burden above this share of net income is flagged. */
+export const AFFORDABILITY_WARN_THRESHOLD = 0.35;
+
 /** Fallback when no project interest rate is set (rough estimate only). */
 export const DEFAULT_INTEREST_RATE = 0.035;
 
@@ -244,5 +247,118 @@ export function estimateFinancing(input: {
     interestRate,
     interestRateIsDefault,
     monthlyPayment: estimateMonthlyPayment(loanAmount, interestRate, input.loanTermYears),
+  };
+}
+
+export type AffordabilityLevel = "ok" | "warn";
+
+export type AffordabilityEstimate = {
+  monthlyPayment: number;
+  monthlyMaintenance: number;
+  totalMonthlyBurden: number;
+  netHouseholdIncome: number;
+  burdenShare: number;
+  level: AffordabilityLevel;
+};
+
+export function estimateAffordability(input: {
+  monthlyPayment: number;
+  netHouseholdIncome: number;
+  monthlyMaintenance?: number | null;
+}): AffordabilityEstimate | null {
+  if (input.netHouseholdIncome <= 0) return null;
+  const monthlyMaintenance = input.monthlyMaintenance ?? 0;
+  const totalMonthlyBurden = input.monthlyPayment + monthlyMaintenance;
+  const burdenShare = totalMonthlyBurden / input.netHouseholdIncome;
+  return {
+    monthlyPayment: input.monthlyPayment,
+    monthlyMaintenance,
+    totalMonthlyBurden,
+    netHouseholdIncome: input.netHouseholdIncome,
+    burdenShare,
+    level: burdenShare > AFFORDABILITY_WARN_THRESHOLD ? "warn" : "ok",
+  };
+}
+
+export function formatBurdenShare(share: number): string {
+  const pct = Math.round(share * 1000) / 10;
+  return `${String(pct).replace(".", ",")} %`;
+}
+
+export type ProjectFinanceSettings = {
+  federalStateCode: string | null;
+  brokerBuyerRate: number | null;
+  equityAmount: number | null;
+  loanTermYears: number | null;
+  interestRate: number | null;
+  netHouseholdIncome: number | null;
+};
+
+export type ApartmentCompareInput = {
+  price: number | null;
+  sizeSqm: number | null;
+  brokerInvolved: boolean;
+};
+
+export type ApartmentCompareMetrics = {
+  totalCost: number | null;
+  monthlyPayment: number | null;
+  burdenShare: number | null;
+  burdenLevel: AffordabilityLevel | null;
+};
+
+export function apartmentCompareMetrics(
+  apartment: ApartmentCompareInput,
+  finance: ProjectFinanceSettings
+): ApartmentCompareMetrics {
+  const stateCode = parseFederalStateCode(finance.federalStateCode);
+  if (apartment.price == null || !stateCode) {
+    return { totalCost: null, monthlyPayment: null, burdenShare: null, burdenLevel: null };
+  }
+
+  const costs = estimatePurchaseCosts({
+    price: apartment.price,
+    federalStateCode: stateCode,
+    brokerInvolved: apartment.brokerInvolved,
+    brokerBuyerRate: finance.brokerBuyerRate,
+  });
+
+  if (finance.equityAmount == null || finance.loanTermYears == null) {
+    return {
+      totalCost: costs.totalWithPrice,
+      monthlyPayment: null,
+      burdenShare: null,
+      burdenLevel: null,
+    };
+  }
+
+  const financing = estimateFinancing({
+    totalCost: costs.totalWithPrice,
+    equityAmount: finance.equityAmount,
+    loanTermYears: finance.loanTermYears,
+    interestRate: finance.interestRate,
+  });
+  if (!financing) {
+    return {
+      totalCost: costs.totalWithPrice,
+      monthlyPayment: null,
+      burdenShare: null,
+      burdenLevel: null,
+    };
+  }
+
+  const affordability =
+    finance.netHouseholdIncome != null
+      ? estimateAffordability({
+          monthlyPayment: financing.monthlyPayment,
+          netHouseholdIncome: finance.netHouseholdIncome,
+        })
+      : null;
+
+  return {
+    totalCost: costs.totalWithPrice,
+    monthlyPayment: financing.monthlyPayment,
+    burdenShare: affordability?.burdenShare ?? null,
+    burdenLevel: affordability?.level ?? null,
   };
 }

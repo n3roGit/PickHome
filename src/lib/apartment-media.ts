@@ -61,11 +61,43 @@ export async function saveApartmentPhoto(apartmentId: string, file: File) {
   return saved.url;
 }
 
-export async function saveApartmentDocument(apartmentId: string, file: File) {
+export async function saveApartmentDocument(
+  apartmentId: string,
+  file: File,
+  buffer?: Buffer
+) {
   const isPdf =
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   if (!isPdf) throw new Error("invalid_type");
-  return saveFile(apartmentId, file, "documents");
+  const data = buffer ?? Buffer.from(await file.arrayBuffer());
+  return saveFileWithBuffer(apartmentId, file, data, "documents");
+}
+
+async function saveFileWithBuffer(
+  apartmentId: string,
+  file: File,
+  buffer: Buffer,
+  subdir: "" | "documents"
+): Promise<{ url: string; mimeType: string; fileName: string }> {
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  const allowed = subdir === "documents" ? DOCUMENT_TYPES : IMAGE_TYPES;
+  if (!allowed.has(file.type) && !(subdir === "documents" && isPdf)) {
+    throw new Error("invalid_type");
+  }
+  const max = subdir === "documents" && isPdf ? MAX_DOCUMENT_BYTES : MAX_IMAGE_BYTES;
+  if (buffer.length > max) throw new Error("too_large");
+
+  const ext = extForMime(file.type, file.name);
+  const filename = `${randomUUID()}${ext}`;
+  const dir = join(apartmentDir(apartmentId), subdir);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, filename), buffer);
+  const path = subdir ? `documents/${filename}` : filename;
+  return {
+    url: `/uploads/apartments/${apartmentId}/${path}`,
+    mimeType: isPdf ? "application/pdf" : file.type || "application/octet-stream",
+    fileName: file.name || filename,
+  };
 }
 
 export async function deleteApartmentPhotoFile(url: string) {

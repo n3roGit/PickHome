@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   brokerBuyerShareRate,
+  estimateAffordability,
+  apartmentCompareMetrics,
   estimateFinancing,
   estimateMonthlyPayment,
   estimatePurchaseCosts,
+  formatBurdenShare,
   formatPercent,
   parseBrokerBuyerRatePercent,
   parseFederalStateCode,
@@ -113,5 +116,60 @@ describe("estimateFinancing", () => {
       loanTermYears: 25,
     });
     expect(result?.interestRateIsDefault).toBe(true);
+  });
+});
+
+describe("estimateAffordability", () => {
+  it("flags burden above 35 percent", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 2_000,
+      netHouseholdIncome: 5_000,
+    });
+    expect(result?.burdenShare).toBe(0.4);
+    expect(result?.level).toBe("warn");
+  });
+
+  it("marks affordable burden as ok", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 1_500,
+      netHouseholdIncome: 5_000,
+    });
+    expect(result?.level).toBe("ok");
+  });
+});
+
+describe("formatBurdenShare", () => {
+  it("formats share as German percent", () => {
+    expect(formatBurdenShare(0.325)).toBe("32,5 %");
+  });
+});
+
+describe("apartmentCompareMetrics", () => {
+  const finance = {
+    federalStateCode: "HB",
+    brokerBuyerRate: null,
+    equityAmount: 50_000,
+    loanTermYears: 30,
+    interestRate: 0.035,
+    netHouseholdIncome: 5_000,
+  };
+
+  it("computes costs and monthly burden", () => {
+    const result = apartmentCompareMetrics(
+      { price: 300_000, sizeSqm: 100, brokerInvolved: true },
+      finance
+    );
+    expect(result.totalCost).toBe(331_425);
+    expect(result.monthlyPayment).toBeGreaterThan(0);
+    expect(result.burdenShare).toBeGreaterThan(0);
+  });
+
+  it("returns partial metrics without finance settings", () => {
+    const result = apartmentCompareMetrics(
+      { price: 300_000, sizeSqm: null, brokerInvolved: false },
+      { ...finance, equityAmount: null, loanTermYears: null }
+    );
+    expect(result.totalCost).toBe(322_500);
+    expect(result.monthlyPayment).toBeNull();
   });
 });

@@ -11,7 +11,7 @@ export type ApartmentSearchInput = {
   yearBuilt?: number | null;
   brokerInvolved?: boolean;
   photos?: { caption?: string | null }[];
-  documents?: { fileName: string }[];
+  documents?: { fileName: string; extractedText?: string | null }[];
   viewings?: { note?: string | null; scheduledAt: Date }[];
   ratings?: { criterionId: string; score?: number | null; note?: string | null }[];
 };
@@ -49,6 +49,7 @@ export function buildApartmentSearchBlob(
   }
   for (const doc of apartment.documents ?? []) {
     push(doc.fileName);
+    push(doc.extractedText);
   }
   for (const viewing of apartment.viewings ?? []) {
     push(viewing.note);

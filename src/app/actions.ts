@@ -19,7 +19,7 @@ import {
   saveApartmentDocument,
   saveApartmentPhoto,
 } from "@/lib/apartment-media";
-import { isApartmentUploadError, type ApartmentUploadError } from "@/lib/upload-limits";
+import { extractPdfText } from "@/lib/pdf-text";
 
 export type UploadApartmentFileResult =
   | { ok: true }
@@ -115,6 +115,10 @@ export async function updateProjectAction(projectId: string, formData: FormData)
     : null;
   const loanTermYears = parsePositiveInt(String(formData.get("loanTermYears") ?? ""));
   const interestRate = parseInterestRatePercent(String(formData.get("interestRate") ?? ""));
+  const netIncomeRaw = String(formData.get("netHouseholdIncome") ?? "").trim();
+  const netHouseholdIncome = netIncomeRaw
+    ? parseInt(netIncomeRaw.replace(/\D/g, ""), 10)
+    : null;
 
   const project = await prisma.project.findFirst({
     where: { id: projectId, members: { some: { userId: user.id } } },
@@ -131,12 +135,34 @@ export async function updateProjectAction(projectId: string, formData: FormData)
       equityAmount: Number.isFinite(equityAmount) ? equityAmount : null,
       loanTermYears,
       interestRate,
+      netHouseholdIncome: Number.isFinite(netHouseholdIncome) ? netHouseholdIncome : null,
     },
   });
 
   revalidatePath("/dashboard");
   revalidatePath(`/project/${projectId}`);
   redirect(`${base}&settings_saved=1`);
+}
+
+export async function reindexProjectDocumentsAction(projectId: string) {
+  const user = await requireUser();
+  if (isAdmin(user)) redirect("/admin");
+
+  const project = await assertProjectAccess(projectId, user.id);
+  if (!project) redirect("/dashboard");
+
+  const { reindexProjectPdfDocuments } = await import("@/lib/pdf-reindex");
+  const result = await reindexProjectPdfDocuments(projectId);
+
+  revalidatePath(`/project/${projectId}`);
+  const base = `/project/${projectId}?tab=settings`;
+  const params = new URLSearchParams({
+    reindex_processed: String(result.processed),
+    reindex_text: String(result.withText),
+    reindex_empty: String(result.withoutText),
+    reindex_missing: String(result.missingFile),
+  });
+  redirect(`${base}&${params.toString()}`);
 }
 
 export async function archiveApartmentAction(apartmentId: string) {
@@ -289,7 +315,9 @@ export async function uploadApartmentDocumentAction(
   if (!(file instanceof File) || file.size === 0) return;
 
   try {
-    const saved = await saveApartmentDocument(apartmentId, file);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const extractedText = await extractPdfText(buffer);
+    const saved = await saveApartmentDocument(apartmentId, file, buffer);
     const count = await prisma.apartmentDocument.count({ where: { apartmentId } });
     await prisma.apartmentDocument.create({
       data: {
@@ -298,6 +326,7 @@ export async function uploadApartmentDocumentAction(
         url: saved.url,
         mimeType: saved.mimeType,
         kind: "expose",
+        extractedText,
         sortOrder: count,
       },
     });

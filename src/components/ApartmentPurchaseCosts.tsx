@@ -1,9 +1,12 @@
 import { updateApartmentBrokerAction } from "@/app/actions";
 import {
+  estimateAffordability,
   estimateFinancing,
   estimatePurchaseCosts,
+  formatBurdenShare,
   formatPercent,
   parseFederalStateCode,
+  type AffordabilityEstimate,
   type FinancingEstimate,
   type PurchaseCostEstimate,
 } from "@/lib/purchase-costs";
@@ -41,7 +44,15 @@ function CostTable({ estimate, price }: { estimate: PurchaseCostEstimate; price:
   );
 }
 
-function FinancingTable({ financing }: { financing: FinancingEstimate }) {
+function FinancingTable({
+  financing,
+  affordability,
+  settingsHref,
+}: {
+  financing: FinancingEstimate;
+  affordability: AffordabilityEstimate | null;
+  settingsHref: string;
+}) {
   return (
     <div className="overflow-x-auto mt-6 pt-6 border-t border-pn-border">
       <h3 className="font-semibold text-sm mb-3">Finanzierung (Schätzung)</h3>
@@ -68,12 +79,52 @@ function FinancingTable({ financing }: { financing: FinancingEstimate }) {
             <td className="py-2 text-pn-text-secondary">Laufzeit</td>
             <td className="py-2 text-right">{financing.loanTermYears} Jahre</td>
           </tr>
-          <tr>
+          <tr className={affordability ? "border-b border-pn-border" : ""}>
             <td className="py-2 font-semibold">Monatliche Rate (grob)</td>
             <td className="py-2 text-right font-semibold">{formatPrice(financing.monthlyPayment)}</td>
           </tr>
+          {affordability && (
+            <>
+              {affordability.monthlyMaintenance > 0 && (
+                <tr className="border-b border-pn-border">
+                  <td className="py-2 text-pn-text-secondary">Hausgeld / Nebenkosten</td>
+                  <td className="py-2 text-right">{formatPrice(affordability.monthlyMaintenance)}</td>
+                </tr>
+              )}
+              <tr className="border-b border-pn-border font-medium">
+                <td className="py-2">Gesamtbelastung / Monat</td>
+                <td className="py-2 text-right">{formatPrice(affordability.totalMonthlyBurden)}</td>
+              </tr>
+              <tr>
+                <td className="py-2 text-pn-text-secondary">
+                  Anteil vom Netto ({formatPrice(affordability.netHouseholdIncome)})
+                </td>
+                <td
+                  className={`py-2 text-right font-semibold ${
+                    affordability.level === "warn" ? "text-pn-score-low" : "text-pn-score-high"
+                  }`}
+                >
+                  {formatBurdenShare(affordability.burdenShare)}
+                </td>
+              </tr>
+            </>
+          )}
         </tbody>
       </table>
+      {affordability?.level === "warn" && (
+        <p className="text-sm text-pn-score-low bg-pn-score-low-bg px-3 py-2 rounded-lg mt-3">
+          Über 35&nbsp;% des Nettoeinkommens — grobe Orientierung: eher knapp bis kritisch.
+        </p>
+      )}
+      {!affordability && (
+        <p className="text-sm text-pn-text-tertiary mt-3">
+          Für die Belastbarkeit im{" "}
+          <a href={settingsHref} className="text-pn-accent hover:underline">
+            Projekt
+          </a>{" "}
+          das Haushaltsnetto hinterlegen.
+        </p>
+      )}
     </div>
   );
 }
@@ -87,6 +138,7 @@ export function ApartmentPurchaseCosts({
   equityAmount,
   loanTermYears,
   interestRate,
+  netHouseholdIncome,
   settingsHref,
 }: {
   apartmentId: string;
@@ -97,6 +149,7 @@ export function ApartmentPurchaseCosts({
   equityAmount: number | null;
   loanTermYears: number | null;
   interestRate: number | null;
+  netHouseholdIncome: number | null;
   settingsHref: string;
 }) {
   const stateCode = parseFederalStateCode(federalStateCode);
@@ -116,6 +169,13 @@ export function ApartmentPurchaseCosts({
           equityAmount,
           loanTermYears,
           interestRate,
+        })
+      : null;
+  const affordability =
+    financing && netHouseholdIncome != null
+      ? estimateAffordability({
+          monthlyPayment: financing.monthlyPayment,
+          netHouseholdIncome,
         })
       : null;
   const missingFinancingConfig = equityAmount == null || loanTermYears == null;
@@ -164,7 +224,13 @@ export function ApartmentPurchaseCosts({
             </button>
           </form>
           <CostTable estimate={costEstimate} price={price} />
-          {financing && <FinancingTable financing={financing} />}
+          {financing && (
+            <FinancingTable
+              financing={financing}
+              affordability={affordability}
+              settingsHref={settingsHref}
+            />
+          )}
           {missingFinancingConfig && (
             <p className="text-sm text-pn-text-tertiary mt-4">
               Für die Monatsrate im{" "}

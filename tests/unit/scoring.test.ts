@@ -4,6 +4,7 @@ import {
   computeScore,
   formatBudgetHint,
   formatPrice,
+  formatPricePerSqm,
   parseApartmentSort,
   pricePerPoint,
   scoreColor,
@@ -142,6 +143,16 @@ describe("formatPrice", () => {
 
   it("returns dash for null", () => {
     expect(formatPrice(null)).toBe("—");
+  });
+});
+
+describe("formatPricePerSqm", () => {
+  it("formats price per square meter", () => {
+    expect(formatPricePerSqm(300_000, 100)).toMatch(/3\.000.*m²/);
+  });
+
+  it("returns dash when data missing", () => {
+    expect(formatPricePerSqm(null, 100)).toBe("—");
   });
 });
 

@@ -47,6 +47,10 @@ export default async function ProjectPage({
     member_error?: string;
     settings_saved?: string;
     settings_error?: string;
+    reindex_processed?: string;
+    reindex_text?: string;
+    reindex_empty?: string;
+    reindex_missing?: string;
     sort?: string;
     q?: string;
   }>;
@@ -126,6 +130,17 @@ export default async function ProjectPage({
     ? `${resolvedSearchParams.member_added} wurde zum Projekt hinzugefügt.`
     : resolvedSearchParams.member_removed
       ? `${resolvedSearchParams.member_removed} wurde aus dem Projekt entfernt.`
+      : undefined;
+
+  const reindexProcessed = resolvedSearchParams.reindex_processed;
+  const reindexResult =
+    reindexProcessed != null
+      ? {
+          processed: parseInt(reindexProcessed, 10) || 0,
+          withText: parseInt(resolvedSearchParams.reindex_text ?? "0", 10) || 0,
+          withoutText: parseInt(resolvedSearchParams.reindex_empty ?? "0", 10) || 0,
+          missingFile: parseInt(resolvedSearchParams.reindex_missing ?? "0", 10) || 0,
+        }
       : undefined;
 
   return (
@@ -317,8 +332,10 @@ export default async function ProjectPage({
             equityAmount={project.equityAmount}
             loanTermYears={project.loanTermYears}
             interestRate={project.interestRate}
+            netHouseholdIncome={project.netHouseholdIncome}
             saved={resolvedSearchParams.settings_saved === "1"}
             error={resolvedSearchParams.settings_error}
+            reindexResult={reindexResult}
           />
         )}
 
@@ -341,7 +358,17 @@ export default async function ProjectPage({
               id: a.id,
               title: a.title,
               price: a.price,
+              sizeSqm: a.sizeSqm,
+              brokerInvolved: a.brokerInvolved,
             }))}
+            finance={{
+              federalStateCode: activeProject.federalStateCode,
+              brokerBuyerRate: activeProject.brokerBuyerRate,
+              equityAmount: activeProject.equityAmount,
+              loanTermYears: activeProject.loanTermYears,
+              interestRate: activeProject.interestRate,
+              netHouseholdIncome: activeProject.netHouseholdIncome,
+            }}
             members={activeProject.members}
             criteria={criteriaWithGroup}
             allRatings={activeProject.apartments.flatMap((a) =>

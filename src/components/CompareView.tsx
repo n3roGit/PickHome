@@ -1,9 +1,20 @@
 import Link from "next/link";
+import {
+  apartmentCompareMetrics,
+  formatBurdenShare,
+  type ProjectFinanceSettings,
+} from "@/lib/purchase-costs";
 import { ScoreBadge } from "@/components/ScoreBadge";
-import { apartmentScore } from "@/lib/scoring";
+import { apartmentScore, formatPrice, formatPricePerSqm } from "@/lib/scoring";
 
 type Member = { user: { id: string; name: string } };
-type Apartment = { id: string; title: string; price: number | null };
+type Apartment = {
+  id: string;
+  title: string;
+  price: number | null;
+  sizeSqm: number | null;
+  brokerInvolved: boolean;
+};
 type Criterion = { id: string; name: string; weight: number; isDealbreaker: boolean; groupName: string };
 type Rating = {
   apartmentId: string;
@@ -12,21 +23,122 @@ type Rating = {
   score: number | null;
 };
 
+function CompareNumbersTable({
+  apartments,
+  finance,
+}: {
+  apartments: Apartment[];
+  finance: ProjectFinanceSettings;
+}) {
+  const rows = apartments.map((a) => ({
+    apartment: a,
+    metrics: apartmentCompareMetrics(a, finance),
+  }));
+
+  return (
+    <section>
+      <h2 className="text-lg font-semibold mb-3">Zahlen im Vergleich</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border border-pn-border rounded-xl overflow-hidden min-w-[480px]">
+          <thead className="bg-pn-bg-subtle">
+            <tr>
+              <th className="text-left p-3 sticky left-0 bg-pn-bg-subtle">Kennzahl</th>
+              {apartments.map((a) => (
+                <th key={a.id} className="p-3 text-right border-l border-pn-border min-w-[120px]">
+                  <Link
+                    href={`#compare-${a.id}`}
+                    className="font-medium hover:text-pn-accent line-clamp-2"
+                  >
+                    {a.title}
+                  </Link>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <CompareRow label="Kaufpreis" values={rows.map((r) => formatPrice(r.apartment.price))} />
+            <CompareRow
+              label="Wohnfläche"
+              values={rows.map((r) =>
+                r.apartment.sizeSqm != null ? `${r.apartment.sizeSqm} m²` : "—"
+              )}
+            />
+            <CompareRow
+              label="€/m²"
+              values={rows.map((r) => formatPricePerSqm(r.apartment.price, r.apartment.sizeSqm))}
+            />
+            <CompareRow
+              label="Gesamtkosten (grob)"
+              values={rows.map((r) => formatPrice(r.metrics.totalCost))}
+            />
+            <CompareRow
+              label="Monatsrate (grob)"
+              values={rows.map((r) => formatPrice(r.metrics.monthlyPayment))}
+            />
+            {finance.netHouseholdIncome != null && (
+              <CompareRow
+                label="Anteil vom Netto"
+                valueClassNames={rows.map((r) =>
+                  r.metrics.burdenLevel === "warn" ? "text-pn-score-low font-medium" : ""
+                )}
+                values={rows.map((r) =>
+                  r.metrics.burdenShare != null ? formatBurdenShare(r.metrics.burdenShare) : "—"
+                )}
+              />
+            )}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-pn-text-tertiary mt-2">
+        Monatsrate und Gesamtkosten basieren auf den Finanzierungs-Annahmen im Projekt.
+      </p>
+    </section>
+  );
+}
+
+function CompareRow({
+  label,
+  values,
+  valueClassNames,
+}: {
+  label: string;
+  values: string[];
+  valueClassNames?: string[];
+}) {
+  return (
+    <tr className="border-t border-pn-border">
+      <td className="p-3 text-pn-text-secondary sticky left-0 bg-pn-bg-surface">{label}</td>
+      {values.map((value, i) => (
+        <td
+          key={i}
+          className={`p-3 text-right tabular-nums border-l border-pn-border ${valueClassNames?.[i] ?? ""}`}
+        >
+          {value}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
 export function CompareView({
   projectId,
   apartments,
   members,
   criteria,
   allRatings,
+  finance,
 }: {
   projectId: string;
   apartments: Apartment[];
   members: Member[];
   criteria: Criterion[];
   allRatings: Rating[];
+  finance: ProjectFinanceSettings;
 }) {
   return (
     <div className="space-y-8">
+      <CompareNumbersTable apartments={apartments} finance={finance} />
+
       <section>
         <h2 className="text-lg font-semibold mb-3">Gesamtscore</h2>
         <div className="overflow-x-auto">
@@ -43,7 +155,7 @@ export function CompareView({
             </thead>
             <tbody>
               {apartments.map((a) => (
-                <tr key={a.id} className="border-t border-pn-border">
+                <tr key={a.id} id={`compare-${a.id}`} className="border-t border-pn-border">
                   <td className="p-3">
                     <Link
                       href={`/project/${projectId}/apartment/${a.id}`}
