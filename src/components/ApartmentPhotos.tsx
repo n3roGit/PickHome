@@ -1,9 +1,11 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { deleteApartmentPhotoAction, uploadApartmentPhotoAction } from "@/app/actions";
 import { FileDropzone } from "@/components/FileDropzone";
 import { PhotoGallery, type GalleryPhoto } from "@/components/PhotoGallery";
+import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/apartment-media";
+import { apartmentPhotoUploadErrorMessage } from "@/lib/upload-messages";
 
 export function ApartmentPhotos({
   apartmentId,
@@ -13,15 +15,27 @@ export function ApartmentPhotos({
   photos: GalleryPhoto[];
 }) {
   const [pending, startTransition] = useTransition();
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   function onUpload(formData: FormData) {
     startTransition(async () => {
+      setUploadError(null);
       const files = formData.getAll("photo");
+      let uploaded = 0;
       for (const file of files) {
         if (!(file instanceof File) || file.size === 0) continue;
+        if (file.size > MAX_IMAGE_BYTES) {
+          setUploadError(apartmentPhotoUploadErrorMessage("too_large", file.name));
+          continue;
+        }
         const single = new FormData();
         single.set("photo", file);
-        await uploadApartmentPhotoAction(apartmentId, single);
+        const result = await uploadApartmentPhotoAction(apartmentId, single);
+        if (result && !result.ok) {
+          setUploadError(apartmentPhotoUploadErrorMessage(result.error, file.name));
+          continue;
+        }
+        uploaded += 1;
       }
     });
   }
@@ -43,12 +57,21 @@ export function ApartmentPhotos({
       ) : (
         <p className="text-sm text-pn-text-tertiary mb-4">Noch keine Bilder hinterlegt.</p>
       )}
+      {uploadError && (
+        <p className="mb-3 text-sm text-pn-score-low bg-pn-score-low-bg px-3 py-2 rounded-lg">
+          {uploadError}
+        </p>
+      )}
       <FileDropzone
         name="photo"
         accept="image/jpeg,image/png,image/webp"
-        hint="JPG, PNG oder WebP, max. 5 MB — mehrere Dateien möglich"
+        hint={`JPG, PNG oder WebP, max. ${MAX_IMAGE_MB} MB — mehrere Dateien möglich`}
         multiple
         disabled={pending}
+        maxBytes={MAX_IMAGE_BYTES}
+        onTooLarge={(fileName) =>
+          setUploadError(apartmentPhotoUploadErrorMessage("too_large", fileName))
+        }
         onFiles={onUpload}
       />
     </section>

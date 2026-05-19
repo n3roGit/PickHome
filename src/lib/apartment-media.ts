@@ -5,8 +5,16 @@ import { getApartmentUploadsRoot, publicPhotoPath } from "@/lib/pickhome-data";
 
 export { publicPhotoPath };
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_DOCUMENT_BYTES = 30 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_DOCUMENT_BYTES = 30 * 1024 * 1024;
+export const MAX_IMAGE_MB = 10;
+export const MAX_DOCUMENT_MB = 30;
+
+export type ApartmentUploadError = "too_large" | "invalid_type";
+
+export function isApartmentUploadError(message: string): message is ApartmentUploadError {
+  return message === "too_large" || message === "invalid_type";
+}
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DOCUMENT_TYPES = new Set([
   "image/jpeg",

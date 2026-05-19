@@ -16,9 +16,15 @@ import {
 import { prisma } from "@/lib/prisma";
 import {
   deleteApartmentPhotoFile,
+  isApartmentUploadError,
   saveApartmentDocument,
   saveApartmentPhoto,
+  type ApartmentUploadError,
 } from "@/lib/apartment-media";
+
+export type UploadApartmentFileResult =
+  | { ok: true }
+  | { ok: false; error: ApartmentUploadError };
 import { geocodeAddress } from "@/lib/geocode";
 import { normalizeListingUrl } from "@/lib/listing-url";
 import { readPasswordPair } from "@/lib/password";
@@ -206,7 +212,17 @@ export async function updateApartmentListingUrlAction(apartmentId: string, formD
   redirect(`${base}?listing_saved=1`);
 }
 
-export async function uploadApartmentPhotoAction(apartmentId: string, formData: FormData) {
+function uploadErrorFromCaught(e: unknown): UploadApartmentFileResult {
+  if (e instanceof Error && isApartmentUploadError(e.message)) {
+    return { ok: false, error: e.message };
+  }
+  return { ok: false, error: "invalid_type" };
+}
+
+export async function uploadApartmentPhotoAction(
+  apartmentId: string,
+  formData: FormData
+): Promise<UploadApartmentFileResult | void> {
   const user = await requireUser();
   const apt = await assertApartmentAccess(apartmentId, user.id);
   if (!apt) return;
@@ -221,12 +237,16 @@ export async function uploadApartmentPhotoAction(apartmentId: string, formData: 
       data: { apartmentId, url, sortOrder: count },
     });
     revalidateApartment(apt.projectId, apartmentId);
-  } catch {
-    // invalid type or size — ignore
+    return { ok: true };
+  } catch (e) {
+    return uploadErrorFromCaught(e);
   }
 }
 
-export async function uploadApartmentDocumentAction(apartmentId: string, formData: FormData) {
+export async function uploadApartmentDocumentAction(
+  apartmentId: string,
+  formData: FormData
+): Promise<UploadApartmentFileResult | void> {
   const user = await requireUser();
   const apt = await assertApartmentAccess(apartmentId, user.id);
   if (!apt) return;
@@ -248,8 +268,9 @@ export async function uploadApartmentDocumentAction(apartmentId: string, formDat
       },
     });
     revalidateApartment(apt.projectId, apartmentId);
-  } catch {
-    // invalid type or size
+    return { ok: true };
+  } catch (e) {
+    return uploadErrorFromCaught(e);
   }
 }
 

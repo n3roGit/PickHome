@@ -8,22 +8,40 @@ type Props = {
   hint: string;
   multiple?: boolean;
   disabled?: boolean;
+  maxBytes?: number;
+  onTooLarge?: (fileName: string) => void;
   onFiles: (formData: FormData) => void;
 };
 
-export function FileDropzone({ name, accept, hint, multiple, disabled, onFiles }: Props) {
+export function FileDropzone({
+  name,
+  accept,
+  hint,
+  multiple,
+  disabled,
+  maxBytes,
+  onTooLarge,
+  onFiles,
+}: Props) {
   const [dragging, setDragging] = useState(false);
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (!files?.length || disabled) return;
       const fd = new FormData();
+      let accepted = 0;
       for (const file of Array.from(files)) {
+        if (maxBytes != null && file.size > maxBytes) {
+          onTooLarge?.(file.name);
+          continue;
+        }
         fd.append(name, file);
+        accepted += 1;
       }
+      if (accepted === 0) return;
       onFiles(fd);
     },
-    [disabled, name, onFiles]
+    [disabled, maxBytes, name, onFiles, onTooLarge]
   );
 
   return (
