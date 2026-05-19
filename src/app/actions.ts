@@ -4,7 +4,6 @@ import { rm } from "fs/promises";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
-  createSession,
   destroySession,
   getSessionUser,
   hashPassword,
@@ -34,18 +33,6 @@ import { syncApartmentViewedAt } from "@/lib/viewings";
 function revalidateApartment(projectId: string, apartmentId: string) {
   revalidatePath(`/project/${projectId}`);
   revalidatePath(`/project/${projectId}/apartment/${apartmentId}`);
-}
-
-export async function loginAction(formData: FormData) {
-  const username = String(formData.get("username") ?? "").trim().toLowerCase();
-  const password = String(formData.get("password") ?? "");
-  const user = await prisma.user.findUnique({ where: { username } });
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    redirect("/login?error=invalid");
-  }
-  await createSession(user.id);
-  if (isAdmin(user)) redirect("/admin");
-  redirect("/dashboard");
 }
 
 export async function logoutAction() {
@@ -314,19 +301,62 @@ export async function updateCriterionAction(
 export async function addProjectMemberAction(projectId: string, formData: FormData) {
   const user = await requireUser();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
-  if (!username) return;
-  const member = await prisma.user.findUnique({ where: { username } });
-  if (!member || isAdmin(member)) return;
+  const base = `/project/${projectId}?tab=team`;
+  if (!username) redirect(base);
+
   const project = await prisma.project.findFirst({
     where: { id: projectId, members: { some: { userId: user.id } } },
   });
-  if (!project) return;
-  await prisma.projectMember.upsert({
-    where: { projectId_userId: { projectId, userId: member.id } },
-    create: { projectId, userId: member.id, role: "partner" },
-    update: {},
+  if (!project) redirect("/dashboard");
+
+  const invitee = await prisma.user.findUnique({ where: { username } });
+  if (!invitee || isAdmin(invitee)) {
+    redirect(`${base}&member_error=not_found`);
+  }
+
+  const existing = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId, userId: invitee.id } },
+  });
+  if (existing) {
+    redirect(`${base}&member_error=already_member`);
+  }
+
+  await prisma.projectMember.create({
+    data: { projectId, userId: invitee.id, role: "partner" },
   });
   revalidatePath(`/project/${projectId}`);
+  redirect(`${base}&member_added=${encodeURIComponent(invitee.name)}`);
+}
+
+export async function removeProjectMemberAction(projectId: string, memberUserId: string) {
+  const user = await requireUser();
+  const base = `/project/${projectId}?tab=team`;
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, members: { some: { userId: user.id } } },
+  });
+  if (!project) redirect("/dashboard");
+
+  const memberCount = await prisma.projectMember.count({ where: { projectId } });
+  if (memberCount <= 1) {
+    redirect(`${base}&member_error=last_member`);
+  }
+
+  const membership = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId, userId: memberUserId } },
+    include: { user: { select: { name: true } } },
+  });
+  if (!membership) redirect(base);
+
+  await prisma.projectMember.delete({
+    where: { projectId_userId: { projectId, userId: memberUserId } },
+  });
+  revalidatePath(`/project/${projectId}`);
+
+  if (memberUserId === user.id) {
+    redirect("/dashboard");
+  }
+  redirect(`${base}&member_removed=${encodeURIComponent(membership.user.name)}`);
 }
 
 export async function addCriterionAction(projectId: string, groupId: string, name: string) {

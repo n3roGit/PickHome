@@ -60,6 +60,8 @@ Open **http://localhost:3000**
 
 Change the admin password after first login (Admin → user → new password).
 
+Optional **two-factor authentication (TOTP)** with recovery codes: **Sicherheit** in the navigation (or `/account/security`).
+
 ### Data persistence
 
 All runtime data lives in **`./data/`** (gitignored). Docker bind-mounts the same folder:

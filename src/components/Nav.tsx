@@ -27,6 +27,12 @@ export function Nav({
                   Projekte
                 </Link>
               )}
+              <Link
+                href="/account/security"
+                className="text-sm text-pn-text-secondary hover:text-pn-text-primary"
+              >
+                Sicherheit
+              </Link>
               <span className="text-sm text-pn-text-secondary">{userName}</span>
               <form action={logoutAction}>
                 <button type="submit" className="text-sm text-pn-accent hover:underline">

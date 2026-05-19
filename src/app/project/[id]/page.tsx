@@ -3,11 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDateDe } from "@/lib/dates";
 import { nextViewing } from "@/lib/viewings";
-import { addProjectMemberAction, createApartmentAction } from "@/app/actions";
+import { createApartmentAction } from "@/app/actions";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { CriteriaEditor } from "@/components/CriteriaEditor";
+import { ProjectMembersPanel } from "@/components/ProjectMembersPanel";
 import { DeleteProjectButton } from "@/components/DeleteProjectButton";
 import { CompareView } from "@/components/CompareView";
 import { ProjectMap } from "@/components/ProjectMap";
@@ -27,7 +28,12 @@ export default async function ProjectPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { tab?: string };
+  searchParams: {
+    tab?: string;
+    member_added?: string;
+    member_removed?: string;
+    member_error?: string;
+  };
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
@@ -89,6 +95,12 @@ export default async function ProjectPage({
 
   apartments.sort((a, b) => b.score - a.score);
 
+  const memberMessage = searchParams.member_added
+    ? `${searchParams.member_added} wurde zum Projekt hinzugefügt.`
+    : searchParams.member_removed
+      ? `${searchParams.member_removed} wurde aus dem Projekt entfernt.`
+      : undefined;
+
   return (
     <>
       <Nav userName={user.name} />
@@ -96,16 +108,6 @@ export default async function ProjectPage({
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <h1 className="text-2xl font-bold">{project.name}</h1>
           <div className="flex flex-wrap items-center gap-2">
-            <form action={addProjectMemberAction.bind(null, project.id)} className="flex gap-2 items-center">
-              <input
-                name="username"
-                placeholder="Partner (Benutzername)"
-                className="border border-pn-border rounded-lg px-3 py-1.5 text-sm"
-              />
-              <button type="submit" className="text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle">
-                Einladen
-              </button>
-            </form>
             <DeleteProjectButton projectId={project.id} projectName={project.name} />
           </div>
         </div>
@@ -116,6 +118,9 @@ export default async function ProjectPage({
           </TabLink>
           <TabLink href={`/project/${project.id}?tab=archived`} active={tab === "archived"}>
             Archiv ({archivedCount})
+          </TabLink>
+          <TabLink href={`/project/${project.id}?tab=team`} active={tab === "team"}>
+            Team ({project.members.length})
           </TabLink>
           <TabLink href={`/project/${project.id}?tab=criteria`} active={tab === "criteria"}>
             Kriterien ({criteria.length})
@@ -209,6 +214,16 @@ export default async function ProjectPage({
               </p>
             )}
           </>
+        )}
+
+        {tab === "team" && (
+          <ProjectMembersPanel
+            projectId={project.id}
+            members={project.members}
+            currentUserId={user.id}
+            message={memberMessage}
+            error={searchParams.member_error}
+          />
         )}
 
         {tab === "criteria" && <CriteriaEditor projectId={project.id} groups={project.groups} />}

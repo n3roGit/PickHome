@@ -55,3 +55,8 @@ export async function requireAdmin() {
   if (!isAdmin(user)) redirect("/dashboard");
   return user;
 }
+
+export function redirectAfterLogin(user: { role: string }) {
+  if (isAdmin(user)) redirect("/admin");
+  redirect("/dashboard");
+}

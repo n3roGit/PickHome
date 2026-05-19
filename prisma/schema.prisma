@@ -8,14 +8,28 @@ datasource db {
 }
 
 model User {
-  id           String          @id @default(uuid())
-  username     String          @unique
-  name         String
-  passwordHash String
-  role         String          @default("USER")
-  createdAt    DateTime        @default(now())
-  projects     ProjectMember[]
-  ratings      Rating[]
+  id            String             @id @default(uuid())
+  username      String             @unique
+  name          String
+  passwordHash  String
+  role          String             @default("USER")
+  totpSecret    String?
+  totpEnabledAt DateTime?
+  createdAt     DateTime           @default(now())
+  projects      ProjectMember[]
+  ratings       Rating[]
+  recoveryCodes UserRecoveryCode[]
+}
+
+model UserRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Project {

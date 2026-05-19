@@ -1,9 +1,10 @@
-import { loginAction } from "@/app/actions";
+import { loginAction } from "@/app/totp-actions";
 import { Logo } from "@/components/Logo";
 import { Footer } from "@/components/Footer";
 
 const errors: Record<string, string> = {
   invalid: "Benutzername oder Passwort falsch.",
+  totp_expired: "Zwei-Faktor-Anmeldung abgelaufen. Bitte erneut anmelden.",
 };
 
 export default function LoginPage({
