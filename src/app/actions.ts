@@ -17,7 +17,6 @@ import { prisma } from "@/lib/prisma";
 import {
   deleteApartmentPhotoFile,
   saveApartmentDocument,
-  saveApartmentPhoto,
 } from "@/lib/apartment-media";
 import { extractPdfText } from "@/lib/pdf-text";
 import { geocodeAddress } from "@/lib/geocode";
@@ -35,11 +34,8 @@ import { parseBrokerBuyerRatePercent, parseFederalStateCode, parseInterestRatePe
 import { parseDealbreakerThreshold } from "@/lib/scoring";
 import { syncApartmentViewedAt } from "@/lib/viewings";
 import { parseTravelMode } from "@/lib/travel-mode";
-import { isApartmentUploadError, type ApartmentUploadError } from "@/lib/upload-limits";
-
-export type UploadApartmentFileResult =
-  | { ok: true }
-  | { ok: false; error: ApartmentUploadError };
+import { isApartmentUploadError } from "@/lib/upload-limits";
+import type { UploadApartmentFileResult } from "@/app/apartment-photo-actions";
 
 function revalidateApartment(projectId: string, apartmentId: string) {
   revalidatePath(`/project/${projectId}`);
@@ -385,30 +381,6 @@ function uploadErrorFromCaught(e: unknown): UploadApartmentFileResult {
   return { ok: false, error: "invalid_type" };
 }
 
-export async function uploadApartmentPhotoAction(
-  apartmentId: string,
-  formData: FormData
-): Promise<UploadApartmentFileResult | void> {
-  const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
-  if (!apt) return;
-
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) return;
-
-  try {
-    const url = await saveApartmentPhoto(apartmentId, file);
-    const count = await prisma.apartmentPhoto.count({ where: { apartmentId } });
-    await prisma.apartmentPhoto.create({
-      data: { apartmentId, url, sortOrder: count },
-    });
-    revalidateApartment(apt.projectId, apartmentId);
-    return { ok: true };
-  } catch (e) {
-    return uploadErrorFromCaught(e);
-  }
-}
-
 export async function uploadApartmentDocumentAction(
   apartmentId: string,
   formData: FormData
@@ -456,21 +428,6 @@ export async function deleteApartmentDocumentAction(documentId: string) {
   await deleteApartmentPhotoFile(doc.url);
   await prisma.apartmentDocument.delete({ where: { id: documentId } });
   revalidateApartment(doc.apartment.projectId, doc.apartmentId);
-}
-
-export async function deleteApartmentPhotoAction(photoId: string) {
-  const user = await requireUser();
-  const photo = await prisma.apartmentPhoto.findUnique({
-    where: { id: photoId },
-    include: { apartment: { select: { id: true, projectId: true } } },
-  });
-  if (!photo) return;
-  const apt = await assertApartmentAccess(photo.apartmentId, user.id);
-  if (!apt) return;
-
-  await deleteApartmentPhotoFile(photo.url);
-  await prisma.apartmentPhoto.delete({ where: { id: photoId } });
-  revalidateApartment(photo.apartment.projectId, photo.apartmentId);
 }
 
 export async function addViewingAction(apartmentId: string, formData: FormData) {

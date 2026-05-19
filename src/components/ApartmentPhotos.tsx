@@ -1,13 +1,26 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useTransition } from "react";
-import { deleteApartmentPhotoAction, uploadApartmentPhotoAction } from "@/app/actions";
+import {
+  deleteApartmentPhotoAction,
+  uploadApartmentPhotoAction,
+} from "@/app/apartment-photo-actions";
 import { FileDropzone } from "@/components/FileDropzone";
-import { PhotoGallery, type GalleryPhoto } from "@/components/PhotoGallery";
+import type { GalleryPhoto } from "@/lib/gallery-photo";
 import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/upload-limits";
 import { apartmentPhotoUploadErrorMessage } from "@/lib/upload-messages";
 
-export function ApartmentPhotos({
+const PhotoGallery = dynamic(
+  () => import("@/components/PhotoGallery").then((mod) => mod.PhotoGallery),
+  {
+    loading: () => (
+      <p className="text-sm text-pn-text-tertiary mb-4">Galerie wird geladen…</p>
+    ),
+  }
+);
+
+export default function ApartmentPhotos({
   apartmentId,
   photos,
 }: {

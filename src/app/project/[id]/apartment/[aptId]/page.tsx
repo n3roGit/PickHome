@@ -1,9 +1,9 @@
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ScoreBadge } from "@/components/ScoreBadge";
-import { ApartmentPhotos } from "@/components/ApartmentPhotos";
 import { ApartmentDocuments } from "@/components/ApartmentDocuments";
 import { RatingSliders } from "@/components/RatingSliders";
 import { ViewingAppointments } from "@/components/ViewingAppointments";
@@ -28,6 +28,8 @@ import {
 } from "@/lib/project-data";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { resolveDealbreakerThreshold } from "@/lib/scoring";
+
+const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
 export default async function ApartmentPage({
   params,

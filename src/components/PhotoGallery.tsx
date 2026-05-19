@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
-export type GalleryPhoto = { id: string; url: string; caption: string | null };
+import type { GalleryPhoto } from "@/lib/gallery-photo";
 
 const ZOOM_STEPS = [1, 1.25, 1.5, 2, 2.5, 3];
 
