@@ -1,5 +1,5 @@
-import type { ApartmentUploadError } from "@/lib/apartment-media";
-import { MAX_DOCUMENT_MB, MAX_IMAGE_MB } from "@/lib/apartment-media";
+import type { ApartmentUploadError } from "@/lib/upload-limits";
+import { MAX_DOCUMENT_MB, MAX_IMAGE_MB } from "@/lib/upload-limits";
 
 export function apartmentPhotoUploadErrorMessage(
   error: ApartmentUploadError,

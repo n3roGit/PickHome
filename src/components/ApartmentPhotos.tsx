@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { deleteApartmentPhotoAction, uploadApartmentPhotoAction } from "@/app/actions";
 import { FileDropzone } from "@/components/FileDropzone";
 import { PhotoGallery, type GalleryPhoto } from "@/components/PhotoGallery";
-import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/apartment-media";
+import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/upload-limits";
 import { apartmentPhotoUploadErrorMessage } from "@/lib/upload-messages";
 
 export function ApartmentPhotos({

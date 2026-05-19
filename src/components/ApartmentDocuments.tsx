@@ -6,7 +6,7 @@ import {
   uploadApartmentDocumentAction,
 } from "@/app/actions";
 import { FileDropzone } from "@/components/FileDropzone";
-import { MAX_DOCUMENT_BYTES, MAX_DOCUMENT_MB } from "@/lib/apartment-media";
+import { MAX_DOCUMENT_BYTES, MAX_DOCUMENT_MB } from "@/lib/upload-limits";
 import { apartmentDocumentUploadErrorMessage } from "@/lib/upload-messages";
 
 type Doc = { id: string; fileName: string; url: string };

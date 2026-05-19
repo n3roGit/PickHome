@@ -16,11 +16,10 @@ import {
 import { prisma } from "@/lib/prisma";
 import {
   deleteApartmentPhotoFile,
-  isApartmentUploadError,
   saveApartmentDocument,
   saveApartmentPhoto,
-  type ApartmentUploadError,
 } from "@/lib/apartment-media";
+import { isApartmentUploadError, type ApartmentUploadError } from "@/lib/upload-limits";
 
 export type UploadApartmentFileResult =
   | { ok: true }
