@@ -16,13 +16,14 @@ export function ApartmentArchiveButton({
     <button
       type="button"
       disabled={pending}
-      onClick={() =>
+      onClick={() => {
+        if (!archived && !window.confirm("Bist Du sicher?")) return;
         startTransition(() =>
           archived
             ? unarchiveApartmentAction(apartmentId)
             : archiveApartmentAction(apartmentId)
-        )
-      }
+        );
+      }}
       className="text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50"
     >
       {archived ? "Wiederherstellen" : "Archivieren"}
