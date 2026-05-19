@@ -93,10 +93,30 @@ npm run dev
 
 → http://localhost:3000
 
+## Backup (export / import)
+
+Move all persistent data (SQLite DB + uploads) between installations.
+
+**Admin UI:** `/admin` → *Backup herunterladen* or upload a ZIP (then restart the container).
+
+**CLI** (with app stopped or on a copy of `data/`):
+
+```bash
+npm run data:export
+# -> data/backups/pickhome-backup-<timestamp>.zip
+
+npm run data:import -- data/backups/pickhome-backup-....zip
+docker compose restart
+```
+
+Optional: `npm run data:import -- backup.zip --keep` keeps `*.pre-import-*` copies of the previous data.
+
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
+| `npm run data:export` | Write full backup ZIP under `data/backups/` |
+| `npm run data:import` | Restore from backup ZIP (pass path as argument) |
 | `npm test` | Run unit + integration tests |
 | `npm run test:watch` | Tests in watch mode |
 | `npm run dev` | Development server |

@@ -1,4 +1,5 @@
 import { createUserAction, deleteUserAction, resetUserPasswordAction } from "@/app/actions";
+import { AdminBackupPanel } from "@/components/AdminBackupPanel";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { requireAdmin, isAdmin } from "@/lib/auth";
@@ -49,6 +50,8 @@ export default async function AdminPage({
             Benutzer wurde angelegt.
           </p>
         )}
+
+        <AdminBackupPanel />
 
         <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-8">
           <h2 className="font-semibold mb-4">Neuer Benutzer</h2>
