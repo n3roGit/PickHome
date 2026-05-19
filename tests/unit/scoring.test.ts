@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { computeScore, formatPrice, pricePerPoint, scoreColor } from "@/lib/scoring";
+import {
+  budgetDelta,
+  computeScore,
+  formatBudgetHint,
+  formatPrice,
+  parseApartmentSort,
+  pricePerPoint,
+  scoreColor,
+  sortApartments,
+} from "@/lib/scoring";
 
 const criteria = [
   { id: "a", weight: 5, isDealbreaker: true },
@@ -144,5 +153,62 @@ describe("pricePerPoint", () => {
 
   it("divides price by score", () => {
     expect(pricePerPoint(100_000, 50)).toMatch(/2\.000/);
+  });
+});
+
+describe("parseApartmentSort", () => {
+  it("defaults to score for unknown values", () => {
+    expect(parseApartmentSort(undefined)).toBe("score");
+    expect(parseApartmentSort("invalid")).toBe("score");
+  });
+
+  it("accepts known sort keys", () => {
+    expect(parseApartmentSort("price")).toBe("price");
+    expect(parseApartmentSort("ppp")).toBe("ppp");
+    expect(parseApartmentSort("date")).toBe("date");
+  });
+});
+
+describe("sortApartments", () => {
+  const base = [
+    { id: "a", score: 80, price: 500_000, createdAt: new Date("2024-01-01") },
+    { id: "b", score: 60, price: 300_000, createdAt: new Date("2024-06-01") },
+    { id: "c", score: 40, price: null, createdAt: new Date("2024-03-01") },
+  ];
+
+  it("sorts by score descending by default", () => {
+    const sorted = sortApartments(base, "score");
+    expect(sorted.map((a) => a.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("sorts by price ascending", () => {
+    const sorted = sortApartments(base, "price");
+    expect(sorted.map((a) => a.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("sorts by date descending", () => {
+    const sorted = sortApartments(base, "date");
+    expect(sorted.map((a) => a.id)).toEqual(["b", "c", "a"]);
+  });
+});
+
+describe("budgetDelta", () => {
+  it("returns null when price or budget missing", () => {
+    expect(budgetDelta(null, 400_000)).toBeNull();
+    expect(budgetDelta(500_000, null)).toBeNull();
+  });
+
+  it("computes over and under budget", () => {
+    expect(budgetDelta(550_000, 500_000)).toEqual({ pct: 10, over: true });
+    expect(budgetDelta(450_000, 500_000)).toEqual({ pct: -10, over: false });
+    expect(budgetDelta(500_000, 500_000)).toEqual({ pct: 0, over: false });
+  });
+});
+
+describe("formatBudgetHint", () => {
+  it("formats German hints", () => {
+    expect(formatBudgetHint(550_000, 500_000)).toBe("10 % über Budget");
+    expect(formatBudgetHint(450_000, 500_000)).toBe("10 % unter Budget");
+    expect(formatBudgetHint(500_000, 500_000)).toBe("Im Budget");
   });
 });

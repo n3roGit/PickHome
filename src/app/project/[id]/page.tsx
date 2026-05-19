@@ -22,7 +22,16 @@ import {
 } from "@/lib/project-data";
 import { prisma } from "@/lib/prisma";
 import { ensureProjectIcalToken } from "@/lib/ical-token";
-import { formatPrice, pricePerPoint } from "@/lib/scoring";
+import { ApartmentListSort } from "@/components/ApartmentListSort";
+import { RatingProgressBar } from "@/components/RatingProgressBar";
+import { ScoreLegend } from "@/components/ScoreLegend";
+import {
+  formatBudgetHint,
+  formatPrice,
+  parseApartmentSort,
+  pricePerPoint,
+  sortApartments,
+} from "@/lib/scoring";
 
 export default async function ProjectPage({
   params,
@@ -36,6 +45,7 @@ export default async function ProjectPage({
     member_error?: string;
     settings_saved?: string;
     settings_error?: string;
+    sort?: string;
   }>;
 }) {
   const resolvedParams = await params;
@@ -99,7 +109,8 @@ export default async function ProjectPage({
     return { ...a, ...result };
   });
 
-  apartments.sort((a, b) => b.score - a.score);
+  const sortKey = parseApartmentSort(resolvedSearchParams.sort);
+  sortApartments(apartments, sortKey);
 
   const memberMessage = resolvedSearchParams.member_added
     ? `${resolvedSearchParams.member_added} wurde zum Projekt hinzugefügt.`
@@ -163,6 +174,8 @@ export default async function ProjectPage({
               </button>
             </form>
             )}
+            <ScoreLegend className="mb-4" />
+            <ApartmentListSort projectId={project.id} tab={tab} current={sortKey} />
             <ul className="space-y-3">
               {apartments.map((a) => (
                 <li
@@ -194,7 +207,24 @@ export default async function ProjectPage({
                         </a>
                       )}
                       {a.address && <p className="text-sm text-pn-text-secondary">{a.address}</p>}
-                      {a.price != null && <p className="text-sm font-medium">{formatPrice(a.price)}</p>}
+                      {a.price != null && (
+                        <p className="text-sm font-medium">
+                          {formatPrice(a.price)}
+                          {project.budget != null && (
+                            <span
+                              className={`block text-xs font-normal mt-0.5 ${
+                                a.price > project.budget
+                                  ? "text-pn-score-low"
+                                  : a.price < project.budget
+                                    ? "text-pn-score-high"
+                                    : "text-pn-text-tertiary"
+                              }`}
+                            >
+                              {formatBudgetHint(a.price, project.budget)}
+                            </span>
+                          )}
+                        </p>
+                      )}
                       {(() => {
                         const upcoming = nextViewing(a.viewings);
                         if (upcoming) {
@@ -215,15 +245,19 @@ export default async function ProjectPage({
                       })()}
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <ScoreBadge score={a.score} dealbreaker={a.dealbreaker} />
-                    <span className="text-xs text-pn-text-tertiary">
-                      {a.rated}/{a.total} bewertet
-                      {pricePerPoint(a.price, a.score) && ` · ${pricePerPoint(a.price, a.score)}/Pkt`}
-                    </span>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 min-w-[140px]">
+                    <div className="flex flex-col items-end gap-2 flex-1">
+                      <ScoreBadge score={a.score} dealbreaker={a.dealbreaker} />
+                      <RatingProgressBar rated={a.rated} total={a.total} />
+                      {pricePerPoint(a.price, a.score) && (
+                        <span className="text-xs text-pn-text-tertiary">
+                          {pricePerPoint(a.price, a.score)}/Pkt
+                        </span>
+                      )}
+                    </div>
                     <Link
                       href={`/project/${project.id}/apartment/${a.id}`}
-                      className="text-sm font-medium text-pn-accent hover:underline"
+                      className="text-sm font-medium text-pn-accent hover:underline shrink-0 self-center"
                     >
                       Bearbeiten / Bewerten
                     </Link>

@@ -1,5 +1,7 @@
 import { prisma } from "./prisma";
-import { computeScore, type CriterionInput, type RatingInput } from "./scoring";
+import type { CriterionInput } from "./scoring";
+
+export { apartmentScore } from "./scoring";
 
 export type { CriterionInput } from "./scoring";
 
@@ -99,17 +101,6 @@ export function flattenCriteria(
   groups: { criteria: CriterionInput[] }[]
 ): CriterionInput[] {
   return groups.flatMap((g) => g.criteria);
-}
-
-export function apartmentScore(
-  criteria: CriterionInput[],
-  ratings: { criterionId: string; userId: string; score: number | null }[],
-  userId: string
-) {
-  const userRatings: RatingInput[] = ratings
-    .filter((r) => r.userId === userId)
-    .map((r) => ({ criterionId: r.criterionId, score: r.score }));
-  return computeScore(criteria, userRatings);
 }
 
 export async function seedProjectCriteria(projectId: string) {

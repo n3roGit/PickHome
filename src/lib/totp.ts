@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import * as OTPAuth from "otpauth";
-import { authSecret, hashPassword, verifyPassword } from "@/lib/auth";
+import { authSecret, hashPassword, secureCookie, verifyPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const PENDING_TOTP_COOKIE = "ph_totp_pending";
@@ -46,13 +46,13 @@ function signPendingPayload(payload: string) {
 
 export async function setPendingTotpLogin(userId: string) {
   const issuedAt = Date.now();
-  const payload = `${userId}:${issuedAt}`;
-  const token = `${payload}:${signPendingPayload(payload)}`;
+  const payload = Buffer.from(JSON.stringify({ userId, issuedAt })).toString("base64url");
+  const token = `${payload}.${signPendingPayload(payload)}`;
   const cookieStore = await cookies();
   cookieStore.set(PENDING_TOTP_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookie(),
     path: "/",
     maxAge: PENDING_MAX_AGE_SEC,
   });
@@ -62,10 +62,10 @@ export async function getPendingTotpUserId(): Promise<string | null> {
   const cookieStore = await cookies();
   const raw = cookieStore.get(PENDING_TOTP_COOKIE)?.value;
   if (!raw) return null;
-  const lastColon = raw.lastIndexOf(":");
-  if (lastColon < 0) return null;
-  const payload = raw.slice(0, lastColon);
-  const sig = raw.slice(lastColon + 1);
+  const dot = raw.indexOf(".");
+  if (dot < 0) return null;
+  const payload = raw.slice(0, dot);
+  const sig = raw.slice(dot + 1);
   const expected = signPendingPayload(payload);
   try {
     const a = Buffer.from(sig);
@@ -74,13 +74,17 @@ export async function getPendingTotpUserId(): Promise<string | null> {
   } catch {
     return null;
   }
-  const [userId, issuedAtStr] = payload.split(":");
-  if (!userId || !issuedAtStr) return null;
-  const issuedAt = Number(issuedAtStr);
-  if (!Number.isFinite(issuedAt) || Date.now() - issuedAt > PENDING_MAX_AGE_SEC * 1000) {
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      userId?: unknown;
+      issuedAt?: unknown;
+    };
+    if (typeof data.userId !== "string" || typeof data.issuedAt !== "number") return null;
+    if (Date.now() - data.issuedAt > PENDING_MAX_AGE_SEC * 1000) return null;
+    return data.userId;
+  } catch {
     return null;
   }
-  return userId;
 }
 
 export async function clearPendingTotpLogin() {

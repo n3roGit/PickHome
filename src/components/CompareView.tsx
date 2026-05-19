@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ScoreBadge } from "@/components/ScoreBadge";
-import { apartmentScore } from "@/lib/project-data";
+import { apartmentScore } from "@/lib/scoring";
 
 type Member = { user: { id: string; name: string } };
 type Apartment = { id: string; title: string; price: number | null };

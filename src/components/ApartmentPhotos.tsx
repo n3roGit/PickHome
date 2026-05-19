@@ -1,18 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import { useTransition } from "react";
 import { deleteApartmentPhotoAction, uploadApartmentPhotoAction } from "@/app/actions";
 import { FileDropzone } from "@/components/FileDropzone";
-
-type Photo = { id: string; url: string; caption: string | null };
+import { PhotoGallery, type GalleryPhoto } from "@/components/PhotoGallery";
 
 export function ApartmentPhotos({
   apartmentId,
   photos,
 }: {
   apartmentId: string;
-  photos: Photo[];
+  photos: GalleryPhoto[];
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -30,32 +28,18 @@ export function ApartmentPhotos({
 
   return (
     <section className="mb-10">
-      <h2 className="text-lg font-semibold mb-3">Bilder</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+        <h2 className="text-lg font-semibold">Bilder</h2>
+        {photos.length > 0 && (
+          <p className="text-sm text-pn-text-tertiary tabular-nums">{photos.length} Bilder</p>
+        )}
+      </div>
       {photos.length > 0 ? (
-        <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-          {photos.map((p) => (
-            <li
-              key={p.id}
-              className="relative group border border-pn-border rounded-lg overflow-hidden bg-pn-bg-subtle"
-            >
-              <Image
-                src={p.url}
-                alt={p.caption ?? "Immobilienfoto"}
-                width={400}
-                height={300}
-                className="w-full h-36 object-cover"
-              />
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => startTransition(() => deleteApartmentPhotoAction(p.id))}
-                className="absolute top-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                Entfernen
-              </button>
-            </li>
-          ))}
-        </ul>
+        <PhotoGallery
+          photos={photos}
+          deletePending={pending}
+          onDelete={(photoId) => startTransition(() => deleteApartmentPhotoAction(photoId))}
+        />
       ) : (
         <p className="text-sm text-pn-text-tertiary mb-4">Noch keine Bilder hinterlegt.</p>
       )}

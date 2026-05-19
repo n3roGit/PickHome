@@ -17,7 +17,8 @@ import {
   getApartmentForUser,
   getProjectMetaForUser,
 } from "@/lib/project-data";
-import { formatPrice } from "@/lib/scoring";
+import { ScoreLegend } from "@/components/ScoreLegend";
+import { formatBudgetHint, formatPrice } from "@/lib/scoring";
 
 export default async function ApartmentPage({
   params,
@@ -89,7 +90,24 @@ export default async function ApartmentPage({
               </span>
             )}
             {apartment.address && <p className="text-pn-text-secondary">{apartment.address}</p>}
-            {apartment.price != null && <p className="text-lg font-semibold mt-1">{formatPrice(apartment.price)}</p>}
+            {apartment.price != null && (
+              <p className="text-lg font-semibold mt-1">
+                {formatPrice(apartment.price)}
+                {project.budget != null && (
+                  <span
+                    className={`block text-sm font-normal mt-0.5 ${
+                      apartment.price > project.budget
+                        ? "text-pn-score-low"
+                        : apartment.price < project.budget
+                          ? "text-pn-score-high"
+                          : "text-pn-text-tertiary"
+                    }`}
+                  >
+                    {formatBudgetHint(apartment.price, project.budget)}
+                  </span>
+                )}
+              </p>
+            )}
             {apartment.listingUrl && (
               <a href={apartment.listingUrl} target="_blank" rel="noreferrer" className="text-sm text-pn-accent hover:underline">
                 Inserat öffnen ↗
@@ -104,16 +122,11 @@ export default async function ApartmentPage({
             <ScoreBadge score={myScore.score} dealbreaker={myScore.dealbreaker} />
           </div>
         </div>
-        <p className="text-sm text-pn-text-secondary mb-6">
+        <p className="text-sm text-pn-text-secondary mb-2">
           {myScore.rated}/{myScore.total} Kriterien bewertet · angemeldet als {user.name}
           {apartment.viewedAt && ` · zuletzt besichtigt: ${formatDateDe(apartment.viewedAt)}`}
         </p>
-        <ApartmentListingUrlForm
-          apartmentId={apartment.id}
-          listingUrl={apartment.listingUrl}
-          saved={resolvedSearchParams.listing_saved === "1"}
-          invalid={resolvedSearchParams.listing_error === "invalid"}
-        />
+        <ScoreLegend className="mb-6" />
         <ApartmentPhotos
           apartmentId={apartment.id}
           photos={apartment.photos.map((p) => ({
@@ -121,6 +134,12 @@ export default async function ApartmentPage({
             url: p.url,
             caption: p.caption,
           }))}
+        />
+        <ApartmentListingUrlForm
+          apartmentId={apartment.id}
+          listingUrl={apartment.listingUrl}
+          saved={resolvedSearchParams.listing_saved === "1"}
+          invalid={resolvedSearchParams.listing_error === "invalid"}
         />
         <ApartmentDocuments
           apartmentId={apartment.id}

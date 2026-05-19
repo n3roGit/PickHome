@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { saveRatingAction } from "@/app/actions";
 import { ScoreBadge } from "@/components/ScoreBadge";
-import { apartmentScore, type CriterionInput } from "@/lib/project-data";
+import { ScoreLegend } from "@/components/ScoreLegend";
+import { apartmentScore, type CriterionInput } from "@/lib/scoring";
 type Criterion = {
   id: string;
   name: string;
@@ -95,6 +96,7 @@ export function RatingSliders({
 
   return (
     <div className="space-y-8">
+      <ScoreLegend className="mb-1" />
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
         <div className="bg-pn-bg-surface border border-pn-border rounded-xl p-4">
           <p className="text-xs font-semibold text-pn-text-tertiary uppercase mb-2">Meine Bewertung</p>

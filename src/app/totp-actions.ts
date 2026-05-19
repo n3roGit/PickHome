@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import {
   createSession,
   destroySession,
-  redirectAfterLogin,
+  isAdmin,
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
@@ -29,56 +29,68 @@ const LOGIN_LIMIT = 10;
 const TOTP_LIMIT = 10;
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 
-export async function loginAction(formData: FormData) {
+export type LoginResult =
+  | { ok: true; redirectTo: string }
+  | { ok: false; error: "invalid" | "rate_limited" };
+
+export type TotpLoginResult =
+  | { ok: true; redirectTo: string }
+  | { ok: false; error: "invalid" | "rate_limited" | "totp_expired" };
+
+function redirectAfterLoginPath(user: { role: string }) {
+  return isAdmin(user) ? "/admin" : "/dashboard";
+}
+
+export async function loginAction(formData: FormData): Promise<LoginResult> {
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const loginKey = `login:${username || "unknown"}`;
   if (!checkRateLimit(loginKey, LOGIN_LIMIT, AUTH_WINDOW_MS)) {
-    redirect("/login?error=rate_limited");
+    return { ok: false, error: "rate_limited" };
   }
 
   const user = await prisma.user.findUnique({ where: { username } });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    redirect("/login?error=invalid");
+    return { ok: false, error: "invalid" };
   }
   resetRateLimit(loginKey);
   if (isTotpEnabled(user)) {
     await destroySession();
     await setPendingTotpLogin(user.id);
-    redirect("/login/totp");
+    return { ok: true, redirectTo: "/login/totp" };
   }
   await createSession(user.id);
-  redirectAfterLogin(user);
+  return { ok: true, redirectTo: redirectAfterLoginPath(user) };
 }
 
-export async function verifyTotpLoginAction(formData: FormData) {
+export async function verifyTotpLoginAction(formData: FormData): Promise<TotpLoginResult> {
   const userId = await getPendingTotpUserId();
-  if (!userId) redirect("/login?error=totp_expired");
+  if (!userId) return { ok: false, error: "totp_expired" };
   const totpKey = `totp:${userId}`;
   if (!checkRateLimit(totpKey, TOTP_LIMIT, AUTH_WINDOW_MS)) {
-    redirect("/login/totp?error=rate_limited");
+    return { ok: false, error: "rate_limited" };
   }
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || !isTotpEnabled(user) || !user.totpSecret) {
     await clearPendingTotpLogin();
-    redirect("/login?error=invalid");
+    return { ok: false, error: "invalid" };
   }
 
   const code = String(formData.get("code") ?? "").trim();
   if (!(await verifyTotpOrRecovery(user, code))) {
-    redirect("/login/totp?error=invalid");
+    return { ok: false, error: "invalid" };
   }
 
   await clearPendingTotpLogin();
   resetRateLimit(totpKey);
   await createSession(user.id);
-  redirectAfterLogin(user);
+  return { ok: true, redirectTo: redirectAfterLoginPath(user) };
 }
 
-export async function cancelTotpLoginAction() {
+export async function cancelTotpLoginAction(): Promise<{ ok: true; redirectTo: string }> {
   await clearPendingTotpLogin();
-  redirect("/login");
+  return { ok: true, redirectTo: "/login" };
 }
 
 export async function beginTotpSetupAction() {

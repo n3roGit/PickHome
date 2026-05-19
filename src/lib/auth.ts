@@ -28,7 +28,9 @@ export function authSecret() {
   return secret;
 }
 
-function secureCookie() {
+export function secureCookie() {
+  if (process.env.COOKIE_SECURE === "true") return true;
+  if (process.env.COOKIE_SECURE === "false") return false;
   return process.env.NODE_ENV === "production";
 }
 
