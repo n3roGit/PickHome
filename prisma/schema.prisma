@@ -58,6 +58,7 @@ model Project {
   loanTermYears     Int?
   interestRate      Float?
   netHouseholdIncome Int?
+  dealbreakerThreshold Int           @default(3)
   icalToken         String?          @unique
   createdAt   DateTime         @default(now())
   archivedAt  DateTime?

@@ -26,7 +26,7 @@ import {
   getProjectMetaForUser,
 } from "@/lib/project-data";
 import { ScoreLegend } from "@/components/ScoreLegend";
-import { formatBudgetHint, formatPrice } from "@/lib/scoring";
+import { formatBudgetHint, formatPrice, resolveDealbreakerThreshold } from "@/lib/scoring";
 
 export default async function ApartmentPage({
   params,
@@ -53,7 +53,8 @@ export default async function ApartmentPage({
   if (!apartment) redirect(`/project/${project.id}`);
 
   const criteria = flattenCriteria(project.groups);
-  const myScore = apartmentScore(criteria, apartment.ratings, user.id);
+  const dealbreakerThreshold = resolveDealbreakerThreshold(project.dealbreakerThreshold);
+  const myScore = apartmentScore(criteria, apartment.ratings, user.id, dealbreakerThreshold);
   const archived = apartment.archivedAt != null;
 
   const groupsWithRatings = project.groups.map((g) => ({
@@ -91,7 +92,7 @@ export default async function ApartmentPage({
     .filter((m) => m.userId !== user.id)
     .map((m) => {
       const partnerRatings = apartment.ratings.filter((r) => r.userId === m.userId);
-      const result = apartmentScore(criteria, partnerRatings, m.userId);
+      const result = apartmentScore(criteria, partnerRatings, m.userId, dealbreakerThreshold);
       return {
         userId: m.userId,
         name: m.user.name,
@@ -224,6 +225,7 @@ export default async function ApartmentPage({
           partners={partners}
           criteriaFlat={criteria}
           myUserId={user.id}
+          dealbreakerThreshold={dealbreakerThreshold}
         />
       </main>
       <Footer />

@@ -9,23 +9,43 @@ export type RatingInput = {
   score: number | null;
 };
 
+export const DEFAULT_DEALBREAKER_THRESHOLD = 3;
+export const MIN_DEALBREAKER_THRESHOLD = 0;
+export const MAX_DEALBREAKER_THRESHOLD = 10;
+
+export function parseDealbreakerThreshold(raw: string | number | null | undefined): number {
+  const value =
+    typeof raw === "number" ? raw : parseInt(String(raw ?? "").trim(), 10);
+  if (!Number.isFinite(value)) return DEFAULT_DEALBREAKER_THRESHOLD;
+  if (value < MIN_DEALBREAKER_THRESHOLD || value > MAX_DEALBREAKER_THRESHOLD) {
+    return DEFAULT_DEALBREAKER_THRESHOLD;
+  }
+  return value;
+}
+
+export function resolveDealbreakerThreshold(value: number | null | undefined): number {
+  if (value == null) return DEFAULT_DEALBREAKER_THRESHOLD;
+  return parseDealbreakerThreshold(value);
+}
+
 export function apartmentScore(
   criteria: CriterionInput[],
   ratings: { criterionId: string; userId: string; score: number | null }[],
-  userId: string
+  userId: string,
+  dealbreakerThreshold: number = DEFAULT_DEALBREAKER_THRESHOLD
 ) {
   const userRatings: RatingInput[] = ratings
     .filter((r) => r.userId === userId)
     .map((r) => ({ criterionId: r.criterionId, score: r.score }));
-  return computeScore(criteria, userRatings);
+  return computeScore(criteria, userRatings, dealbreakerThreshold);
 }
-
-const DEALBREAKER_THRESHOLD = 3;
 
 export function computeScore(
   criteria: CriterionInput[],
-  ratings: RatingInput[]
+  ratings: RatingInput[],
+  dealbreakerThreshold: number = DEFAULT_DEALBREAKER_THRESHOLD
 ): { score: number; dealbreaker: boolean; rated: number; total: number } {
+  const threshold = parseDealbreakerThreshold(dealbreakerThreshold);
   const ratingMap = new Map(ratings.map((r) => [r.criterionId, r.score]));
   let weightedSum = 0;
   let weightTotal = 0;
@@ -36,7 +56,7 @@ export function computeScore(
     const raw = ratingMap.get(c.id);
     if (raw === null || raw === undefined) continue;
     rated += 1;
-    if (c.isDealbreaker && raw <= DEALBREAKER_THRESHOLD) {
+    if (c.isDealbreaker && raw <= threshold) {
       dealbreaker = true;
     }
     weightedSum += c.weight * (raw / 10);
@@ -89,35 +109,51 @@ export function formatPricePerSqm(
 }
 
 export type ApartmentSortKey = "score" | "price" | "ppp" | "date";
+export type ApartmentSortOrder = "asc" | "desc";
+
+export const DEFAULT_APARTMENT_SORT: ApartmentSortKey = "score";
+export const DEFAULT_APARTMENT_SORT_ORDER: ApartmentSortOrder = "desc";
 
 export function parseApartmentSort(value: string | undefined): ApartmentSortKey {
   if (value === "price" || value === "ppp" || value === "date") return value;
-  return "score";
+  return DEFAULT_APARTMENT_SORT;
+}
+
+export function parseApartmentSortOrder(value: string | undefined): ApartmentSortOrder {
+  if (value === "asc") return "asc";
+  return DEFAULT_APARTMENT_SORT_ORDER;
+}
+
+function compareApartments<
+  T extends { score: number; price: number | null; createdAt: Date },
+>(a: T, b: T, sort: ApartmentSortKey): number {
+  switch (sort) {
+    case "price": {
+      if (a.price == null && b.price == null) return 0;
+      if (a.price == null) return 1;
+      if (b.price == null) return -1;
+      return a.price - b.price;
+    }
+    case "ppp": {
+      const pa = a.price != null && a.score > 0 ? a.price / a.score : Number.POSITIVE_INFINITY;
+      const pb = b.price != null && b.score > 0 ? b.price / b.score : Number.POSITIVE_INFINITY;
+      return pa - pb;
+    }
+    case "date":
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    default:
+      return a.score - b.score;
+  }
 }
 
 export function sortApartments<
   T extends { score: number; price: number | null; createdAt: Date },
->(items: T[], sort: ApartmentSortKey): T[] {
+>(items: T[], sort: ApartmentSortKey, order: ApartmentSortOrder = DEFAULT_APARTMENT_SORT_ORDER): T[] {
   const copy = [...items];
-  switch (sort) {
-    case "price":
-      return copy.sort((a, b) => {
-        if (a.price == null && b.price == null) return 0;
-        if (a.price == null) return 1;
-        if (b.price == null) return -1;
-        return a.price - b.price;
-      });
-    case "ppp":
-      return copy.sort((a, b) => {
-        const pa = a.price != null && a.score > 0 ? a.price / a.score : Number.POSITIVE_INFINITY;
-        const pb = b.price != null && b.score > 0 ? b.price / b.score : Number.POSITIVE_INFINITY;
-        return pa - pb;
-      });
-    case "date":
-      return copy.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    default:
-      return copy.sort((a, b) => b.score - a.score);
-  }
+  return copy.sort((a, b) => {
+    const base = compareApartments(a, b, sort);
+    return order === "asc" ? base : -base;
+  });
 }
 
 export function budgetDelta(

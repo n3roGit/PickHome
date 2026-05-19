@@ -36,12 +36,14 @@ export function RatingSliders({
   partners,
   criteriaFlat,
   myUserId,
+  dealbreakerThreshold,
 }: {
   apartmentId: string;
   groups: Group[];
   partners: Partner[];
   criteriaFlat: CriterionInput[];
   myUserId: string;
+  dealbreakerThreshold: number;
 }) {
   const [scores, setScores] = useState<Record<string, number | null>>(() => {
     const init: Record<string, number | null> = {};
@@ -68,7 +70,8 @@ export function RatingSliders({
     Object.entries(scores)
       .filter(([, v]) => v != null)
       .map(([criterionId, score]) => ({ criterionId, userId: myUserId, score })),
-    myUserId
+    myUserId,
+    dealbreakerThreshold
   );
 
   function partnerRating(partner: Partner, criterionId: string) {

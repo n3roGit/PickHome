@@ -32,7 +32,9 @@ import {
   formatBudgetHint,
   formatPrice,
   parseApartmentSort,
+  parseApartmentSortOrder,
   pricePerPoint,
+  resolveDealbreakerThreshold,
   sortApartments,
 } from "@/lib/scoring";
 
@@ -53,6 +55,7 @@ export default async function ProjectPage({
     reindex_empty?: string;
     reindex_missing?: string;
     sort?: string;
+    order?: string;
     q?: string;
   }>;
 }) {
@@ -111,14 +114,16 @@ export default async function ProjectPage({
   ]);
 
   const criteria = flattenCriteria(project.groups);
+  const dealbreakerThreshold = resolveDealbreakerThreshold(project.dealbreakerThreshold);
 
   const apartments = project.apartments.map((a) => {
-    const result = apartmentScore(criteria, a.ratings, user.id);
+    const result = apartmentScore(criteria, a.ratings, user.id, dealbreakerThreshold);
     return { ...a, ...result };
   });
 
   const sortKey = parseApartmentSort(resolvedSearchParams.sort);
-  sortApartments(apartments, sortKey);
+  const sortOrder = parseApartmentSortOrder(resolvedSearchParams.order);
+  sortApartments(apartments, sortKey, sortOrder);
 
   const searchQuery = resolvedSearchParams.q ?? "";
   const criterionNames = new Map(
@@ -209,6 +214,7 @@ export default async function ProjectPage({
               projectId={project.id}
               tab={tab}
               sort={sortKey}
+              order={sortOrder}
               query={searchQuery}
               resultCount={visibleApartments.length}
               totalCount={totalApartmentCount}
@@ -217,6 +223,7 @@ export default async function ProjectPage({
               projectId={project.id}
               tab={tab}
               current={sortKey}
+              currentOrder={sortOrder}
               searchQuery={searchQuery}
             />
             <ul className="space-y-3">
@@ -300,9 +307,19 @@ export default async function ProjectPage({
                     </div>
                     <Link
                       href={`/project/${project.id}/apartment/${a.id}`}
-                      className="text-sm font-medium text-pn-accent hover:underline shrink-0 self-center"
+                      aria-label="Immobilie bearbeiten"
+                      title="Bearbeiten / Bewerten"
+                      className="inline-flex items-center justify-center w-9 h-9 border border-pn-border rounded-lg text-pn-text-secondary hover:bg-pn-bg-subtle hover:text-pn-accent shrink-0 self-center"
                     >
-                      Bearbeiten / Bewerten
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="w-4 h-4"
+                        aria-hidden="true"
+                      >
+                        <path d="m2.695 14.762-1.262 3.34a.75.75 0 0 0 1.018 1.018l3.34-1.262a4.5 4.5 0 0 0 1.897-.923l.337-.337-3.993-3.993-.337.337a4.5 4.5 0 0 0-.923 1.897ZM12.75 4.5l3.993 3.993-7.184 7.184a5.25 5.25 0 0 1-1.32 1.1l-2.065.783.783-2.065a5.25 5.25 0 0 1 1.1-1.32L12.75 4.5Z" />
+                      </svg>
                     </Link>
                     {tab === "archived" && <ApartmentDeleteButton apartmentId={a.id} compact />}
                   </div>
@@ -335,6 +352,7 @@ export default async function ProjectPage({
             loanTermYears={project.loanTermYears}
             interestRate={project.interestRate}
             netHouseholdIncome={project.netHouseholdIncome}
+            dealbreakerThreshold={dealbreakerThreshold}
             saved={resolvedSearchParams.settings_saved === "1"}
             error={resolvedSearchParams.settings_error}
             reindexResult={reindexResult}
@@ -351,7 +369,13 @@ export default async function ProjectPage({
           />
         )}
 
-        {tab === "criteria" && <CriteriaEditor projectId={project.id} groups={project.groups} />}
+        {tab === "criteria" && (
+          <CriteriaEditor
+            projectId={project.id}
+            groups={project.groups}
+            dealbreakerThreshold={dealbreakerThreshold}
+          />
+        )}
 
         {tab === "compare" && activeProject && (
           <CompareView
@@ -376,6 +400,7 @@ export default async function ProjectPage({
             allRatings={activeProject.apartments.flatMap((a) =>
               a.ratings.map((r) => ({ ...r, apartmentId: a.id }))
             )}
+            dealbreakerThreshold={resolveDealbreakerThreshold(activeProject.dealbreakerThreshold)}
           />
         )}
 

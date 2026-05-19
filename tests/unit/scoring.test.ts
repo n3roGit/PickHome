@@ -6,6 +6,8 @@ import {
   formatPrice,
   formatPricePerSqm,
   parseApartmentSort,
+  parseApartmentSortOrder,
+  parseDealbreakerThreshold,
   pricePerPoint,
   scoreColor,
   sortApartments,
@@ -68,6 +70,11 @@ describe("computeScore", () => {
     expect(result.score).toBe(0);
   });
 
+  it("respects custom dealbreaker threshold", () => {
+    expect(computeScore(criteria, [{ criterionId: "a", score: 4 }], 4).dealbreaker).toBe(true);
+    expect(computeScore(criteria, [{ criterionId: "a", score: 5 }], 4).dealbreaker).toBe(false);
+  });
+
   it("low non-dealbreaker score does not zero the total", () => {
     const result = computeScore(criteria, [
       { criterionId: "a", score: 10 },
@@ -118,6 +125,20 @@ describe("computeScore ranking scenarios", () => {
     expect(rejected.score).toBe(0);
     expect(rejected.dealbreaker).toBe(true);
     expect(acceptable.score).toBeGreaterThan(rejected.score);
+  });
+});
+
+describe("parseDealbreakerThreshold", () => {
+  it("accepts valid values", () => {
+    expect(parseDealbreakerThreshold("4")).toBe(4);
+    expect(parseDealbreakerThreshold(0)).toBe(0);
+    expect(parseDealbreakerThreshold(10)).toBe(10);
+  });
+
+  it("falls back to default for invalid values", () => {
+    expect(parseDealbreakerThreshold("")).toBe(3);
+    expect(parseDealbreakerThreshold("11")).toBe(3);
+    expect(parseDealbreakerThreshold("-1")).toBe(3);
   });
 });
 
@@ -180,6 +201,17 @@ describe("parseApartmentSort", () => {
   });
 });
 
+describe("parseApartmentSortOrder", () => {
+  it("defaults to descending", () => {
+    expect(parseApartmentSortOrder(undefined)).toBe("desc");
+    expect(parseApartmentSortOrder("invalid")).toBe("desc");
+  });
+
+  it("accepts ascending", () => {
+    expect(parseApartmentSortOrder("asc")).toBe("asc");
+  });
+});
+
 describe("sortApartments", () => {
   const base = [
     { id: "a", score: 80, price: 500_000, createdAt: new Date("2024-01-01") },
@@ -192,13 +224,18 @@ describe("sortApartments", () => {
     expect(sorted.map((a) => a.id)).toEqual(["a", "b", "c"]);
   });
 
+  it("sorts by score ascending", () => {
+    const sorted = sortApartments(base, "score", "asc");
+    expect(sorted.map((a) => a.id)).toEqual(["c", "b", "a"]);
+  });
+
   it("sorts by price ascending", () => {
-    const sorted = sortApartments(base, "price");
+    const sorted = sortApartments(base, "price", "asc");
     expect(sorted.map((a) => a.id)).toEqual(["b", "a", "c"]);
   });
 
   it("sorts by date descending", () => {
-    const sorted = sortApartments(base, "date");
+    const sorted = sortApartments(base, "date", "desc");
     expect(sorted.map((a) => a.id)).toEqual(["b", "c", "a"]);
   });
 });

@@ -127,6 +127,7 @@ export function CompareView({
   criteria,
   allRatings,
   finance,
+  dealbreakerThreshold,
 }: {
   projectId: string;
   apartments: Apartment[];
@@ -134,6 +135,7 @@ export function CompareView({
   criteria: Criterion[];
   allRatings: Rating[];
   finance: ProjectFinanceSettings;
+  dealbreakerThreshold: number;
 }) {
   return (
     <div className="space-y-8">
@@ -168,7 +170,12 @@ export function CompareView({
                     const ratings = allRatings.filter(
                       (r) => r.apartmentId === a.id && r.userId === m.user.id
                     );
-                    const { score, dealbreaker } = apartmentScore(criteria, ratings, m.user.id);
+                    const { score, dealbreaker } = apartmentScore(
+                      criteria,
+                      ratings,
+                      m.user.id,
+                      dealbreakerThreshold
+                    );
                     return (
                       <td key={m.user.id} className="p-3 text-center">
                         <ScoreBadge score={score} dealbreaker={dealbreaker} />

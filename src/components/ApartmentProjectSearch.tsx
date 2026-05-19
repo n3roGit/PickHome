@@ -1,11 +1,16 @@
 import Link from "next/link";
-import type { ApartmentSortKey } from "@/lib/scoring";
+import type { ApartmentSortKey, ApartmentSortOrder } from "@/lib/scoring";
 import { projectListHref } from "@/components/ApartmentListSort";
+import {
+  DEFAULT_APARTMENT_SORT,
+  DEFAULT_APARTMENT_SORT_ORDER,
+} from "@/lib/scoring";
 
 export function ApartmentProjectSearch({
   projectId,
   tab,
   sort,
+  order,
   query,
   resultCount,
   totalCount,
@@ -13,18 +18,20 @@ export function ApartmentProjectSearch({
   projectId: string;
   tab: string;
   sort: ApartmentSortKey;
+  order: ApartmentSortOrder;
   query: string;
   resultCount: number;
   totalCount: number;
 }) {
   const trimmed = query.trim();
-  const listHref = projectListHref(projectId, tab, sort);
+  const listHref = projectListHref(projectId, tab, sort, order);
 
   return (
     <div className="mb-4">
       <form method="get" action={`/project/${projectId}`} className="flex flex-wrap gap-2 items-center">
         {tab === "archived" && <input type="hidden" name="tab" value="archived" />}
-        {sort !== "score" && <input type="hidden" name="sort" value={sort} />}
+        {sort !== DEFAULT_APARTMENT_SORT && <input type="hidden" name="sort" value={sort} />}
+        {order !== DEFAULT_APARTMENT_SORT_ORDER && <input type="hidden" name="order" value={order} />}
         <label className="sr-only" htmlFor="apartment-search">
           Immobilien durchsuchen
         </label>

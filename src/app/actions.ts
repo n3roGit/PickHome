@@ -32,6 +32,7 @@ import {
   seedProjectCriteria,
 } from "@/lib/project-data";
 import { parseBrokerBuyerRatePercent, parseFederalStateCode, parseInterestRatePercent, parsePositiveInt } from "@/lib/purchase-costs";
+import { parseDealbreakerThreshold } from "@/lib/scoring";
 import { syncApartmentViewedAt } from "@/lib/viewings";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { isApartmentUploadError, type ApartmentUploadError } from "@/lib/upload-limits";
@@ -121,6 +122,9 @@ export async function updateProjectAction(projectId: string, formData: FormData)
   const netHouseholdIncome = netIncomeRaw
     ? parseInt(netIncomeRaw.replace(/\D/g, ""), 10)
     : null;
+  const dealbreakerThreshold = parseDealbreakerThreshold(
+    String(formData.get("dealbreakerThreshold") ?? "")
+  );
 
   const project = await prisma.project.findFirst({
     where: { id: projectId, members: { some: { userId: user.id } } },
@@ -138,6 +142,7 @@ export async function updateProjectAction(projectId: string, formData: FormData)
       loanTermYears,
       interestRate,
       netHouseholdIncome: Number.isFinite(netHouseholdIncome) ? netHouseholdIncome : null,
+      dealbreakerThreshold,
     },
   });
 

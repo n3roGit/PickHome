@@ -16,7 +16,15 @@ type Group = {
   criteria: { id: string; name: string; weight: number; isDealbreaker: boolean }[];
 };
 
-export function CriteriaEditor({ projectId, groups }: { projectId: string; groups: Group[] }) {
+export function CriteriaEditor({
+  projectId,
+  groups,
+  dealbreakerThreshold,
+}: {
+  projectId: string;
+  groups: Group[];
+  dealbreakerThreshold: number;
+}) {
   const [pending, startTransition] = useTransition();
 
   function moveGroup(groupId: string, direction: "up" | "down") {
@@ -33,7 +41,7 @@ export function CriteriaEditor({ projectId, groups }: { projectId: string; group
   return (
     <div className="space-y-6">
       <p className="text-sm text-pn-text-secondary">
-        Gewichtung (1–5) und Dealbreaker festlegen. Bei Dealbreakern führt ein Wert ≤3 zum Ausschluss (Score 0).
+        Gewichtung (1–5) und Dealbreaker festlegen. Bei Dealbreakern führt ein Wert ≤{dealbreakerThreshold} zum Ausschluss (Score 0).
       </p>
 
       <form

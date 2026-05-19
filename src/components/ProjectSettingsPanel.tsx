@@ -19,6 +19,7 @@ export function ProjectSettingsPanel({
   loanTermYears,
   interestRate,
   netHouseholdIncome,
+  dealbreakerThreshold,
   saved,
   error,
   reindexResult,
@@ -32,6 +33,7 @@ export function ProjectSettingsPanel({
   loanTermYears: number | null;
   interestRate: number | null;
   netHouseholdIncome: number | null;
+  dealbreakerThreshold: number;
   saved?: boolean;
   error?: string;
   reindexResult?: {
@@ -165,6 +167,32 @@ export function ProjectSettingsPanel({
             />
             <span className="text-xs text-pn-text-tertiary mt-1 block">
               Für den Anteil der Monatsrate am Einkommen (Richtwert: max. ca. 35&nbsp;%).
+            </span>
+          </label>
+        </section>
+
+        <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
+          <div>
+            <h2 className="font-semibold mb-1">Bewertung</h2>
+            <p className="text-sm text-pn-text-secondary">
+              Schwelle für Dealbreaker-Kriterien in diesem Projekt.
+            </p>
+          </div>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">
+              Dealbreaker-Schwelle (0–10)
+            </span>
+            <input
+              name="dealbreakerThreshold"
+              type="number"
+              min={0}
+              max={10}
+              defaultValue={dealbreakerThreshold}
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+            <span className="text-xs text-pn-text-tertiary mt-1 block">
+              Bei als Dealbreaker markierten Kriterien führt ein Wert ≤ Schwelle zum Ausschluss (Score 0 / DB).
+              Standard: 3.
             </span>
           </label>
         </section>
