@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.env
+.env.local
+/data/
+prisma/dev.db
+prisma/dev.db-journal
+prisma/data/
+prisma/prisma/
+public/uploads/

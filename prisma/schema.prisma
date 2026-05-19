@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String          @id @default(uuid())
+  username     String          @unique
+  name         String
+  passwordHash String
+  role         String          @default("USER")
+  createdAt    DateTime        @default(now())
+  projects     ProjectMember[]
+  ratings      Rating[]
+}
+
+model Project {
+  id          String           @id @default(uuid())
+  name        String
+  budget      Int?
+  icalToken   String?          @unique
+  createdAt   DateTime         @default(now())
+  archivedAt  DateTime?
+  members     ProjectMember[]
+  apartments  Apartment[]
+  groups      CriterionGroup[]
+}
+
+model ProjectMember {
+  id        String  @id @default(uuid())
+  projectId String
+  userId    String
+  role      String  @default("owner")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model CriterionGroup {
+  id        String      @id @default(uuid())
+  projectId String
+  name      String
+  sortOrder Int         @default(0)
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  criteria  Criterion[]
+}
+
+model Criterion {
+  id            String         @id @default(uuid())
+  groupId       String
+  name          String
+  weight        Int            @default(3)
+  isDealbreaker Boolean        @default(false)
+  sortOrder     Int            @default(0)
+  group         CriterionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  ratings       Rating[]
+}
+
+model Apartment {
+  id          String               @id @default(uuid())
+  projectId   String
+  title       String
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  price       Int?
+  sizeSqm     Int?
+  floor       Int?
+  yearBuilt   Int?
+  description String?
+  listingUrl  String?
+  viewedAt    DateTime?
+  archivedAt  DateTime?
+  createdAt   DateTime             @default(now())
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ratings     Rating[]
+  photos      ApartmentPhoto[]
+  documents   ApartmentDocument[]
+  viewings    ViewingAppointment[]
+}
+
+model ApartmentDocument {
+  id          String    @id @default(uuid())
+  apartmentId String
+  fileName    String
+  url         String
+  mimeType    String
+  kind        String    @default("expose")
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+}
+
+model ApartmentPhoto {
+  id          String    @id @default(uuid())
+  apartmentId String
+  url         String
+  caption     String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+}
+
+model ViewingAppointment {
+  id          String    @id @default(uuid())
+  apartmentId String
+  scheduledAt DateTime
+  note        String?
+  createdAt   DateTime  @default(now())
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+}
+
+model Rating {
+  id          String    @id @default(uuid())
+  apartmentId String
+  criterionId String
+  userId      String
+  score       Int?
+  note        String?
+  apartment   Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  criterion   Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([apartmentId, criterionId, userId])
+}
