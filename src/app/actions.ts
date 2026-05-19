@@ -20,10 +20,6 @@ import {
   saveApartmentPhoto,
 } from "@/lib/apartment-media";
 import { extractPdfText } from "@/lib/pdf-text";
-
-export type UploadApartmentFileResult =
-  | { ok: true }
-  | { ok: false; error: ApartmentUploadError };
 import { geocodeAddress } from "@/lib/geocode";
 import { normalizeListingUrl } from "@/lib/listing-url";
 import { readPasswordPair } from "@/lib/password";
@@ -37,6 +33,12 @@ import {
 } from "@/lib/project-data";
 import { parseBrokerBuyerRatePercent, parseFederalStateCode, parseInterestRatePercent, parsePositiveInt } from "@/lib/purchase-costs";
 import { syncApartmentViewedAt } from "@/lib/viewings";
+import { parseTravelMode } from "@/lib/travel-mode";
+import { isApartmentUploadError, type ApartmentUploadError } from "@/lib/upload-limits";
+
+export type UploadApartmentFileResult =
+  | { ok: true }
+  | { ok: false; error: ApartmentUploadError };
 
 function revalidateApartment(projectId: string, apartmentId: string) {
   revalidatePath(`/project/${projectId}`);
@@ -676,6 +678,95 @@ export async function deleteUserAction(userId: string) {
   }
   await prisma.user.delete({ where: { id: userId } });
   revalidatePath("/admin");
+}
+
+export async function updateTravelModeAction(formData: FormData) {
+  const user = await requireUser();
+  const travelMode = parseTravelMode(String(formData.get("travelMode") ?? ""));
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { travelMode },
+  });
+  revalidatePath("/account/settings");
+  redirect("/account/settings?commute_saved=1");
+}
+
+async function geocodeUserAddressFields(address: string) {
+  const trimmed = address.trim();
+  if (!trimmed) return { address: "", latitude: null as number | null, longitude: null as number | null };
+  const coords = await geocodeAddress(trimmed);
+  return {
+    address: trimmed,
+    latitude: coords?.latitude ?? null,
+    longitude: coords?.longitude ?? null,
+  };
+}
+
+export async function createUserAddressAction(formData: FormData) {
+  const user = await requireUser();
+  const label = String(formData.get("label") ?? "").trim();
+  const rawAddress = String(formData.get("address") ?? "").trim();
+  if (!label) redirect("/account/settings?error=label");
+  if (!rawAddress) redirect("/account/settings?error=address");
+
+  const geocoded = await geocodeUserAddressFields(rawAddress);
+  const maxOrder = await prisma.userAddress.aggregate({
+    where: { userId: user.id },
+    _max: { sortOrder: true },
+  });
+
+  await prisma.userAddress.create({
+    data: {
+      userId: user.id,
+      label,
+      address: geocoded.address,
+      latitude: geocoded.latitude,
+      longitude: geocoded.longitude,
+      sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+    },
+  });
+  revalidatePath("/account/settings");
+  redirect("/account/settings?address_saved=1");
+}
+
+export async function updateUserAddressAction(addressId: string, formData: FormData) {
+  const user = await requireUser();
+  const existing = await prisma.userAddress.findFirst({
+    where: { id: addressId, userId: user.id },
+  });
+  if (!existing) redirect("/account/settings");
+
+  const label = String(formData.get("label") ?? "").trim();
+  const rawAddress = String(formData.get("address") ?? "").trim();
+  if (!label) redirect("/account/settings?error=label");
+  if (!rawAddress) redirect("/account/settings?error=address");
+
+  const geocoded = await geocodeUserAddressFields(rawAddress);
+
+  await prisma.userAddress.update({
+    where: { id: addressId },
+    data: {
+      label,
+      address: geocoded.address,
+      latitude: geocoded.latitude,
+      longitude: geocoded.longitude,
+    },
+  });
+  revalidatePath("/account/settings");
+  redirect("/account/settings?address_saved=1");
+}
+
+export async function deleteUserAddressAction(addressId: string) {
+  const user = await requireUser();
+  const existing = await prisma.userAddress.findFirst({
+    where: { id: addressId, userId: user.id },
+  });
+  if (!existing) redirect("/account/settings");
+
+  await prisma.userAddress.delete({ where: { id: addressId } });
+  revalidatePath("/account/settings");
+  redirect("/account/settings?address_deleted=1");
 }
 
 export async function resetUserPasswordAction(userId: string, formData: FormData) {

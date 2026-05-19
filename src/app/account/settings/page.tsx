@@ -10,7 +10,9 @@ import {
 } from "@/app/totp-actions";
 import { Footer } from "@/components/Footer";
 import { Nav } from "@/components/Nav";
+import { UserCommuteSettings } from "@/components/UserCommuteSettings";
 import { isAdmin, requireUser } from "@/lib/auth";
+import { parseTravelMode } from "@/lib/travel-mode";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { isTotpEnabled } from "@/lib/totp";
 import { prisma } from "@/lib/prisma";
@@ -34,11 +36,19 @@ export default async function SettingsPage({
     codes?: string;
     disabled?: string;
     password_changed?: string;
+    commute_saved?: string;
+    address_saved?: string;
+    address_deleted?: string;
   }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const user = await requireUser();
-  const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+  const fresh = await prisma.user.findUniqueOrThrow({
+    where: { id: user.id },
+    include: {
+      addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+    },
+  });
   const enabled = isTotpEnabled(fresh);
   const pendingSetup = !!fresh.totpSecret && !enabled;
   const err = resolvedSearchParams.error ? errors[resolvedSearchParams.error] : null;
@@ -61,7 +71,7 @@ export default async function SettingsPage({
   return (
     <>
       <Nav userName={user.name} isAdmin={isAdmin(user)} />
-      <main className="max-w-lg mx-auto px-4 py-8 flex-1 w-full">
+      <main className="max-w-xl mx-auto px-4 py-8 flex-1 w-full">
         <Link
           href={isAdmin(user) ? "/admin" : "/dashboard"}
           className="text-sm text-pn-accent hover:underline"
@@ -83,6 +93,21 @@ export default async function SettingsPage({
         {err && (
           <p className="mb-4 text-sm text-pn-score-low bg-pn-score-low-bg px-3 py-2 rounded-lg">{err}</p>
         )}
+
+        <UserCommuteSettings
+          travelMode={parseTravelMode(fresh.travelMode)}
+          addresses={fresh.addresses.map((a) => ({
+            id: a.id,
+            label: a.label,
+            address: a.address,
+            latitude: a.latitude,
+            longitude: a.longitude,
+          }))}
+          saved={resolvedSearchParams.commute_saved === "1"}
+          addressSaved={resolvedSearchParams.address_saved === "1"}
+          addressDeleted={resolvedSearchParams.address_deleted === "1"}
+          error={resolvedSearchParams.error}
+        />
 
         <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6">
           <h2 className="font-semibold mb-2">Passwort ändern</h2>

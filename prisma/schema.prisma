@@ -15,10 +15,26 @@ model User {
   role          String             @default("USER")
   totpSecret    String?
   totpEnabledAt DateTime?
+  travelMode    String           @default("driving")
   createdAt     DateTime           @default(now())
   projects      ProjectMember[]
   ratings       Rating[]
   recoveryCodes UserRecoveryCode[]
+  addresses     UserAddress[]
+}
+
+model UserAddress {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  address   String
+  latitude  Float?
+  longitude Float?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model UserRecoveryCode {

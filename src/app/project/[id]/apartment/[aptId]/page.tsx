@@ -12,6 +12,10 @@ import { getSessionUser, isAdmin } from "@/lib/auth";
 import { ApartmentArchiveButton } from "@/components/ApartmentArchiveButton";
 import { ApartmentListingUrlForm } from "@/components/ApartmentListingUrlForm";
 import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
+import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
+import { computeCommuteLegs } from "@/lib/commute";
+import { prisma } from "@/lib/prisma";
+import { parseTravelMode } from "@/lib/travel-mode";
 import {
   apartmentScore,
   flattenCriteria,
@@ -52,6 +56,28 @@ export default async function ApartmentPage({
       rating: apartment.ratings.find((r) => r.criterionId === c.id && r.userId === user.id),
     })),
   }));
+
+  const profile = await prisma.user.findUniqueOrThrow({
+    where: { id: user.id },
+    include: {
+      addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+    },
+  });
+  const travelMode = parseTravelMode(profile.travelMode);
+  const commuteLegs = await computeCommuteLegs({
+    apartment:
+      apartment.latitude != null && apartment.longitude != null
+        ? { latitude: apartment.latitude, longitude: apartment.longitude }
+        : null,
+    addresses: profile.addresses.map((a) => ({
+      id: a.id,
+      label: a.label,
+      address: a.address,
+      latitude: a.latitude,
+      longitude: a.longitude,
+    })),
+    travelMode,
+  });
 
   const partners = project.members
     .filter((m) => m.userId !== user.id)
@@ -128,6 +154,11 @@ export default async function ApartmentPage({
           {apartment.viewedAt && ` · zuletzt besichtigt: ${formatDateDe(apartment.viewedAt)}`}
         </p>
         <ScoreLegend className="mb-6" />
+        <ApartmentCommutePanel
+          legs={commuteLegs}
+          travelMode={travelMode}
+          settingsHref="/account/settings"
+        />
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
           price={apartment.price}
