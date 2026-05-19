@@ -37,6 +37,12 @@ Path alias: `@/*` → `src/*`.
 - Uploads: `src/lib/pickhome-data.ts`, `src/lib/apartment-media.ts`, served at `/uploads/...`.
 - Never commit: `data/`, `.env*`, secrets, `node_modules/`, `.next/`, user databases or backup ZIPs.
 
+## Releases and versioning
+
+- [Release Please](https://github.com/googleapis/release-please) on `main`: opens a release PR (bumps `package.json`, updates `CHANGELOG.md`).
+- Merge that PR → Git tag `v*`, [GitHub Release](https://github.com/n3roGit/PickHome/releases), Docker publish (`n3ro88/pickhome:latest`, `n3ro88/pickhome:1.2.3`, …).
+- Prefer [Conventional Commits](https://www.conventionalcommits.org/) on `main`: `feat:`, `fix:`, `chore:`, `feat!:` / `BREAKING CHANGE:` for semver.
+
 ## Git workflow
 
 - Commit and push when the user asks or after completing a feature batch.

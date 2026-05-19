@@ -85,6 +85,16 @@ Custom port:
 PICKHOME_PORT=8080 docker compose up -d
 ```
 
+### Pinned image version (recommended for production)
+
+After a [GitHub Release](https://github.com/n3roGit/PickHome/releases), use a version tag instead of `latest`:
+
+```yaml
+image: n3ro88/pickhome:1.2.3
+```
+
+Releases are created automatically with [Release Please](https://github.com/googleapis/release-please) when you merge its release PR on `main`. Commit messages on `main` should follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `chore:`, `feat!:` for breaking changes) so the version bump and changelog stay meaningful.
+
 ## Local development (without Docker)
 
 ```bash
