@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ApartmentSortKey, ApartmentSortOrder } from "@/lib/scoring";
-import { projectListHref } from "@/components/ApartmentListSort";
+import { projectListHref } from "@/lib/project-list-url";
 import {
   DEFAULT_APARTMENT_SORT,
   DEFAULT_APARTMENT_SORT_ORDER,
