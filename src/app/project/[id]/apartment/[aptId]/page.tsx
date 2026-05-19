@@ -10,6 +10,7 @@ import { ViewingAppointments } from "@/components/ViewingAppointments";
 import { formatDateDe } from "@/lib/dates";
 import { getSessionUser, isAdmin } from "@/lib/auth";
 import { ApartmentArchiveButton } from "@/components/ApartmentArchiveButton";
+import { ApartmentListingUrlForm } from "@/components/ApartmentListingUrlForm";
 import {
   apartmentScore,
   flattenCriteria,
@@ -20,8 +21,10 @@ import { formatPrice } from "@/lib/scoring";
 
 export default async function ApartmentPage({
   params,
+  searchParams,
 }: {
   params: { id: string; aptId: string };
+  searchParams: { listing_saved?: string; listing_error?: string };
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
@@ -103,6 +106,12 @@ export default async function ApartmentPage({
           {myScore.rated}/{myScore.total} Kriterien bewertet · angemeldet als {user.name}
           {apartment.viewedAt && ` · zuletzt besichtigt: ${formatDateDe(apartment.viewedAt)}`}
         </p>
+        <ApartmentListingUrlForm
+          apartmentId={apartment.id}
+          listingUrl={apartment.listingUrl}
+          saved={searchParams.listing_saved === "1"}
+          invalid={searchParams.listing_error === "invalid"}
+        />
         <ApartmentPhotos
           apartmentId={apartment.id}
           photos={apartment.photos.map((p) => ({

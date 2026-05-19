@@ -154,6 +154,7 @@ export default async function ProjectPage({
               <input name="title" placeholder="Titel / Adresse" required className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]" />
               <input name="price" placeholder="Preis €" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-28" />
               <input name="address" placeholder="Adresse" className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[160px]" />
+              <input name="listingUrl" placeholder="Inserat-URL" type="url" className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[180px]" />
               <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm">
                 Immobilie hinzufügen
               </button>
@@ -179,6 +180,16 @@ export default async function ProjectPage({
                       <Link href={`/project/${project.id}/apartment/${a.id}`} className="font-semibold hover:text-pn-accent">
                         {a.title}
                       </Link>
+                      {a.listingUrl && (
+                        <a
+                          href={a.listingUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-pn-accent hover:underline block mt-0.5"
+                        >
+                          Inserat öffnen ↗
+                        </a>
+                      )}
                       {a.address && <p className="text-sm text-pn-text-secondary">{a.address}</p>}
                       {a.price != null && <p className="text-sm font-medium">{formatPrice(a.price)}</p>}
                       {(() => {

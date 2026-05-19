@@ -20,6 +20,7 @@ import {
   saveApartmentPhoto,
 } from "@/lib/apartment-media";
 import { geocodeAddress } from "@/lib/geocode";
+import { normalizeListingUrl } from "@/lib/listing-url";
 import { getApartmentUploadsRoot } from "@/lib/pickhome-data";
 import { join } from "path";
 import {
@@ -174,10 +175,31 @@ export async function createApartmentAction(projectId: string, formData: FormDat
       longitude,
       price: Number.isFinite(price) ? price : null,
       sizeSqm: parseInt(String(formData.get("sizeSqm") ?? ""), 10) || null,
-      listingUrl: String(formData.get("listingUrl") ?? "").trim() || null,
+      listingUrl: normalizeListingUrl(String(formData.get("listingUrl") ?? "")),
     },
   });
   revalidatePath(`/project/${projectId}`);
+}
+
+export async function updateApartmentListingUrlAction(apartmentId: string, formData: FormData) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user.id);
+  if (!apt) redirect("/dashboard");
+
+  const raw = String(formData.get("listingUrl") ?? "");
+  const listingUrl = normalizeListingUrl(raw);
+  const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
+
+  if (raw.trim() && !listingUrl) {
+    redirect(`${base}?listing_error=invalid`);
+  }
+
+  await prisma.apartment.update({
+    where: { id: apartmentId },
+    data: { listingUrl },
+  });
+  revalidateApartment(apt.projectId, apartmentId);
+  redirect(`${base}?listing_saved=1`);
 }
 
 export async function uploadApartmentPhotoAction(apartmentId: string, formData: FormData) {
