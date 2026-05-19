@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default function SecurityRedirectPage({
+export default async function SecurityRedirectPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
