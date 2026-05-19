@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { addViewingAction, deleteViewingAction } from "@/app/actions";
+import { addViewingAction, deleteViewingAction, updateViewingAction } from "@/app/actions";
 import { formatDateTimeDe, toDatetimeLocalValue } from "@/lib/dates";
 
 type Viewing = {
@@ -33,6 +33,10 @@ export function ViewingAppointments({
 
   function onDelete(id: string) {
     startTransition(() => deleteViewingAction(id));
+  }
+
+  function onUpdate(id: string, formData: FormData) {
+    startTransition(() => updateViewingAction(id, formData));
   }
 
   return (
@@ -76,10 +80,24 @@ export function ViewingAppointments({
       </form>
 
       {upcoming.length > 0 && (
-        <ViewingList title="Anstehend" items={upcoming} pending={pending} onDelete={onDelete} variant="upcoming" />
+        <ViewingList
+          title="Anstehend"
+          items={upcoming}
+          pending={pending}
+          onDelete={onDelete}
+          onUpdate={onUpdate}
+          variant="upcoming"
+        />
       )}
       {past.length > 0 && (
-        <ViewingList title="Vergangen" items={past} pending={pending} onDelete={onDelete} variant="past" />
+        <ViewingList
+          title="Vergangen"
+          items={past}
+          pending={pending}
+          onDelete={onDelete}
+          onUpdate={onUpdate}
+          variant="past"
+        />
       )}
       {viewings.length === 0 && (
         <p className="text-sm text-pn-text-tertiary">Noch keine Besichtigungstermine.</p>
@@ -93,12 +111,14 @@ function ViewingList({
   items,
   pending,
   onDelete,
+  onUpdate,
   variant,
 }: {
   title: string;
   items: { id: string; date: Date; note: string | null }[];
   pending: boolean;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, formData: FormData) => void;
   variant: "upcoming" | "past";
 }) {
   return (
@@ -108,24 +128,57 @@ function ViewingList({
         {items.map((v) => (
           <li
             key={v.id}
-            className={`flex flex-wrap items-center justify-between gap-3 border rounded-lg px-4 py-3 ${
+            className={`border rounded-lg px-4 py-3 ${
               variant === "upcoming"
                 ? "border-pn-accent/30 bg-pn-bg-surface"
                 : "border-pn-border bg-pn-bg-subtle"
             }`}
           >
-            <div>
+            <div className="mb-3">
               <p className="font-medium">{formatDateTimeDe(v.date)}</p>
               {v.note && <p className="text-sm text-pn-text-secondary">{v.note}</p>}
             </div>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => onDelete(v.id)}
-              className="text-sm text-pn-text-secondary hover:text-pn-score-low"
+            <form
+              action={(formData) => onUpdate(v.id, formData)}
+              className="flex flex-wrap gap-2 items-end"
             >
-              Löschen
-            </button>
+              <label className="flex flex-col text-sm min-w-[190px] flex-1">
+                <span className="text-pn-text-secondary mb-1">Datum & Uhrzeit</span>
+                <input
+                  type="datetime-local"
+                  name="scheduledAt"
+                  required
+                  defaultValue={toDatetimeLocalValue(v.date)}
+                  disabled={pending}
+                  className="border border-pn-border rounded-lg px-3 py-2"
+                />
+              </label>
+              <label className="flex flex-col text-sm min-w-[190px] flex-[2]">
+                <span className="text-pn-text-secondary mb-1">Notiz</span>
+                <input
+                  type="text"
+                  name="note"
+                  defaultValue={v.note ?? ""}
+                  disabled={pending}
+                  className="border border-pn-border rounded-lg px-3 py-2"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={pending}
+                className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+              >
+                Speichern
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onDelete(v.id)}
+                className="border border-pn-border px-4 py-2 rounded-lg text-sm text-pn-text-secondary hover:text-pn-score-low disabled:opacity-50"
+              >
+                Löschen
+              </button>
+            </form>
           </li>
         ))}
       </ul>

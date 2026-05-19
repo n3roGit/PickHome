@@ -299,6 +299,29 @@ export async function addViewingAction(apartmentId: string, formData: FormData) 
   revalidateApartment(apt.projectId, apartmentId);
 }
 
+export async function updateViewingAction(viewingId: string, formData: FormData) {
+  const user = await requireUser();
+  const viewing = await prisma.viewingAppointment.findUnique({
+    where: { id: viewingId },
+    include: { apartment: { select: { id: true, projectId: true } } },
+  });
+  if (!viewing) return;
+  const apt = await assertApartmentAccess(viewing.apartmentId, user.id);
+  if (!apt) return;
+
+  const scheduledRaw = String(formData.get("scheduledAt") ?? "").trim();
+  const scheduledAt = scheduledRaw ? new Date(scheduledRaw) : null;
+  if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) return;
+
+  const note = String(formData.get("note") ?? "").trim() || null;
+  await prisma.viewingAppointment.update({
+    where: { id: viewingId },
+    data: { scheduledAt, note },
+  });
+  await syncApartmentViewedAt(viewing.apartmentId);
+  revalidateApartment(viewing.apartment.projectId, viewing.apartmentId);
+}
+
 export async function deleteViewingAction(viewingId: string) {
   const user = await requireUser();
   const viewing = await prisma.viewingAppointment.findUnique({
