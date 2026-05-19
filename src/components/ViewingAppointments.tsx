@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { addViewingAction, deleteViewingAction, updateViewingAction } from "@/app/actions";
-import { formatDateTimeDe, toDatetimeLocalValue } from "@/lib/dates";
+import { formatDateTimeDe, normalizeScheduledAtFormData, toDatetimeLocalValue } from "@/lib/dates";
 
 type Viewing = {
   id: string;
@@ -36,6 +36,7 @@ export function ViewingAppointments({
   }
 
   function onUpdate(id: string, formData: FormData) {
+    normalizeScheduledAtFormData(formData);
     startTransition(() => updateViewingAction(id, formData));
   }
 
@@ -44,7 +45,10 @@ export function ViewingAppointments({
       <h2 className="text-lg font-semibold mb-3">Besichtigungstermine</h2>
 
       <form
-        action={(formData) => startTransition(() => addViewingAction(apartmentId, formData))}
+        action={(formData) => {
+          normalizeScheduledAtFormData(formData);
+          startTransition(() => addViewingAction(apartmentId, formData));
+        }}
         className="flex flex-wrap gap-2 mb-6 p-4 bg-pn-bg-surface border border-pn-border rounded-xl"
       >
         <label className="flex flex-col text-sm min-w-[200px] flex-1">

@@ -93,7 +93,7 @@ After a [GitHub Release](https://github.com/n3roGit/PickHome/releases), use a ve
 image: n3ro88/pickhome:1.2.3
 ```
 
-Releases are created automatically with [Release Please](https://github.com/googleapis/release-please) when you merge its release PR on `main`. Commit messages on `main` should follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `chore:`, `feat!:` for breaking changes) so the version bump and changelog stay meaningful.
+Releases: set `"version"` in `package.json`, push to `main`. GitHub Actions creates tag `v*` and a release when that tag does not exist yet. Update `CHANGELOG.md` manually.
 
 ## Local development (without Docker)
 

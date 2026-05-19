@@ -23,6 +23,8 @@ import {
 import { prisma } from "@/lib/prisma";
 import { ensureProjectIcalToken } from "@/lib/ical-token";
 import { ApartmentListSort } from "@/components/ApartmentListSort";
+import { ApartmentProjectSearch } from "@/components/ApartmentProjectSearch";
+import { filterApartmentsBySearch } from "@/lib/apartment-search";
 import { RatingProgressBar } from "@/components/RatingProgressBar";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import {
@@ -46,6 +48,7 @@ export default async function ProjectPage({
     settings_saved?: string;
     settings_error?: string;
     sort?: string;
+    q?: string;
   }>;
 }) {
   const resolvedParams = await params;
@@ -112,6 +115,13 @@ export default async function ProjectPage({
   const sortKey = parseApartmentSort(resolvedSearchParams.sort);
   sortApartments(apartments, sortKey);
 
+  const searchQuery = resolvedSearchParams.q ?? "";
+  const criterionNames = new Map(
+    project.groups.flatMap((g) => g.criteria.map((c) => [c.id, c.name] as const))
+  );
+  const totalApartmentCount = apartments.length;
+  const visibleApartments = filterApartmentsBySearch(apartments, searchQuery, criterionNames);
+
   const memberMessage = resolvedSearchParams.member_added
     ? `${resolvedSearchParams.member_added} wurde zum Projekt hinzugefügt.`
     : resolvedSearchParams.member_removed
@@ -164,20 +174,37 @@ export default async function ProjectPage({
         {(tab === "apartments" || tab === "archived") && (
           <>
             {tab === "apartments" && (
-            <form action={createApartmentAction.bind(null, project.id)} className="flex flex-wrap gap-2 mb-6">
+            <form action={createApartmentAction.bind(null, project.id)} className="flex flex-wrap gap-2 mb-6 items-center">
               <input name="title" placeholder="Titel / Adresse" required className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]" />
               <input name="price" placeholder="Preis €" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-28" />
               <input name="address" placeholder="Adresse" className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[160px]" />
               <input name="listingUrl" placeholder="Inserat-URL" type="url" className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[180px]" />
+              <label className="flex items-center gap-1.5 text-sm text-pn-text-secondary whitespace-nowrap">
+                <input type="checkbox" name="brokerInvolved" className="rounded border-pn-border" />
+                Makler
+              </label>
               <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm">
                 Immobilie hinzufügen
               </button>
             </form>
             )}
             <ScoreLegend className="mb-4" />
-            <ApartmentListSort projectId={project.id} tab={tab} current={sortKey} />
+            <ApartmentProjectSearch
+              projectId={project.id}
+              tab={tab}
+              sort={sortKey}
+              query={searchQuery}
+              resultCount={visibleApartments.length}
+              totalCount={totalApartmentCount}
+            />
+            <ApartmentListSort
+              projectId={project.id}
+              tab={tab}
+              current={sortKey}
+              searchQuery={searchQuery}
+            />
             <ul className="space-y-3">
-              {apartments.map((a) => (
+              {visibleApartments.map((a) => (
                 <li
                   key={a.id}
                   className="flex flex-wrap items-center justify-between gap-4 bg-pn-bg-surface border border-pn-border rounded-xl p-4"
@@ -265,11 +292,16 @@ export default async function ProjectPage({
                 </li>
               ))}
             </ul>
-            {apartments.length === 0 && (
+            {totalApartmentCount === 0 && (
               <p className="text-pn-text-tertiary text-center py-8">
                 {tab === "archived"
                   ? "Keine archivierten Immobilien."
                   : "Noch keine Immobilien in diesem Projekt."}
+              </p>
+            )}
+            {totalApartmentCount > 0 && visibleApartments.length === 0 && searchQuery.trim() && (
+              <p className="text-pn-text-tertiary text-center py-8">
+                Keine Immobilien passen zur Suche.
               </p>
             )}
           </>
@@ -280,6 +312,7 @@ export default async function ProjectPage({
             projectId={project.id}
             name={project.name}
             budget={project.budget}
+            federalStateCode={project.federalStateCode}
             saved={resolvedSearchParams.settings_saved === "1"}
             error={resolvedSearchParams.settings_error}
           />

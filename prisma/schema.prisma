@@ -33,10 +33,11 @@ model UserRecoveryCode {
 }
 
 model Project {
-  id          String           @id @default(uuid())
-  name        String
-  budget      Int?
-  icalToken   String?          @unique
+  id                String           @id @default(uuid())
+  name              String
+  budget            Int?
+  federalStateCode  String?
+  icalToken         String?          @unique
   createdAt   DateTime         @default(now())
   archivedAt  DateTime?
   members     ProjectMember[]
@@ -82,8 +83,9 @@ model Apartment {
   address     String?
   latitude    Float?
   longitude   Float?
-  price       Int?
-  sizeSqm     Int?
+  price           Int?
+  brokerInvolved  Boolean          @default(false)
+  sizeSqm         Int?
   floor       Int?
   yearBuilt   Int?
   description String?

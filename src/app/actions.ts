@@ -35,6 +35,7 @@ import {
   assertProjectAccess,
   seedProjectCriteria,
 } from "@/lib/project-data";
+import { parseFederalStateCode } from "@/lib/purchase-costs";
 import { syncApartmentViewedAt } from "@/lib/viewings";
 
 function revalidateApartment(projectId: string, apartmentId: string) {
@@ -102,6 +103,9 @@ export async function updateProjectAction(projectId: string, formData: FormData)
 
   const budgetRaw = String(formData.get("budget") ?? "").trim();
   const budget = budgetRaw ? parseInt(budgetRaw.replace(/\D/g, ""), 10) : null;
+  const federalStateCode = parseFederalStateCode(
+    String(formData.get("federalStateCode") ?? "")
+  );
 
   const project = await prisma.project.findFirst({
     where: { id: projectId, members: { some: { userId: user.id } } },
@@ -113,6 +117,7 @@ export async function updateProjectAction(projectId: string, formData: FormData)
     data: {
       name,
       budget: Number.isFinite(budget) ? budget : null,
+      federalStateCode,
     },
   });
 
@@ -175,6 +180,8 @@ export async function createApartmentAction(projectId: string, formData: FormDat
     }
   }
 
+  const brokerInvolved = formData.get("brokerInvolved") === "on";
+
   await prisma.apartment.create({
     data: {
       projectId,
@@ -183,11 +190,26 @@ export async function createApartmentAction(projectId: string, formData: FormDat
       latitude,
       longitude,
       price: Number.isFinite(price) ? price : null,
+      brokerInvolved,
       sizeSqm: parseInt(String(formData.get("sizeSqm") ?? ""), 10) || null,
       listingUrl: normalizeListingUrl(String(formData.get("listingUrl") ?? "")),
     },
   });
   revalidatePath(`/project/${projectId}`);
+}
+
+export async function updateApartmentBrokerAction(apartmentId: string, formData: FormData) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user.id);
+  if (!apt) redirect("/dashboard");
+
+  const brokerInvolved = formData.get("brokerInvolved") === "on";
+
+  await prisma.apartment.update({
+    where: { id: apartmentId },
+    data: { brokerInvolved },
+  });
+  revalidateApartment(apt.projectId, apartmentId);
 }
 
 export async function updateApartmentListingUrlAction(apartmentId: string, formData: FormData) {

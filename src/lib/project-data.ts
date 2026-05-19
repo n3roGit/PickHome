@@ -43,7 +43,8 @@ export async function getProjectForUser(
         orderBy: { createdAt: "desc" },
         include: {
           ratings: true,
-          photos: { orderBy: { sortOrder: "asc" }, take: 1 },
+          photos: { orderBy: { sortOrder: "asc" } },
+          documents: { orderBy: { sortOrder: "asc" }, select: { fileName: true } },
           viewings: { orderBy: { scheduledAt: "asc" } },
         },
       },

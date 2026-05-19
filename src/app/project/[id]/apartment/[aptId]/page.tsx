@@ -11,6 +11,7 @@ import { formatDateDe } from "@/lib/dates";
 import { getSessionUser, isAdmin } from "@/lib/auth";
 import { ApartmentArchiveButton } from "@/components/ApartmentArchiveButton";
 import { ApartmentListingUrlForm } from "@/components/ApartmentListingUrlForm";
+import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
 import {
   apartmentScore,
   flattenCriteria,
@@ -127,6 +128,13 @@ export default async function ApartmentPage({
           {apartment.viewedAt && ` · zuletzt besichtigt: ${formatDateDe(apartment.viewedAt)}`}
         </p>
         <ScoreLegend className="mb-6" />
+        <ApartmentPurchaseCosts
+          apartmentId={apartment.id}
+          price={apartment.price}
+          federalStateCode={project.federalStateCode}
+          brokerInvolved={apartment.brokerInvolved}
+          settingsHref={`/project/${project.id}?tab=settings`}
+        />
         <ApartmentPhotos
           apartmentId={apartment.id}
           photos={apartment.photos.map((p) => ({
