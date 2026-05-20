@@ -70,6 +70,34 @@ model Project {
   groups      CriterionGroup[]
 }
 
+model LocationCity {
+  id          String               @id @default(uuid())
+  name        String               @unique
+  createdAt   DateTime             @default(now())
+  postalCodes LocationPostalCode[]
+}
+
+model LocationPostalCode {
+  id        String             @id @default(uuid())
+  cityId    String
+  plz       String
+  latitude  Float?
+  longitude Float?
+  city      LocationCity       @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  districts LocationDistrict[]
+
+  @@unique([cityId, plz])
+}
+
+model LocationDistrict {
+  id           String           @id @default(uuid())
+  postalCodeId String
+  name         String
+  postalCode   LocationPostalCode @relation(fields: [postalCodeId], references: [id], onDelete: Cascade)
+
+  @@unique([postalCodeId, name])
+}
+
 model ProjectMember {
   id        String  @id @default(uuid())
   projectId String

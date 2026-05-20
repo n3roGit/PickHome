@@ -39,7 +39,7 @@ import {
   matchApartmentToAreaFilter,
   parseAreaFilterConfig,
 } from "@/lib/area-filter";
-import { loadLocationCities } from "@/lib/location-areas-load";
+import { fetchLocationCities } from "@/lib/location-areas-data";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -97,7 +97,7 @@ export default async function ApartmentPage({
   const archived = apartment.archivedAt != null;
 
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
-  const locationCatalog = loadLocationCities();
+  const locationCatalog = await fetchLocationCities();
   const areaFilterEnabled = isAreaFilterActive(project.areaFilterCityId, areaFilterConfig);
   const areaMatch = matchApartmentToAreaFilter(
     apartment.address,

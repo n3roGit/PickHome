@@ -7,4 +7,3 @@ const dataDir = process.env.PICKHOME_DATA_DIR
   : join(root, "data");
 
 await mkdir(join(dataDir, "uploads", "apartments"), { recursive: true });
-await mkdir(join(dataDir, "location-areas"), { recursive: true });

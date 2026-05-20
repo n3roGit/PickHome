@@ -138,8 +138,7 @@ export function ProjectAreaFilterPanel({
 
       {catalog.length === 0 ? (
         <p className="text-sm text-pn-text-secondary bg-pn-bg-subtle border border-pn-border rounded-xl p-5">
-          Noch keine Städte hinterlegt. Lege JSON-Dateien unter{" "}
-          <code className="text-xs">data/location-areas/</code> ab (eine Datei pro Stadt).
+          Lege oben unter „Gebietsdaten“ zuerst eine Stadt mit PLZ und Ortsteilen an.
         </p>
       ) : (
         <>

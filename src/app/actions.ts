@@ -178,8 +178,8 @@ export async function updateProjectAreaFilterAction(
   }
 
   const { getLocationCity } = await import("@/lib/location-areas");
-  const { loadLocationCities } = await import("@/lib/location-areas-load");
-  const catalog = loadLocationCities();
+  const { fetchLocationCities } = await import("@/lib/location-areas-data");
+  const catalog = await fetchLocationCities();
   if (cityId && !getLocationCity(catalog, cityId)) {
     redirect(`${base}&areas_error=city`);
   }
@@ -200,6 +200,149 @@ export async function updateProjectAreaFilterAction(
 
   revalidatePath(`/project/${projectId}`);
   redirect(`${base}&areas_saved=1`);
+}
+
+function catalogRedirect(projectId: string, params: Record<string, string>) {
+  revalidatePath(`/project/${projectId}`);
+  const query = new URLSearchParams({ tab: "map", ...params });
+  redirect(`/project/${projectId}?${query.toString()}`);
+}
+
+export async function createLocationCityAction(projectId: string, name: string) {
+  const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  const trimmed = name.trim();
+  if (!trimmed) catalogRedirect(projectId, { catalog_error: "name" });
+
+  await prisma.locationCity.create({ data: { name: trimmed } });
+  catalogRedirect(projectId, { catalog_saved: "1" });
+}
+
+export async function deleteLocationCityAction(projectId: string, cityId: string) {
+  const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  await prisma.project.updateMany({
+    where: { areaFilterCityId: cityId },
+    data: { areaFilterCityId: null, areaFilterConfig: null },
+  });
+  await prisma.locationCity.delete({ where: { id: cityId } }).catch(() => undefined);
+  catalogRedirect(projectId, { catalog_saved: "1" });
+}
+
+export async function addLocationPostalCodeAction(
+  projectId: string,
+  cityId: string,
+  plzRaw: string,
+  districtsRaw: string
+) {
+  const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  const { parseDistrictNamesInput, parseGermanPlzInput } = await import("@/lib/location-areas-data");
+  const plz = parseGermanPlzInput(plzRaw);
+  const districts = parseDistrictNamesInput(districtsRaw);
+  if (!plz) catalogRedirect(projectId, { catalog_error: "plz" });
+  if (districts.length === 0) catalogRedirect(projectId, { catalog_error: "district" });
+
+  const city = await prisma.locationCity.findUnique({ where: { id: cityId } });
+  if (!city) catalogRedirect(projectId, { catalog_error: "city" });
+
+  const postalCode = await prisma.locationPostalCode.upsert({
+    where: { cityId_plz: { cityId, plz } },
+    create: { cityId, plz },
+    update: {},
+  });
+
+  for (const districtName of districts) {
+    await prisma.locationDistrict.upsert({
+      where: {
+        postalCodeId_name: { postalCodeId: postalCode.id, name: districtName },
+      },
+      create: { postalCodeId: postalCode.id, name: districtName },
+      update: {},
+    });
+  }
+
+  catalogRedirect(projectId, { catalog_saved: "1" });
+}
+
+export async function addLocationDistrictAction(
+  projectId: string,
+  cityId: string,
+  plzRaw: string,
+  districtRaw: string
+) {
+  const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  const { parseGermanPlzInput } = await import("@/lib/location-areas-data");
+  const plz = parseGermanPlzInput(plzRaw);
+  const name = districtRaw.trim();
+  if (!plz) catalogRedirect(projectId, { catalog_error: "plz" });
+  if (!name) catalogRedirect(projectId, { catalog_error: "district" });
+
+  const postalCode = await prisma.locationPostalCode.findUnique({
+    where: { cityId_plz: { cityId, plz } },
+  });
+  if (!postalCode) catalogRedirect(projectId, { catalog_error: "plz" });
+
+  await prisma.locationDistrict.upsert({
+    where: { postalCodeId_name: { postalCodeId: postalCode.id, name } },
+    create: { postalCodeId: postalCode.id, name },
+    update: {},
+  });
+
+  catalogRedirect(projectId, { catalog_saved: "1" });
+}
+
+export async function deleteLocationPostalCodeAction(
+  projectId: string,
+  cityId: string,
+  plzRaw: string
+) {
+  const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  const { parseGermanPlzInput } = await import("@/lib/location-areas-data");
+  const plz = parseGermanPlzInput(plzRaw);
+  if (!plz) catalogRedirect(projectId, { catalog_error: "plz" });
+
+  await prisma.locationPostalCode.deleteMany({ where: { cityId, plz } });
+  catalogRedirect(projectId, { catalog_saved: "1" });
+}
+
+export async function deleteLocationDistrictAction(
+  projectId: string,
+  cityId: string,
+  plzRaw: string,
+  districtName: string
+) {
+  const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  const { parseGermanPlzInput } = await import("@/lib/location-areas-data");
+  const plz = parseGermanPlzInput(plzRaw);
+  const name = districtName.trim();
+  if (!plz || !name) catalogRedirect(projectId, { catalog_error: "district" });
+
+  const postalCode = await prisma.locationPostalCode.findUnique({
+    where: { cityId_plz: { cityId, plz } },
+    select: { id: true },
+  });
+  if (!postalCode) catalogRedirect(projectId, { catalog_error: "plz" });
+
+  await prisma.locationDistrict.deleteMany({
+    where: { postalCodeId: postalCode.id, name },
+  });
+  catalogRedirect(projectId, { catalog_saved: "1" });
 }
 
 export async function reindexProjectDocumentsAction(projectId: string) {
