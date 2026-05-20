@@ -108,6 +108,9 @@ describe("estimateFinancing", () => {
     });
     expect(result?.loanAmount).toBe(272_500);
     expect(result?.monthlyPayment).toBeGreaterThan(0);
+    expect(result?.totalLoanPayments).toBe(result!.monthlyPayment * 30 * 12);
+    expect(result?.totalInterest).toBe(result!.totalLoanPayments - 272_500);
+    expect(result?.lifetimeTotal).toBe(50_000 + result!.totalLoanPayments);
   });
 
   it("uses default interest when omitted", () => {

@@ -225,6 +225,12 @@ export type FinancingEstimate = {
   interestRate: number;
   interestRateIsDefault: boolean;
   monthlyPayment: number;
+  /** Sum of all monthly payments over the loan term (principal + interest). */
+  totalLoanPayments: number;
+  /** totalLoanPayments − loanAmount */
+  totalInterest: number;
+  /** equityAmount + totalLoanPayments — rough lifetime cash cost incl. interest */
+  lifetimeTotal: number;
 };
 
 /** Fixed-rate annuity: monthly payment for full amortization over termYears. */
@@ -251,6 +257,9 @@ export function estimateFinancing(input: {
   const loanAmount = Math.max(0, input.totalCost - input.equityAmount);
   const interestRateIsDefault = input.interestRate == null;
   const interestRate = input.interestRate ?? DEFAULT_INTEREST_RATE;
+  const monthlyPayment = estimateMonthlyPayment(loanAmount, interestRate, input.loanTermYears);
+  const totalLoanPayments = monthlyPayment * input.loanTermYears * 12;
+  const totalInterest = Math.max(0, totalLoanPayments - loanAmount);
   return {
     totalCost: input.totalCost,
     equityAmount: input.equityAmount,
@@ -258,7 +267,10 @@ export function estimateFinancing(input: {
     loanTermYears: input.loanTermYears,
     interestRate,
     interestRateIsDefault,
-    monthlyPayment: estimateMonthlyPayment(loanAmount, interestRate, input.loanTermYears),
+    monthlyPayment,
+    totalLoanPayments,
+    totalInterest,
+    lifetimeTotal: input.equityAmount + totalLoanPayments,
   };
 }
 

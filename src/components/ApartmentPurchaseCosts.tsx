@@ -79,9 +79,25 @@ function FinancingTable({
             <td className="py-2 text-pn-text-secondary">Laufzeit</td>
             <td className="py-2 text-right">{financing.loanTermYears} Jahre</td>
           </tr>
-          <tr className={affordability ? "border-b border-pn-border" : ""}>
+          <tr className="border-b border-pn-border">
             <td className="py-2 font-semibold">Monatliche Rate (grob)</td>
             <td className="py-2 text-right font-semibold">{formatPrice(financing.monthlyPayment)}</td>
+          </tr>
+          <tr className="border-b border-pn-border">
+            <td className="py-2 text-pn-text-secondary">
+              Zinsen gesamt (grob)
+              <span className="text-pn-text-tertiary"> · {financing.loanTermYears} Jahre</span>
+            </td>
+            <td className="py-2 text-right">{formatPrice(financing.totalInterest)}</td>
+          </tr>
+          <tr className={affordability ? "border-b border-pn-border" : ""}>
+            <td className="py-2 font-semibold">
+              Gesamt über Laufzeit (grob)
+              <span className="block text-xs font-normal text-pn-text-tertiary">
+                Eigenkapital + alle Raten
+              </span>
+            </td>
+            <td className="py-2 text-right font-semibold">{formatPrice(financing.lifetimeTotal)}</td>
           </tr>
           {affordability && (
             <>
