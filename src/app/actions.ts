@@ -171,7 +171,7 @@ export async function updateProjectAction(projectId: string, formData: FormData)
 export async function updateProjectAreaFilterAction(
   projectId: string,
   payload: {
-    ortKey: string | null;
+    ortKeys: string[];
     selectedPlz: string[];
     selectedDistricts: string[];
   }
@@ -182,35 +182,39 @@ export async function updateProjectAreaFilterAction(
   const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
-  const ortKey = payload.ortKey?.trim() || null;
+  const ortKeys = [...new Set(payload.ortKeys.map((k) => k.trim()).filter(Boolean))];
   const selectedPlz = [...new Set(payload.selectedPlz.map(String))].sort();
   const selectedDistricts = [...new Set(payload.selectedDistricts.map(String))].sort((a, b) =>
     a.localeCompare(b, "de")
   );
 
-  if (ortKey && selectedPlz.length === 0) {
+  if (ortKeys.length > 0 && selectedPlz.length === 0) {
     redirect(`${base}&areas_error=ort`);
   }
 
   const { findOrtByKey } = await import("@/lib/plz-reference");
-  const ort = ortKey ? findOrtByKey(ortKey) : null;
-  if (ortKey && !ort) {
+  const orte = ortKeys.map((key) => ({ key, ort: findOrtByKey(key) }));
+  if (ortKeys.length > 0 && orte.some((entry) => !entry.ort)) {
     redirect(`${base}&areas_error=ort`);
   }
-  if (ort && selectedPlz.some((plz) => !ort.plz.includes(plz))) {
+
+  const allowedPlz = new Set(
+    orte.flatMap((entry) => entry.ort?.plz ?? [])
+  );
+  if (ortKeys.length > 0 && selectedPlz.some((plz) => !allowedPlz.has(plz))) {
     redirect(`${base}&areas_error=ort`);
   }
 
   const { serializeAreaFilterConfig } = await import("@/lib/area-filter");
   const config =
-    ortKey && selectedPlz.length > 0
-      ? serializeAreaFilterConfig({ selectedPlz, selectedDistricts })
+    ortKeys.length > 0 && selectedPlz.length > 0
+      ? serializeAreaFilterConfig({ ortKeys, selectedPlz, selectedDistricts })
       : null;
 
   await prisma.project.update({
     where: { id: projectId },
     data: {
-      areaFilterOrtKey: ortKey,
+      areaFilterOrtKey: ortKeys[0] ?? null,
       areaFilterConfig: config,
     },
   });

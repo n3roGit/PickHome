@@ -2,6 +2,7 @@ import { extractGermanPlz } from "@/lib/federal-state-from-address";
 import { staticDistrictsForPlz } from "@/lib/ortsteile-reference";
 
 export type AreaFilterConfig = {
+  ortKeys?: string[];
   selectedPlz: string[];
   selectedDistricts: string[];
 };
@@ -23,6 +24,21 @@ function normalizeForMatch(value: string): string {
     .trim();
 }
 
+function normalizeOrtKeys(keys: string[] | undefined): string[] {
+  if (!keys?.length) return [];
+  return [...new Set(keys.map((k) => k.trim()).filter(Boolean))];
+}
+
+export function areaFilterOrtKeys(
+  legacyOrtKey: string | null | undefined,
+  config: AreaFilterConfig | null
+): string[] {
+  const fromConfig = normalizeOrtKeys(config?.ortKeys);
+  if (fromConfig.length > 0) return fromConfig;
+  const legacy = legacyOrtKey?.trim();
+  return legacy ? [legacy] : [];
+}
+
 export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilterConfig | null {
   if (!raw?.trim()) return null;
   try {
@@ -30,7 +46,11 @@ export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilte
     if (!data || !Array.isArray(data.selectedPlz) || !Array.isArray(data.selectedDistricts)) {
       return null;
     }
+    const ortKeys = normalizeOrtKeys(
+      Array.isArray(data.ortKeys) ? data.ortKeys.map(String) : undefined
+    );
     return {
+      ...(ortKeys.length > 0 ? { ortKeys } : {}),
       selectedPlz: [...new Set(data.selectedPlz.map(String))].sort(),
       selectedDistricts: [...new Set(data.selectedDistricts.map(String))].sort((a, b) =>
         a.localeCompare(b, "de")
@@ -42,17 +62,20 @@ export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilte
 }
 
 export function serializeAreaFilterConfig(config: AreaFilterConfig): string {
+  const ortKeys = normalizeOrtKeys(config.ortKeys);
   return JSON.stringify({
+    ...(ortKeys.length > 0 ? { ortKeys } : {}),
     selectedPlz: [...config.selectedPlz].sort(),
     selectedDistricts: [...config.selectedDistricts].sort((a, b) => a.localeCompare(b, "de")),
   });
 }
 
 export function isAreaFilterActive(
-  ortKey: string | null | undefined,
+  legacyOrtKey: string | null | undefined,
   config: AreaFilterConfig | null
 ): boolean {
-  if (!ortKey || !config) return false;
+  if (!config) return false;
+  if (areaFilterOrtKeys(legacyOrtKey, config).length === 0) return false;
   return config.selectedPlz.length > 0;
 }
 
@@ -133,11 +156,11 @@ function isPartialDistrictFilter(
 
 export function matchApartmentToAreaFilter(
   address: string | null | undefined,
-  ortKey: string | null | undefined,
+  legacyOrtKey: string | null | undefined,
   config: AreaFilterConfig | null,
   customDistrictsByPlz: Record<string, string[]>
 ): AreaMatchResult {
-  if (!isAreaFilterActive(ortKey, config) || !config) {
+  if (!isAreaFilterActive(legacyOrtKey, config) || !config) {
     return { status: "unset", plz: null, district: null };
   }
 

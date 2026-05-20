@@ -45,6 +45,7 @@ import { archiveReasonLabel } from "@/lib/archive-reasons";
 import { buildDuplicateIndex } from "@/lib/apartment-duplicates";
 import { maxNotableDivergence, partnerComparisons } from "@/lib/rating-divergence";
 import {
+  areaFilterOrtKeys,
   isAreaFilterActive,
   matchApartmentToAreaFilter,
   parseAreaFilterConfig,
@@ -154,10 +155,14 @@ export default async function ProjectPage({
   const districtsByPlz = mergeDistrictsByPlz(projectAreaDistricts);
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
   const areaFilterEnabled = isAreaFilterActive(project.areaFilterOrtKey, areaFilterConfig);
-  const initialOrt = findOrtByKey(project.areaFilterOrtKey ?? "");
+  const areaFilterOrtKeyList = areaFilterOrtKeys(project.areaFilterOrtKey, areaFilterConfig);
+  const initialOrte = areaFilterOrtKeyList
+    .map((key) => findOrtByKey(key))
+    .filter((entry): entry is NonNullable<typeof entry> => entry != null);
+  const initialOrt = initialOrte[0] ?? findOrtByKey(project.areaFilterOrtKey ?? "");
   const areaFilterSummary =
-    areaFilterEnabled && initialOrt && areaFilterConfig
-      ? `${initialOrt.name} · ${areaFilterConfig.selectedPlz.length} PLZ`
+    areaFilterEnabled && areaFilterConfig && initialOrte.length > 0
+      ? `${initialOrte.map((o) => o.name).join(", ")} · ${areaFilterConfig.selectedPlz.length} PLZ`
       : undefined;
 
   const apartments = project.apartments.map((a) => {

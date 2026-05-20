@@ -9,12 +9,10 @@ import {
   updateProjectAreaFilterAction,
 } from "@/app/actions";
 import type { AreaFilterConfig } from "@/lib/area-filter";
-import {
-  defaultDistrictsForPlzSelection,
-  districtsForPlzList,
-} from "@/lib/area-filter";
+import { areaFilterOrtKeys, defaultDistrictsForPlzSelection, districtsForPlzList } from "@/lib/area-filter";
 import { serializeProjectAreaDistrictsImport } from "@/lib/location-catalog-import";
 import {
+  findOrtByKey,
   formatOrtLabel,
   ortReferenceKey,
   type PlzReferenceOrt,
@@ -24,6 +22,19 @@ type SavedConfig = {
   ortKey: string | null;
   config: AreaFilterConfig | null;
 };
+
+function resolveInitialOrte(initial: SavedConfig, initialOrt: PlzReferenceOrt | null): PlzReferenceOrt[] {
+  const keys = areaFilterOrtKeys(initial.ortKey, initial.config);
+  const orte = keys
+    .map((key) => findOrtByKey(key))
+    .filter((entry): entry is PlzReferenceOrt => entry != null);
+  if (orte.length > 0) return orte;
+  return initialOrt ? [initialOrt] : [];
+}
+
+function sortOrte(orte: PlzReferenceOrt[]): PlzReferenceOrt[] {
+  return [...orte].sort((a, b) => a.name.localeCompare(b.name, "de"));
+}
 
 export function ProjectAreaFilterPanel({
   projectId,
@@ -50,18 +61,34 @@ export function ProjectAreaFilterPanel({
   districtsByPlz: Record<string, string[]>;
   projectAreaDistricts: Record<string, string[]>;
 }) {
-  const [ort, setOrt] = useState<PlzReferenceOrt | null>(initialOrt);
+  const initialOrte = resolveInitialOrte(initial, initialOrt);
+  const [selectedOrte, setSelectedOrte] = useState<PlzReferenceOrt[]>(() => sortOrte(initialOrte));
+  const [activeOrtKey, setActiveOrtKey] = useState<string | null>(() => {
+    const first = initialOrte[0];
+    return first ? ortReferenceKey(first.name, first.bundesland) : null;
+  });
   const [selectedPlz, setSelectedPlz] = useState<string[]>(initial.config?.selectedPlz ?? []);
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(
     initial.config?.selectedDistricts ?? []
   );
-  const [bundeslandFilter, setBundeslandFilter] = useState(initialOrt?.bundesland ?? "");
-  const [ortQuery, setOrtQuery] = useState(initialOrt ? formatOrtLabel(initialOrt) : "");
+  const [bundeslandFilter, setBundeslandFilter] = useState(
+    initialOrte[0]?.bundesland ?? initialOrt?.bundesland ?? ""
+  );
+  const [ortQuery, setOrtQuery] = useState("");
   const [ortResults, setOrtResults] = useState<PlzReferenceOrt[]>([]);
   const [importTable, setImportTable] = useState(() =>
-    serializeProjectAreaDistrictsImport(projectAreaDistricts, initialOrt?.name ?? null)
+    serializeProjectAreaDistrictsImport(
+      projectAreaDistricts,
+      initialOrte.map((o) => o.name).join(", ") || initialOrt?.name || null
+    )
   );
   const [pending, startTransition] = useTransition();
+
+  const activeOrt = useMemo(
+    () =>
+      selectedOrte.find((o) => ortReferenceKey(o.name, o.bundesland) === activeOrtKey) ?? null,
+    [selectedOrte, activeOrtKey]
+  );
 
   const hasCustomDistricts = Object.keys(projectAreaDistricts).length > 0;
 
@@ -88,12 +115,36 @@ export function ProjectAreaFilterPanel({
     setOrtResults(results);
   }
 
-  function selectOrt(next: PlzReferenceOrt) {
-    setOrt(next);
-    setOrtQuery(formatOrtLabel(next));
+  function addOrSelectOrt(next: PlzReferenceOrt) {
+    const key = ortReferenceKey(next.name, next.bundesland);
+    setSelectedOrte((prev) => {
+      const exists = prev.some((o) => ortReferenceKey(o.name, o.bundesland) === key);
+      return exists ? prev : sortOrte([...prev, next]);
+    });
+    setActiveOrtKey(key);
+    setOrtQuery("");
     setOrtResults([]);
-    setSelectedPlz([]);
-    setSelectedDistricts([]);
+  }
+
+  function removeOrt(key: string) {
+    const ortToRemove = selectedOrte.find((o) => ortReferenceKey(o.name, o.bundesland) === key);
+    const others = selectedOrte.filter((o) => ortReferenceKey(o.name, o.bundesland) !== key);
+    if (ortToRemove) {
+      const exclusivePlz = ortToRemove.plz.filter(
+        (plz) => !others.some((o) => o.plz.includes(plz))
+      );
+      const nextPlz = selectedPlz.filter((plz) => !exclusivePlz.includes(plz));
+      setSelectedPlz(nextPlz);
+      setSelectedDistricts((prev) =>
+        prev.filter((district) =>
+          nextPlz.some((plz) => (districtsByPlz[plz] ?? []).includes(district))
+        )
+      );
+    }
+    setSelectedOrte(sortOrte(others));
+    setActiveOrtKey(
+      others[0] ? ortReferenceKey(others[0].name, others[0].bundesland) : null
+    );
   }
 
   function togglePlz(plz: string, checked: boolean) {
@@ -103,9 +154,7 @@ export function ProjectAreaFilterPanel({
 
     let nextDistricts = selectedDistricts.filter((d) => {
       if (!checked && plz) {
-        const stillCovered = nextPlz.some((p) =>
-          (districtsByPlz[p] ?? []).includes(d)
-        );
+        const stillCovered = nextPlz.some((p) => (districtsByPlz[p] ?? []).includes(d));
         return stillCovered;
       }
       return true;
@@ -122,11 +171,30 @@ export function ProjectAreaFilterPanel({
     setSelectedDistricts(nextDistricts);
   }
 
-  function setAllPlz(all: boolean) {
-    if (!ort) return;
-    const plzList = all ? ort.plz : [];
-    setSelectedPlz(plzList);
-    setSelectedDistricts(all ? defaultDistrictsForPlzSelection(districtsByPlz, plzList) : []);
+  function setAllPlzForActiveOrt(all: boolean) {
+    if (!activeOrt) return;
+    const ortPlz = activeOrt.plz;
+    if (all) {
+      const nextPlz = [...new Set([...selectedPlz, ...ortPlz])].sort();
+      setSelectedPlz(nextPlz);
+      setSelectedDistricts(defaultDistrictsForPlzSelection(districtsByPlz, nextPlz));
+      return;
+    }
+    const exclusivePlz = ortPlz.filter(
+      (plz) => !selectedOrte.some(
+        (o) =>
+          ortReferenceKey(o.name, o.bundesland) !== activeOrtKey &&
+          o.plz.includes(plz)
+      )
+    );
+    const nextPlz = selectedPlz.filter((plz) => !exclusivePlz.includes(plz));
+    setSelectedPlz(nextPlz);
+    setSelectedDistricts((prev) =>
+      prev.filter((district) => {
+        const stillCovered = nextPlz.some((p) => (districtsByPlz[p] ?? []).includes(district));
+        return stillCovered;
+      })
+    );
   }
 
   function toggleDistrict(district: string, checked: boolean) {
@@ -145,7 +213,7 @@ export function ProjectAreaFilterPanel({
   function handleSave() {
     run(async () => {
       await updateProjectAreaFilterAction(projectId, {
-        ortKey: ort ? ortReferenceKey(ort.name, ort.bundesland) : null,
+        ortKeys: selectedOrte.map((o) => ortReferenceKey(o.name, o.bundesland)),
         selectedPlz,
         selectedDistricts,
       });
@@ -153,18 +221,23 @@ export function ProjectAreaFilterPanel({
   }
 
   function handleClear() {
-    setOrt(null);
+    setSelectedOrte([]);
+    setActiveOrtKey(null);
     setOrtQuery("");
     setSelectedPlz([]);
     setSelectedDistricts([]);
     run(async () => {
       await updateProjectAreaFilterAction(projectId, {
-        ortKey: null,
+        ortKeys: [],
         selectedPlz: [],
         selectedDistricts: [],
       });
     });
   }
+
+  const selectedPlzForActiveOrt = activeOrt
+    ? selectedPlz.filter((plz) => activeOrt.plz.includes(plz)).length
+    : 0;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -179,7 +252,7 @@ export function ProjectAreaFilterPanel({
       )}
       {error === "ort" && (
         <p className="text-sm text-pn-score-low bg-pn-score-low-bg px-3 py-2 rounded-lg">
-          Bitte einen Ort auswählen und mindestens eine PLZ ankreuzen.
+          Bitte mindestens einen Ort auswählen und pro Ort mindestens eine PLZ ankreuzen.
         </p>
       )}
       {districtsError === "import" && (
@@ -190,10 +263,10 @@ export function ProjectAreaFilterPanel({
 
       <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
         <div>
-          <h3 className="font-semibold mb-1">Ort wählen</h3>
+          <h3 className="font-semibold mb-1">Orte wählen</h3>
           <p className="text-sm text-pn-text-secondary">
-            Alle PLZ in Deutschland sind hinterlegt ({bundeslaender.length} Bundesländer). Suche
-            deinen Wunschort.
+            Mehrere Städte möglich (z. B. Hamburg und Berlin). Alle PLZ in Deutschland sind
+            hinterlegt ({bundeslaender.length} Bundesländer).
           </p>
         </div>
 
@@ -216,48 +289,99 @@ export function ProjectAreaFilterPanel({
 
         <div className="relative">
           <label className="block">
-            <span className="text-sm font-medium text-pn-text-secondary">Ort</span>
+            <span className="text-sm font-medium text-pn-text-secondary">Ort hinzufügen</span>
             <input
               value={ortQuery}
               onChange={(e) => void handleOrtQueryChange(e.target.value)}
-              placeholder="z. B. Bremen, München, Köln"
+              placeholder="z. B. Hamburg, Berlin, Bremen"
               disabled={pending}
               className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
           </label>
           {ortResults.length > 0 && (
             <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-white border border-pn-border rounded-lg shadow-lg">
-              {ortResults.map((entry) => (
-                <li key={ortReferenceKey(entry.name, entry.bundesland)}>
-                  <button
-                    type="button"
-                    onClick={() => selectOrt(entry)}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-pn-bg-subtle"
-                  >
-                    {formatOrtLabel(entry)}
-                    <span className="text-pn-text-tertiary ml-2">({entry.plz.length} PLZ)</span>
-                  </button>
-                </li>
-              ))}
+              {ortResults.map((entry) => {
+                const key = ortReferenceKey(entry.name, entry.bundesland);
+                const alreadyAdded = selectedOrte.some(
+                  (o) => ortReferenceKey(o.name, o.bundesland) === key
+                );
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      onClick={() => addOrSelectOrt(entry)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-pn-bg-subtle"
+                    >
+                      {formatOrtLabel(entry)}
+                      <span className="text-pn-text-tertiary ml-2">
+                        ({entry.plz.length} PLZ)
+                        {alreadyAdded ? " · bereits hinzugefügt" : ""}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
+
+        {selectedOrte.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {selectedOrte.map((entry) => {
+              const key = ortReferenceKey(entry.name, entry.bundesland);
+              const plzCount = selectedPlz.filter((plz) => entry.plz.includes(plz)).length;
+              const isActive = key === activeOrtKey;
+              return (
+                <span
+                  key={key}
+                  className={`inline-flex items-center gap-1 text-sm border rounded-full pl-3 pr-1 py-1 ${
+                    isActive
+                      ? "border-pn-accent bg-pn-accent/10 text-pn-accent"
+                      : "border-pn-border bg-pn-bg-subtle"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveOrtKey(key)}
+                    disabled={pending}
+                    className="font-medium"
+                  >
+                    {entry.name}
+                    <span className="text-pn-text-tertiary font-normal ml-1">
+                      ({plzCount}/{entry.plz.length} PLZ)
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => removeOrt(key)}
+                    className="px-1.5 text-pn-text-tertiary hover:text-pn-score-low"
+                    aria-label={`${entry.name} entfernen`}
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      {ort && (
+      {activeOrt && (
         <>
           <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="font-semibold mb-1">Postleitzahlen</h3>
                 <p className="text-sm text-pn-text-secondary">
-                  PLZ für {formatOrtLabel(ort)}.
+                  PLZ für {formatOrtLabel(activeOrt)} ({selectedPlzForActiveOrt} von{" "}
+                  {activeOrt.plz.length} gewählt).
                 </p>
               </div>
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setAllPlz(true)}
+                  onClick={() => setAllPlzForActiveOrt(true)}
                   disabled={pending}
                   className="text-xs px-2 py-1 border border-pn-border rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50"
                 >
@@ -265,7 +389,7 @@ export function ProjectAreaFilterPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAllPlz(false)}
+                  onClick={() => setAllPlzForActiveOrt(false)}
                   disabled={pending}
                   className="text-xs px-2 py-1 border border-pn-border rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50"
                 >
@@ -274,7 +398,7 @@ export function ProjectAreaFilterPanel({
               </div>
             </div>
             <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-auto">
-              {ort.plz.map((plz) => (
+              {activeOrt.plz.map((plz) => (
                 <li key={plz}>
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <input
@@ -297,7 +421,7 @@ export function ProjectAreaFilterPanel({
                 <div>
                   <h3 className="font-semibold mb-1">Stadtteile / Ortsteile</h3>
                   <p className="text-sm text-pn-text-secondary">
-                    Feinere Eingrenzung für die gewählten PLZ.
+                    Feinere Eingrenzung für alle gewählten PLZ ({selectedPlz.length} gesamt).
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -350,7 +474,8 @@ export function ProjectAreaFilterPanel({
             open={hasCustomDistricts}
           >
             <summary className="cursor-pointer text-sm font-medium text-pn-text-secondary">
-              Optionale Ortsteile {hasCustomDistricts ? `(${Object.values(projectAreaDistricts).flat().length})` : ""}
+              Optionale Ortsteile{" "}
+              {hasCustomDistricts ? `(${Object.values(projectAreaDistricts).flat().length})` : ""}
             </summary>
             <div className="mt-4 space-y-4">
               <p className="text-xs text-pn-text-tertiary">
@@ -451,12 +576,12 @@ export function ProjectAreaFilterPanel({
         <button
           type="button"
           onClick={handleSave}
-          disabled={pending || !ort || selectedPlz.length === 0}
+          disabled={pending || selectedOrte.length === 0 || selectedPlz.length === 0}
           className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm disabled:opacity-50"
         >
           {pending ? "Speichern…" : "Wunschgebiet speichern"}
         </button>
-        {(ort || selectedPlz.length > 0) && (
+        {(selectedOrte.length > 0 || selectedPlz.length > 0) && (
           <button
             type="button"
             onClick={handleClear}

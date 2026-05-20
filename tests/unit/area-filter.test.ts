@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  areaFilterOrtKeys,
   extractDistrictFromAddress,
   isAreaFilterActive,
   matchApartmentToAreaFilter,
@@ -33,6 +34,37 @@ describe("area-filter", () => {
     expect(isAreaFilterActive("Bremen|Bremen", { selectedPlz: [], selectedDistricts: [] })).toBe(
       false
     );
+  });
+
+  it("parses ortKeys and resolves multi-city keys", () => {
+    const multi = {
+      ortKeys: ["Hamburg|Hamburg", "Berlin|Berlin"],
+      selectedPlz: ["10115", "20095"],
+      selectedDistricts: [] as string[],
+    };
+    const raw = serializeAreaFilterConfig(multi);
+    expect(parseAreaFilterConfig(raw)).toEqual(multi);
+    expect(areaFilterOrtKeys(null, multi)).toEqual(["Hamburg|Hamburg", "Berlin|Berlin"]);
+    expect(areaFilterOrtKeys("Bremen|Bremen", multi)).toEqual(["Hamburg|Hamburg", "Berlin|Berlin"]);
+    expect(areaFilterOrtKeys("Bremen|Bremen", config)).toEqual(["Bremen|Bremen"]);
+    expect(isAreaFilterActive(null, multi)).toBe(true);
+  });
+
+  it("matches inside across multiple cities by PLZ union", () => {
+    const multiConfig = {
+      ortKeys: ["Hamburg|Hamburg", "Berlin|Berlin"],
+      selectedPlz: ["20095", "10115"],
+      selectedDistricts: [] as string[],
+    };
+    expect(
+      matchApartmentToAreaFilter("Musterweg 1, 20095 Hamburg", null, multiConfig, {}).status
+    ).toBe("inside");
+    expect(
+      matchApartmentToAreaFilter("Beispielstr. 2, 10115 Berlin", null, multiConfig, {}).status
+    ).toBe("inside");
+    expect(
+      matchApartmentToAreaFilter("Weg 3, 28199 Bremen", null, multiConfig, {}).status
+    ).toBe("outside");
   });
 
   it("matches inside when PLZ and district match", () => {

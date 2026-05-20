@@ -92,6 +92,9 @@ async function main() {
   console.log("[pickhome] Backfilling sizeSqm from descriptions (if needed)...");
   runShell("npx tsx scripts/backfill-size-sqm.mjs");
 
+  console.log("[pickhome] Backfilling area filter ortKeys (if needed)...");
+  runShell("npx tsx scripts/backfill-area-filter-ort-keys.mjs");
+
   if (isNewDatabase) {
     console.log("[pickhome] Seeding initial admin user...");
     runShell("npx tsx prisma/seed.ts");
