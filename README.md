@@ -24,7 +24,7 @@ Repository: [github.com/n3roGit/PickHome](https://github.com/n3roGit/PickHome)
 - **Viewing appointments** (past/upcoming) on the apartment page and project calendar
 - **Purchase costs** (rough estimate): land transfer tax by Bundesland — from apartment address when detectable, else project default — plus notary/registry and buyer broker
 - **Financing** (rough estimate): equity, loan term, interest rate, monthly payment and lifetime cost from project settings
-- **Commute** times and distances to each team member’s saved addresses (driving / cycling / walking via OSRM; optional self-hosted `OSRM_BASE_URL`)
+- **Commute** times and distances to each team member’s saved addresses (driving / cycling / walking via OSRM; **public transit** via [transport.rest](https://v6.db.transport.rest); optional self-hosted `OSRM_BASE_URL`)
 - **Company car** benefit estimates on commute legs when configured in account settings
 - **Desired area** badge when the address matches the project’s Wunschgebiet filter
 
@@ -35,7 +35,7 @@ Repository: [github.com/n3roGit/PickHome](https://github.com/n3roGit/PickHome)
 | **Immobilien** | Sortable list, **full-text search** across fields/ratings/viewings/media, score legend, listing import |
 | **Archiv** | Archived apartments, archive-reason breakdown |
 | **Team** | Invite/remove project members |
-| **Einstellungen** | Name, budget, Bundesland, broker rate, financing defaults, dealbreaker threshold, **Wunschgebiet** (Ort + PLZ/districts), reindex PDF text / commute routes |
+| **Einstellungen** | Name, budget, Bundesland, broker rate, financing defaults, dealbreaker threshold, **Wunschgebiet** (Ort + PLZ/districts), **background reindex** for PDF full-text search and commute routes (status polling while you keep using the app) |
 | **Kriterien** | Edit criterion groups, weights, dealbreakers |
 | **Vergleich** | Compare up to 5 apartments: scores, criteria, purchase/finance metrics, partner divergence |
 | **Karte** | Pins colored by score; **Wunschgebiet** PLZ circles (toggle); dealbreaker styling |
@@ -45,7 +45,7 @@ Repository: [github.com/n3roGit/PickHome](https://github.com/n3roGit/PickHome)
 
 - Change password
 - **TOTP two-factor authentication** with recovery codes
-- **Commute addresses** (home, workplace, …) and travel mode
+- **Commute addresses** (home, workplace, …) and travel mode (driving, cycling, walking, **public transit** with arrival time and short-trip OSRM fallback)
 - **Company car** settings for commute benefit estimates
 
 ### Admin (`/admin`)

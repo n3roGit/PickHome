@@ -230,3 +230,17 @@ model BackupJobSettings {
   lastRunAt   DateTime?
   updatedAt   DateTime  @updatedAt
 }
+
+model ProjectReindexJob {
+  id           String    @id @default(uuid())
+  projectId    String
+  kind         String
+  status       String
+  resultJson   String?
+  errorMessage String?
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+
+  @@index([projectId, kind, status])
+  @@index([projectId, startedAt])
+}

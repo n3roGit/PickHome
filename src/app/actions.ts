@@ -291,18 +291,19 @@ export async function reindexProjectDocumentsAction(projectId: string) {
   const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
-  const { reindexProjectPdfDocuments } = await import("@/lib/pdf-reindex");
-  const result = await reindexProjectPdfDocuments(projectId);
+  const { startProjectReindexJob } = await import("@/lib/project-reindex-jobs");
+  const base = `/project/${projectId}?tab=settings`;
+  try {
+    await startProjectReindexJob(projectId, "documents");
+  } catch (err) {
+    if (err instanceof Error && err.message === "reindex_already_running") {
+      redirect(`${base}&reindex_error=already_running&reindex_kind=documents`);
+    }
+    throw err;
+  }
 
   revalidatePath(`/project/${projectId}`);
-  const base = `/project/${projectId}?tab=settings`;
-  const params = new URLSearchParams({
-    reindex_processed: String(result.processed),
-    reindex_text: String(result.withText),
-    reindex_empty: String(result.withoutText),
-    reindex_missing: String(result.missingFile),
-  });
-  redirect(`${base}&${params.toString()}`);
+  redirect(`${base}&reindex_started=documents`);
 }
 
 export async function reindexProjectCommuteAction(projectId: string) {
@@ -311,19 +312,19 @@ export async function reindexProjectCommuteAction(projectId: string) {
   const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
-  const { reindexProjectCommute } = await import("@/lib/commute-reindex");
-  const result = await reindexProjectCommute(projectId);
+  const { startProjectReindexJob } = await import("@/lib/project-reindex-jobs");
+  const base = `/project/${projectId}?tab=settings`;
+  try {
+    await startProjectReindexJob(projectId, "commute");
+  } catch (err) {
+    if (err instanceof Error && err.message === "reindex_already_running") {
+      redirect(`${base}&reindex_error=already_running&reindex_kind=commute`);
+    }
+    throw err;
+  }
 
   revalidatePath(`/project/${projectId}`);
-  const base = `/project/${projectId}?tab=settings`;
-  const params = new URLSearchParams({
-    commute_apartments: String(result.apartmentsTotal),
-    commute_with_coords: String(result.apartmentsWithCoords),
-    commute_routes: String(result.routesComputed),
-    commute_skipped: String(result.routesSkipped),
-    commute_failed: String(result.routesFailed),
-  });
-  redirect(`${base}&${params.toString()}`);
+  redirect(`${base}&reindex_started=commute`);
 }
 
 export async function archiveApartmentAction(apartmentId: string, formData: FormData) {

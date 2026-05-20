@@ -66,15 +66,9 @@ export default async function ProjectPage({
     member_error?: string;
     settings_saved?: string;
     settings_error?: string;
-    reindex_processed?: string;
-    reindex_text?: string;
-    reindex_empty?: string;
-    reindex_missing?: string;
-    commute_apartments?: string;
-    commute_with_coords?: string;
-    commute_routes?: string;
-    commute_skipped?: string;
-    commute_failed?: string;
+    reindex_started?: string;
+    reindex_error?: string;
+    reindex_kind?: string;
     areas_saved?: string;
     areas_error?: string;
     districts_saved?: string;
@@ -213,28 +207,14 @@ export default async function ProjectPage({
       ? `${resolvedSearchParams.member_removed} wurde aus dem Projekt entfernt.`
       : undefined;
 
-  const reindexProcessed = resolvedSearchParams.reindex_processed;
-  const reindexResult =
-    reindexProcessed != null
-      ? {
-          processed: parseInt(reindexProcessed, 10) || 0,
-          withText: parseInt(resolvedSearchParams.reindex_text ?? "0", 10) || 0,
-          withoutText: parseInt(resolvedSearchParams.reindex_empty ?? "0", 10) || 0,
-          missingFile: parseInt(resolvedSearchParams.reindex_missing ?? "0", 10) || 0,
-        }
+  const reindexStartedKind =
+    resolvedSearchParams.reindex_started === "documents" ||
+    resolvedSearchParams.reindex_started === "commute"
+      ? resolvedSearchParams.reindex_started
       : undefined;
-
-  const commuteRoutes = resolvedSearchParams.commute_routes;
-  const commuteReindexResult =
-    commuteRoutes != null
-      ? {
-          apartmentsTotal: parseInt(resolvedSearchParams.commute_apartments ?? "0", 10) || 0,
-          apartmentsWithCoords:
-            parseInt(resolvedSearchParams.commute_with_coords ?? "0", 10) || 0,
-          routesComputed: parseInt(commuteRoutes, 10) || 0,
-          routesSkipped: parseInt(resolvedSearchParams.commute_skipped ?? "0", 10) || 0,
-          routesFailed: parseInt(resolvedSearchParams.commute_failed ?? "0", 10) || 0,
-        }
+  const reindexError =
+    resolvedSearchParams.reindex_error === "already_running"
+      ? resolvedSearchParams.reindex_error
       : undefined;
 
   const archiveReasonStats =
@@ -465,8 +445,8 @@ export default async function ProjectPage({
             dealbreakerThreshold={dealbreakerThreshold}
             saved={resolvedSearchParams.settings_saved === "1"}
             error={resolvedSearchParams.settings_error}
-            reindexResult={reindexResult}
-            commuteReindexResult={commuteReindexResult}
+            reindexStartedKind={reindexStartedKind}
+            reindexError={reindexError}
           />
         )}
 
