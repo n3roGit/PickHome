@@ -59,7 +59,7 @@ export function CriteriaEditor({
         <input
           name="name"
           placeholder="Name der neuen Kriteriengruppe"
-          className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 flex-1"
           disabled={pending}
         />
         <button
@@ -96,7 +96,7 @@ export function CriteriaEditor({
             </div>
 
             <form
-              className="flex-1 flex flex-wrap items-center gap-2 min-w-[200px]"
+              className="flex-1 flex flex-wrap items-center gap-2 min-w-0 w-full sm:min-w-[200px]"
               onSubmit={(e) => {
                 e.preventDefault();
                 const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
@@ -108,7 +108,7 @@ export function CriteriaEditor({
                 name="name"
                 defaultValue={g.name}
                 key={`${g.id}-${g.name}`}
-                className="font-semibold border border-pn-border rounded-lg px-3 py-1.5 text-sm flex-1 min-w-[160px]"
+                className="font-semibold border border-pn-border rounded-lg px-3 py-1.5 text-sm flex-1 min-w-0 w-full sm:min-w-[160px]"
                 disabled={pending}
               />
               <button
@@ -142,8 +142,8 @@ export function CriteriaEditor({
 
           <ul className="space-y-3">
             {g.criteria.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center gap-3 text-sm">
-                <span className="flex-1 min-w-[140px] font-medium">{c.name}</span>
+              <li key={c.id} className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
+                <span className="w-full sm:flex-1 sm:min-w-[140px] font-medium">{c.name}</span>
                 <span className="text-pn-text-tertiary">Gewicht:</span>
                 {[1, 2, 3, 4, 5].map((w) => (
                   <button
@@ -182,7 +182,7 @@ export function CriteriaEditor({
             ))}
           </ul>
           <form
-            className="mt-3 flex gap-2"
+            className="mt-3 flex flex-wrap gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);

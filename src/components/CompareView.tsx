@@ -39,7 +39,8 @@ function CompareNumbersTable({
   return (
     <section>
       <h2 className="text-lg font-semibold mb-3">Zahlen im Vergleich</h2>
-      <div className="overflow-x-auto">
+      <p className="text-xs text-pn-text-tertiary mb-2 sm:hidden">Tabelle horizontal wischen</p>
+      <div className="pn-scroll-x">
         <table className="w-full text-sm border border-pn-border rounded-xl overflow-hidden min-w-[480px]">
           <thead className="bg-pn-bg-subtle">
             <tr>
@@ -144,8 +145,8 @@ export function CompareView({
 
       <section>
         <h2 className="text-lg font-semibold mb-3">Gesamtscore</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border border-pn-border rounded-xl overflow-hidden">
+        <div className="pn-scroll-x">
+          <table className="w-full text-sm border border-pn-border rounded-xl overflow-hidden min-w-[320px]">
             <thead className="bg-pn-bg-subtle">
               <tr>
                 <th className="text-left p-3">Immobilie</th>
@@ -201,7 +202,8 @@ export function CompareView({
 
       <section>
         <h2 className="text-lg font-semibold mb-3">Kriterien im Detail</h2>
-        <div className="overflow-x-auto">
+        <p className="text-xs text-pn-text-tertiary mb-2 sm:hidden">Tabelle horizontal wischen</p>
+        <div className="pn-scroll-x">
           <table className="w-full text-sm border border-pn-border rounded-xl overflow-hidden min-w-[640px]">
             <thead className="bg-pn-bg-subtle">
               <tr>

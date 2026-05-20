@@ -2,11 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  @apply overflow-x-hidden;
+}
+
 body {
-  @apply bg-pn-bg-base text-pn-text-primary antialiased;
+  @apply bg-pn-bg-base text-pn-text-primary antialiased overflow-x-hidden min-w-0;
 }
 
 @layer components {
+  .pn-scroll-x {
+    @apply -mx-4 px-4 overflow-x-auto overscroll-x-contain;
+  }
+
+  .pn-tabs {
+    @apply flex gap-1 sm:gap-2 border-b border-pn-border min-w-max pb-px;
+  }
+
   .rating-range {
     @apply w-full h-10 cursor-grab active:cursor-grabbing touch-none;
     -webkit-appearance: none;

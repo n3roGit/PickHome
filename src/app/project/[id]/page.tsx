@@ -152,10 +152,10 @@ export default async function ProjectPage({
   return (
     <>
       <Nav userName={user.name} />
-      <main className="max-w-6xl mx-auto px-4 py-8 flex-1">
+      <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold">{project.name}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold break-words">{project.name}</h1>
             {project.budget != null && (
               <p className="text-sm text-pn-text-secondary mt-1">Budget: {formatPrice(project.budget)}</p>
             )}
@@ -165,7 +165,8 @@ export default async function ProjectPage({
           </div>
         </div>
 
-        <div className="flex gap-2 border-b border-pn-border mb-6">
+        <div className="pn-scroll-x mb-6">
+          <div className="pn-tabs">
           <TabLink href={`/project/${project.id}`} active={tab === "apartments"}>
             Immobilien ({activeCount})
           </TabLink>
@@ -190,21 +191,22 @@ export default async function ProjectPage({
           <TabLink href={`/project/${project.id}?tab=calendar`} active={tab === "calendar"}>
             Kalender
           </TabLink>
+          </div>
         </div>
 
         {(tab === "apartments" || tab === "archived") && (
           <>
             {tab === "apartments" && (
-            <form action={createApartmentAction.bind(null, project.id)} className="flex flex-wrap gap-2 mb-6 items-center">
-              <input name="title" placeholder="Titel / Adresse" required className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]" />
-              <input name="price" placeholder="Preis €" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-28" />
-              <input name="address" placeholder="Adresse" className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[160px]" />
-              <input name="listingUrl" placeholder="Inserat-URL" type="url" className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[180px]" />
-              <label className="flex items-center gap-1.5 text-sm text-pn-text-secondary whitespace-nowrap">
+            <form action={createApartmentAction.bind(null, project.id)} className="flex flex-wrap gap-2 mb-6 items-stretch sm:items-center">
+              <input name="title" placeholder="Titel / Adresse" required className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[200px]" />
+              <input name="price" placeholder="Preis €" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-28 min-w-0" />
+              <input name="address" placeholder="Adresse" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[160px]" />
+              <input name="listingUrl" placeholder="Inserat-URL" type="url" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[180px]" />
+              <label className="flex items-center gap-1.5 text-sm text-pn-text-secondary w-full sm:w-auto">
                 <input type="checkbox" name="brokerInvolved" className="rounded border-pn-border" />
                 Makler
               </label>
-              <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm">
+              <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm w-full sm:w-auto">
                 Immobilie hinzufügen
               </button>
             </form>
@@ -230,9 +232,9 @@ export default async function ProjectPage({
               {visibleApartments.map((a) => (
                 <li
                   key={a.id}
-                  className="flex flex-wrap items-center justify-between gap-4 bg-pn-bg-surface border border-pn-border rounded-xl p-4"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-pn-bg-surface border border-pn-border rounded-xl p-4"
                 >
-                  <div className="flex gap-3 min-w-0">
+                  <div className="flex gap-3 min-w-0 flex-1">
                     {a.photos[0] && (
                       <Image
                         src={a.photos[0].url}
@@ -295,13 +297,15 @@ export default async function ProjectPage({
                       })()}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 min-w-[140px]">
+                  <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto sm:min-w-[140px] shrink-0">
+                    <div className="flex flex-wrap justify-start sm:justify-end gap-2">
                     <ScoreBadge
                       score={a.score}
                       displayScore={a.displayScore}
                       dealbreaker={a.dealbreaker}
                     />
-                    <RatingProgressBar rated={a.rated} total={a.total} />
+                    </div>
+                    <RatingProgressBar rated={a.rated} total={a.total} className="w-full" />
                     {pricePerPoint(a.price, a.displayScore) && (
                       <span className="text-xs text-pn-text-tertiary">
                         {pricePerPoint(a.price, a.displayScore)}/Pkt
@@ -421,7 +425,7 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
   return (
     <Link
       href={href}
-      className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+      className={`px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap shrink-0 ${
         active ? "border-pn-accent text-pn-accent" : "border-transparent text-pn-text-secondary hover:text-pn-text-primary"
       }`}
     >

@@ -40,7 +40,7 @@ export default async function AdminPage({
   return (
     <>
       <Nav userName={admin.name} isAdmin />
-      <main className="max-w-4xl mx-auto px-4 py-8 flex-1 w-full">
+      <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 w-full min-w-0">
         <h1 className="text-2xl font-bold mb-2">Benutzerverwaltung</h1>
         <p className="text-pn-text-secondary text-sm mb-8">
           Benutzer anlegen — diese können sich mit Benutzername und Passwort anmelden und Projekte erstellen.

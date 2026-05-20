@@ -41,11 +41,11 @@ export function ApartmentProjectSearch({
           name="q"
           defaultValue={query}
           placeholder="Volltext: Notizen, Baujahr, Adresse, Kriterien …"
-          className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[220px]"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 flex-1"
         />
         <button
           type="submit"
-          className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm"
+          className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm w-full sm:w-auto"
         >
           Suchen
         </button>

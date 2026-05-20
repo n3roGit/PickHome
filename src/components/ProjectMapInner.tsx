@@ -22,7 +22,7 @@ export default function ProjectMapInner({
   const center = apartments[0];
 
   return (
-    <div className="h-[480px] w-full rounded-xl overflow-hidden border border-pn-border z-0">
+    <div className="h-[min(50vh,480px)] min-h-[280px] sm:h-[480px] w-full rounded-xl overflow-hidden border border-pn-border z-0">
       <MapContainer
         center={[center.latitude, center.longitude]}
         zoom={11}

@@ -78,6 +78,7 @@ export default async function ApartmentPage({
   });
   const travelMode = parseTravelMode(profile.travelMode);
   const commuteLegs = await computeCommuteLegs({
+    apartmentId: apartment.id,
     apartment:
       apartment.latitude != null && apartment.longitude != null
         ? { latitude: apartment.latitude, longitude: apartment.longitude }
@@ -115,7 +116,7 @@ export default async function ApartmentPage({
   return (
     <>
       <Nav userName={user.name} />
-      <main className="max-w-4xl mx-auto px-4 py-8 flex-1">
+      <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
         <Link
           href={archived ? `/project/${project.id}?tab=archived` : `/project/${project.id}`}
           className="text-sm text-pn-accent hover:underline mb-4 inline-block"
@@ -124,7 +125,7 @@ export default async function ApartmentPage({
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold">{apartment.title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold break-words">{apartment.title}</h1>
             {archived && (
               <span className="inline-block mt-1 text-xs font-medium text-pn-text-secondary bg-pn-bg-subtle px-2 py-0.5 rounded">
                 Archiviert
@@ -136,7 +137,7 @@ export default async function ApartmentPage({
               </a>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />
             <ApartmentDeleteButton apartmentId={apartment.id} />
             <ScoreBadge

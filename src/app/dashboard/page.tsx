@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   return (
     <>
       <Nav userName={user.name} />
-      <main className="max-w-6xl mx-auto px-4 py-8 flex-1">
+      <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold">Meine Projekte</h1>
@@ -58,19 +58,19 @@ export default async function DashboardPage() {
 
 function NewProjectForm() {
   return (
-    <form action={createProjectAction} className="flex flex-wrap gap-2 items-end">
+    <form action={createProjectAction} className="flex flex-wrap gap-2 items-stretch sm:items-end w-full sm:w-auto">
       <input
         name="name"
         placeholder="Projektname"
         required
-        className="border border-pn-border rounded-lg px-3 py-2 text-sm"
+        className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:w-auto flex-1"
       />
       <input
         name="budget"
         placeholder="Budget €"
-        className="border border-pn-border rounded-lg px-3 py-2 text-sm w-28"
+        className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-28 min-w-0"
       />
-      <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm">
+      <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm w-full sm:w-auto">
         Neues Projekt
       </button>
     </form>

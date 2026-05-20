@@ -19,6 +19,11 @@ import {
   saveApartmentDocument,
 } from "@/lib/apartment-media";
 import { extractPdfText } from "@/lib/pdf-text";
+import {
+  invalidateCommuteCacheForApartment,
+  invalidateCommuteCacheForUser,
+  invalidateCommuteCacheForUserAddress,
+} from "@/lib/commute-cache";
 import { geocodeAddress } from "@/lib/geocode";
 import { normalizeListingUrl } from "@/lib/listing-url";
 import { readPasswordPair } from "@/lib/password";
@@ -335,6 +340,7 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
       longitude: geocoded.longitude,
     },
   });
+  await invalidateCommuteCacheForApartment(apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   revalidatePath(`/project/${apt.projectId}`);
   redirect(`${base}?basics_saved=1`);
@@ -749,6 +755,7 @@ export async function updateTravelModeAction(formData: FormData) {
     where: { id: user.id },
     data: { travelMode },
   });
+  await invalidateCommuteCacheForUser(user.id);
   revalidatePath("/account/settings");
   redirect("/account/settings?commute_saved=1");
 }
@@ -814,6 +821,7 @@ export async function updateUserAddressAction(addressId: string, formData: FormD
       longitude: geocoded.longitude,
     },
   });
+  await invalidateCommuteCacheForUserAddress(addressId);
   revalidatePath("/account/settings");
   redirect("/account/settings?address_saved=1");
 }

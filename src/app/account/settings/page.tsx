@@ -71,7 +71,7 @@ export default async function SettingsPage({
   return (
     <>
       <Nav userName={user.name} isAdmin={isAdmin(user)} />
-      <main className="max-w-xl mx-auto px-4 py-8 flex-1 w-full">
+      <main className="max-w-xl mx-auto px-4 py-6 sm:py-8 flex-1 w-full min-w-0">
         <Link
           href={isAdmin(user) ? "/admin" : "/dashboard"}
           className="text-sm text-pn-accent hover:underline"

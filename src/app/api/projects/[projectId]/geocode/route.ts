@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { invalidateCommuteCacheForApartment } from "@/lib/commute-cache";
 import { geocodeAddress } from "@/lib/geocode";
 import { prisma } from "@/lib/prisma";
 
@@ -40,6 +41,7 @@ export async function POST(
       where: { id: apt.id },
       data: { latitude: coords.latitude, longitude: coords.longitude },
     });
+    await invalidateCommuteCacheForApartment(apt.id);
     apt.latitude = coords.latitude;
     apt.longitude = coords.longitude;
     await new Promise((r) => setTimeout(r, 1100));

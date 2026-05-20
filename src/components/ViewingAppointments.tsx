@@ -51,7 +51,7 @@ export function ViewingAppointments({
         }}
         className="flex flex-wrap gap-2 mb-6 p-4 bg-pn-bg-surface border border-pn-border rounded-xl"
       >
-        <label className="flex flex-col text-sm min-w-[200px] flex-1">
+        <label className="flex flex-col text-sm w-full min-w-0 sm:min-w-[200px] sm:flex-1">
           <span className="text-pn-text-secondary mb-1">Datum & Uhrzeit</span>
           <input
             type="datetime-local"
@@ -62,7 +62,7 @@ export function ViewingAppointments({
             className="border border-pn-border rounded-lg px-3 py-2"
           />
         </label>
-        <label className="flex flex-col text-sm min-w-[200px] flex-[2]">
+        <label className="flex flex-col text-sm w-full min-w-0 sm:min-w-[200px] sm:flex-[2]">
           <span className="text-pn-text-secondary mb-1">Notiz (optional)</span>
           <input
             type="text"
@@ -72,15 +72,13 @@ export function ViewingAppointments({
             className="border border-pn-border rounded-lg px-3 py-2"
           />
         </label>
-        <div className="flex items-end">
-          <button
-            type="submit"
-            disabled={pending}
-            className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm disabled:opacity-50"
-          >
-            Termin hinzufügen
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={pending}
+          className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm disabled:opacity-50 w-full sm:w-auto"
+        >
+          Termin hinzufügen
+        </button>
       </form>
 
       {upcoming.length > 0 && (
@@ -146,7 +144,7 @@ function ViewingList({
               action={(formData) => onUpdate(v.id, formData)}
               className="flex flex-wrap gap-2 items-end"
             >
-              <label className="flex flex-col text-sm min-w-[190px] flex-1">
+              <label className="flex flex-col text-sm w-full min-w-0 sm:min-w-[190px] sm:flex-1">
                 <span className="text-pn-text-secondary mb-1">Datum & Uhrzeit</span>
                 <input
                   type="datetime-local"
@@ -157,7 +155,7 @@ function ViewingList({
                   className="border border-pn-border rounded-lg px-3 py-2"
                 />
               </label>
-              <label className="flex flex-col text-sm min-w-[190px] flex-[2]">
+              <label className="flex flex-col text-sm w-full min-w-0 sm:min-w-[190px] sm:flex-[2]">
                 <span className="text-pn-text-secondary mb-1">Notiz</span>
                 <input
                   type="text"
@@ -170,7 +168,7 @@ function ViewingList({
               <button
                 type="submit"
                 disabled={pending}
-                className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm disabled:opacity-50 w-full sm:w-auto"
               >
                 Speichern
               </button>
@@ -178,7 +176,7 @@ function ViewingList({
                 type="button"
                 disabled={pending}
                 onClick={() => onDelete(v.id)}
-                className="border border-pn-border px-4 py-2 rounded-lg text-sm text-pn-text-secondary hover:text-pn-score-low disabled:opacity-50"
+                className="border border-pn-border px-4 py-2 rounded-lg text-sm text-pn-text-secondary hover:text-pn-score-low disabled:opacity-50 w-full sm:w-auto"
               >
                 Löschen
               </button>

@@ -32,7 +32,8 @@ model UserAddress {
   longitude Float?
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commuteCaches CommuteCache[]
 
   @@index([userId])
 }
@@ -120,7 +121,21 @@ model Apartment {
   ratings     Rating[]
   photos      ApartmentPhoto[]
   documents   ApartmentDocument[]
-  viewings    ViewingAppointment[]
+  viewings      ViewingAppointment[]
+  commuteCaches CommuteCache[]
+}
+
+model CommuteCache {
+  apartmentId       String
+  userAddressId     String
+  travelMode        String
+  distanceMeters    Int
+  durationSeconds   Int
+  computedAt        DateTime    @default(now())
+  apartment         Apartment   @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  userAddress       UserAddress @relation(fields: [userAddressId], references: [id], onDelete: Cascade)
+
+  @@id([apartmentId, userAddressId, travelMode])
 }
 
 model ApartmentDocument {
