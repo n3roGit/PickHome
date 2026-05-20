@@ -41,10 +41,6 @@ export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   },
 });
 
-if (process.env.NODE_ENV !== "production") {
-  getPrismaClient();
-}
-
 /** Disconnect and drop the singleton so the next access opens a fresh DB (tests only). */
 export async function resetPrismaForTests(): Promise<void> {
   if (globalForPrisma.prisma) {

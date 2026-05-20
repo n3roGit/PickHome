@@ -6,16 +6,9 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { ROLE_USER } from "@/lib/auth";
 import { DEFAULT_CRITERIA_GROUPS } from "@/lib/defaults";
-import { resetPrismaForTests } from "@/lib/prisma";
+import { getTestDatabaseUrl, getTestDbPath } from "./test-db-path";
 
-/** One SQLite file per Vitest fork (process.pid is unique across parallel test files). */
-export function getTestDbPath(): string {
-  return join(process.cwd(), "data", `test-${process.pid}.db`);
-}
-
-export function getTestDatabaseUrl(): string {
-  return `file:${getTestDbPath().replace(/\\/g, "/")}`;
-}
+export { getTestDatabaseUrl, getTestDbPath };
 
 export function createTestPrisma() {
   return new PrismaClient({
@@ -27,6 +20,7 @@ export async function resetTestDatabase() {
   const testDbPath = getTestDbPath();
   const testDatabaseUrl = getTestDatabaseUrl();
   mkdirSync(join(process.cwd(), "data"), { recursive: true });
+  const { resetPrismaForTests } = await import("@/lib/prisma");
   await resetPrismaForTests();
   if (existsSync(testDbPath)) {
     unlinkSync(testDbPath);
