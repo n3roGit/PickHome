@@ -1,13 +1,23 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 const RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
+const PRISMA_PUSH_ARGS = "db push --skip-generate --accept-data-loss";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function appVersion() {
+  try {
+    const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"));
+    return pkg.version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
 }
 
 function resolveDbFilePath() {
@@ -24,18 +34,15 @@ function resolveDbFilePath() {
   return join(process.cwd(), "prisma", pathPart);
 }
 
-function spawnCommand(command, args) {
-  return spawnSync(command, args, {
+function runShell(command) {
+  console.log(`[pickhome] > ${command}`);
+  const result = spawnSync(command, {
     stdio: "inherit",
     env: process.env,
-    shell: process.platform === "win32",
+    shell: true,
   });
-}
-
-function run(command, args) {
-  const result = spawnCommand(command, args);
   if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} failed with exit code ${result.status ?? "unknown"}`);
+    throw new Error(`Command failed (${result.status ?? "unknown"}): ${command}`);
   }
 }
 
@@ -47,15 +54,14 @@ async function ensureDataDirs() {
 }
 
 async function pushSchemaWithRetry() {
+  const command = `npx prisma ${PRISMA_PUSH_ARGS}`;
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
     console.log(`[pickhome] Applying database schema (attempt ${attempt}/${RETRIES})...`);
-    const result = spawnCommand("npx", [
-      "prisma",
-      "db",
-      "push",
-      "--skip-generate",
-      "--accept-data-loss",
-    ]);
+    const result = spawnSync(command, {
+      stdio: "inherit",
+      env: process.env,
+      shell: true,
+    });
     if (result.status === 0) {
       console.log("[pickhome] Database schema is up to date.");
       return;
@@ -69,6 +75,8 @@ async function pushSchemaWithRetry() {
 }
 
 async function main() {
+  console.log(`[pickhome] db-autoupdate v${appVersion()} (${PRISMA_PUSH_ARGS})`);
+
   await ensureDataDirs();
 
   const dbPath = resolveDbFilePath();
@@ -82,11 +90,11 @@ async function main() {
   await pushSchemaWithRetry();
 
   console.log("[pickhome] Backfilling sizeSqm from descriptions (if needed)...");
-  run("npx", ["tsx", "scripts/backfill-size-sqm.mjs"]);
+  runShell("npx tsx scripts/backfill-size-sqm.mjs");
 
   if (isNewDatabase) {
     console.log("[pickhome] Seeding initial admin user...");
-    run("npx", ["tsx", "prisma/seed.ts"]);
+    runShell("npx tsx prisma/seed.ts");
   }
 }
 

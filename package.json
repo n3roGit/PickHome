@@ -11,6 +11,7 @@
     "prestart": "node scripts/db-autoupdate.mjs",
     "start": "next start",
     "db:push": "prisma db push",
+    "db:push:deploy": "prisma db push --skip-generate --accept-data-loss",
     "db:autoupdate": "node scripts/db-autoupdate.mjs",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && npm run db:seed",
