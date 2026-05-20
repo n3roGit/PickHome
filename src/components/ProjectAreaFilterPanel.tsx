@@ -415,15 +415,22 @@ export function ProjectAreaFilterPanel({
                             <button
                               type="button"
                               disabled={pending}
-                              onClick={() =>
+                              onClick={() => {
+                                if (
+                                  !window.confirm(
+                                    `„${district}" (${plz}) wirklich aus dem Wunschgebiet entfernen?`
+                                  )
+                                ) {
+                                  return;
+                                }
                                 run(async () => {
                                   await deleteProjectAreaDistrictAction(
                                     projectId,
                                     plz,
                                     district
                                   );
-                                })
-                              }
+                                });
+                              }}
                               className="text-pn-text-tertiary hover:text-pn-score-low"
                               aria-label={`${district} entfernen`}
                             >

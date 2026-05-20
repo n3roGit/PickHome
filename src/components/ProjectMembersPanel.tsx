@@ -1,7 +1,10 @@
+"use client";
+
 import {
   addProjectMemberAction,
   removeProjectMemberAction,
 } from "@/app/actions";
+import { ConfirmActionButton } from "@/components/ConfirmActionButton";
 
 type Member = {
   userId: string;
@@ -55,15 +58,23 @@ export function ProjectMembersPanel({
                 </p>
               </div>
               {sorted.length > 1 && (
-                <form action={removeProjectMemberAction.bind(null, projectId, m.userId)}>
-                  <button
-                    type="submit"
-                    className="text-sm text-pn-score-low hover:underline"
-                    title={m.userId === currentUserId ? "Dich aus dem Projekt entfernen" : "Aus Projekt entfernen"}
-                  >
-                    {m.userId === currentUserId ? "Verlassen" : "Entfernen"}
-                  </button>
-                </form>
+                <ConfirmActionButton
+                  confirmMessage={
+                    m.userId === currentUserId
+                      ? "Möchtest du dieses Projekt wirklich verlassen?"
+                      : `„${m.user.name}" wirklich aus dem Projekt entfernen?`
+                  }
+                  action={() => removeProjectMemberAction(projectId, m.userId)}
+                  className="text-sm text-pn-score-low hover:underline disabled:opacity-50"
+                  pendingLabel="…"
+                  title={
+                    m.userId === currentUserId
+                      ? "Dich aus dem Projekt entfernen"
+                      : "Aus Projekt entfernen"
+                  }
+                >
+                  {m.userId === currentUserId ? "Verlassen" : "Entfernen"}
+                </ConfirmActionButton>
               )}
             </li>
           ))}

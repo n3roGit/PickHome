@@ -32,7 +32,8 @@ export function ViewingAppointments({
     new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0)
   );
 
-  function onDelete(id: string) {
+  function onDelete(id: string, date: Date) {
+    if (!window.confirm(`Besichtigung am ${formatDateTimeDe(date)} wirklich löschen?`)) return;
     startTransition(() => deleteViewingAction(id));
   }
 
@@ -122,7 +123,7 @@ function ViewingList({
   title: string;
   items: { id: string; date: Date; note: string | null }[];
   pending: boolean;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, date: Date) => void;
   onUpdate: (id: string, formData: FormData) => void;
   variant: "upcoming" | "past";
 }) {
@@ -178,7 +179,7 @@ function ViewingList({
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => onDelete(v.id)}
+                onClick={() => onDelete(v.id, v.date)}
                 className="border border-pn-border px-4 py-2 rounded-lg text-sm text-pn-text-secondary hover:text-pn-score-low disabled:opacity-50 w-full sm:w-auto"
               >
                 Löschen

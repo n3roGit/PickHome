@@ -5,6 +5,7 @@ import {
   deleteApartmentDocumentAction,
   uploadApartmentDocumentAction,
 } from "@/app/actions";
+import { ConfirmActionButton } from "@/components/ConfirmActionButton";
 import { FileDropzone } from "@/components/FileDropzone";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { MAX_DOCUMENT_BYTES, MAX_DOCUMENT_MB } from "@/lib/upload-limits";
@@ -59,14 +60,15 @@ export function ApartmentDocuments({
               >
                 {d.fileName}
               </a>
-              <button
-                type="button"
+              <ConfirmActionButton
+                confirmMessage={`„${d.fileName}" wirklich entfernen?`}
+                action={() => deleteApartmentDocumentAction(d.id)}
                 disabled={pending}
-                onClick={() => startTransition(() => deleteApartmentDocumentAction(d.id))}
-                className="text-xs text-pn-score-low hover:underline shrink-0"
+                className="text-xs text-pn-score-low hover:underline shrink-0 disabled:opacity-50"
+                pendingLabel="…"
               >
                 Entfernen
-              </button>
+              </ConfirmActionButton>
             </li>
           ))}
         </ul>

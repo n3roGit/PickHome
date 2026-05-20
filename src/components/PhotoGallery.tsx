@@ -205,6 +205,7 @@ export function PhotoGallery({
                 type="button"
                 disabled={deletePending}
                 onClick={() => {
+                  if (!window.confirm("Dieses Bild wirklich entfernen?")) return;
                   onDelete(current.id);
                   if (photos.length <= 1) close();
                   else if (index >= photos.length - 1) setIndex(photos.length - 2);

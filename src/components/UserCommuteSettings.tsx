@@ -4,6 +4,7 @@ import {
   updateTravelModeAction,
   updateUserAddressAction,
 } from "@/app/actions";
+import { ConfirmActionButton } from "@/components/ConfirmActionButton";
 import { TravelModeForm } from "@/components/TravelModeForm";
 import type { TransitFallbackMode } from "@/lib/transit-settings";
 import { travelModeLabel, type TravelMode } from "@/lib/travel-mode";
@@ -168,11 +169,14 @@ export function UserCommuteSettings({
                 Aktualisieren
               </button>
             </form>
-            <form action={deleteUserAddressAction.bind(null, addr.id)}>
-              <button type="submit" className="text-sm text-pn-score-low hover:underline">
-                Löschen
-              </button>
-            </form>
+            <ConfirmActionButton
+              confirmMessage={`Adresse „${addr.label}" wirklich löschen?`}
+              action={() => deleteUserAddressAction(addr.id)}
+              className="text-sm text-pn-score-low hover:underline disabled:opacity-50"
+              pendingLabel="Löscht…"
+            >
+              Löschen
+            </ConfirmActionButton>
           </div>
         ))}
 
