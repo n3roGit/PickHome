@@ -202,7 +202,7 @@ export async function updateProjectAreaFilterAction(
   redirect(`${base}&areas_saved=1`);
 }
 
-function catalogRedirect(projectId: string, params: Record<string, string>) {
+function catalogRedirect(projectId: string, params: Record<string, string>): never {
   revalidatePath(`/project/${projectId}`);
   const query = new URLSearchParams({ tab: "map", ...params });
   redirect(`/project/${projectId}?${query.toString()}`);
