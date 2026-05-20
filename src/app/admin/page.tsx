@@ -1,5 +1,6 @@
 import { createUserAction, deleteUserAction, resetUserPasswordAction } from "@/app/actions";
 import { AdminBackupPanel } from "@/components/AdminBackupPanel";
+import { AdminScheduledBackupPanel } from "@/components/AdminScheduledBackupPanel";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { requireAdmin, isAdmin } from "@/lib/auth";
@@ -60,6 +61,7 @@ export default async function AdminPage({
           </p>
         )}
 
+        <AdminScheduledBackupPanel />
         <AdminBackupPanel />
 
         <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-8">

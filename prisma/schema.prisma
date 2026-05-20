@@ -204,3 +204,14 @@ model Rating {
 
   @@unique([apartmentId, criterionId, userId])
 }
+
+model BackupJobSettings {
+  id          String    @id @default("default")
+  enabled     Boolean   @default(false)
+  hour        Int       @default(4)
+  minute      Int       @default(0)
+  retainCount Int       @default(7)
+  directory   String    @default("")
+  lastRunAt   DateTime?
+  updatedAt   DateTime  @updatedAt
+}
