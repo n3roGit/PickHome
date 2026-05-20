@@ -13,7 +13,7 @@ export function Nav({
   isAdmin?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const home = isAdmin ? "/admin" : userName ? "/dashboard" : "/login";
+  const home = userName ? "/dashboard" : "/login";
 
   const linkClass =
     "block md:inline text-sm text-pn-text-secondary hover:text-pn-text-primary py-2 md:py-0";
@@ -58,15 +58,14 @@ export function Nav({
                 menuOpen ? "flex" : "hidden"
               } md:flex absolute md:static top-full left-0 right-0 md:top-auto flex-col md:flex-row md:items-center gap-0 md:gap-6 bg-pn-bg-surface border-b md:border-0 border-pn-border px-4 py-2 md:p-0 shadow-sm md:shadow-none`}
             >
+              <Link href="/dashboard" className={linkClass} onClick={() => setMenuOpen(false)}>
+                Projekte
+              </Link>
               {isAdmin ? (
                 <Link href="/admin" className={linkClass} onClick={() => setMenuOpen(false)}>
                   Verwaltung
                 </Link>
-              ) : (
-                <Link href="/dashboard" className={linkClass} onClick={() => setMenuOpen(false)}>
-                  Projekte
-                </Link>
-              )}
+              ) : null}
               <Link
                 href="/account/settings"
                 className={linkClass}

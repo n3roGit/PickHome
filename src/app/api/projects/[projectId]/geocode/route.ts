@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { projectAccessWhere } from "@/lib/project-access";
 import { invalidateCommuteCacheForApartment } from "@/lib/commute-cache";
 import { geocodeAddress } from "@/lib/geocode";
 import { prisma } from "@/lib/prisma";
@@ -15,10 +16,7 @@ export async function POST(
   }
 
   const project = await prisma.project.findFirst({
-    where: {
-      id: resolvedParams.projectId,
-      members: { some: { userId: user.id } },
-    },
+    where: projectAccessWhere(resolvedParams.projectId, user),
     include: {
       apartments: {
         where: { archivedAt: null },

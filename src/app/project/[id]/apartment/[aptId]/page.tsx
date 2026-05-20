@@ -48,12 +48,12 @@ export default async function ApartmentPage({
   const resolvedSearchParams = await searchParams;
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (isAdmin(user)) redirect("/admin");
+  const admin = isAdmin(user);
 
-  const project = await getProjectMetaForUser(resolvedParams.id, user.id);
+  const project = await getProjectMetaForUser(resolvedParams.id, user);
   if (!project) redirect("/dashboard");
 
-  const apartment = await getApartmentForUser(resolvedParams.id, resolvedParams.aptId, user.id);
+  const apartment = await getApartmentForUser(resolvedParams.id, resolvedParams.aptId, user);
   if (!apartment) redirect(`/project/${project.id}`);
 
   const criteria = flattenCriteria(project.groups);
@@ -123,7 +123,7 @@ export default async function ApartmentPage({
 
   return (
     <>
-      <Nav userName={user.name} />
+      <Nav userName={user.name} isAdmin={admin} />
       <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
         <Link
           href={archived ? `/project/${project.id}?tab=archived` : `/project/${project.id}`}

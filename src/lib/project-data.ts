@@ -1,16 +1,20 @@
 import { prisma } from "./prisma";
 import type { CriterionInput } from "./scoring";
+import {
+  apartmentAccessWhere,
+  apartmentInProjectAccessWhere,
+  criterionGroupAccessWhere,
+  projectAccessWhere,
+  type ProjectAccessUser,
+} from "./project-access";
 
 export { apartmentScore } from "./scoring";
-
 export type { CriterionInput } from "./scoring";
+export type { ProjectAccessUser } from "./project-access";
 
-export async function getProjectMetaForUser(projectId: string, userId: string) {
+export async function getProjectMetaForUser(projectId: string, user: ProjectAccessUser) {
   return prisma.project.findFirst({
-    where: {
-      id: projectId,
-      members: { some: { userId } },
-    },
+    where: projectAccessWhere(projectId, user),
     include: {
       members: { include: { user: { select: { id: true, name: true, username: true } } } },
       groups: {
@@ -23,15 +27,12 @@ export async function getProjectMetaForUser(projectId: string, userId: string) {
 
 export async function getProjectForUser(
   projectId: string,
-  userId: string,
+  user: ProjectAccessUser,
   options?: { archived?: boolean }
 ) {
   const archived = options?.archived ?? false;
   return prisma.project.findFirst({
-    where: {
-      id: projectId,
-      members: { some: { userId } },
-    },
+    where: projectAccessWhere(projectId, user),
     include: {
       members: { include: { user: { select: { id: true, name: true, username: true } } } },
       groups: {
@@ -55,14 +56,10 @@ export async function getProjectForUser(
 export async function getApartmentForUser(
   projectId: string,
   apartmentId: string,
-  userId: string
+  user: ProjectAccessUser
 ) {
   return prisma.apartment.findFirst({
-    where: {
-      id: apartmentId,
-      projectId,
-      project: { members: { some: { userId } } },
-    },
+    where: apartmentInProjectAccessWhere(projectId, apartmentId, user),
     include: {
       ratings: true,
       photos: { orderBy: { sortOrder: "asc" } },
@@ -72,32 +69,27 @@ export async function getApartmentForUser(
   });
 }
 
-export async function assertProjectAccess(projectId: string, userId: string) {
+export async function assertProjectAccess(projectId: string, user: ProjectAccessUser) {
   return prisma.project.findFirst({
-    where: { id: projectId, members: { some: { userId } } },
+    where: projectAccessWhere(projectId, user),
     select: { id: true },
   });
 }
 
-export async function assertCriterionGroupAccess(groupId: string, userId: string) {
+export async function assertCriterionGroupAccess(groupId: string, user: ProjectAccessUser) {
   return prisma.criterionGroup.findFirst({
-    where: {
-      id: groupId,
-      project: { members: { some: { userId } } },
-    },
+    where: criterionGroupAccessWhere(groupId, user),
     select: { id: true, projectId: true, sortOrder: true },
   });
 }
 
-export async function assertApartmentAccess(apartmentId: string, userId: string) {
+export async function assertApartmentAccess(apartmentId: string, user: ProjectAccessUser) {
   return prisma.apartment.findFirst({
-    where: {
-      id: apartmentId,
-      project: { members: { some: { userId } } },
-    },
+    where: apartmentAccessWhere(apartmentId, user),
     select: { id: true, projectId: true },
   });
 }
+
 export function flattenCriteria(
   groups: { criteria: CriterionInput[] }[]
 ): CriterionInput[] {

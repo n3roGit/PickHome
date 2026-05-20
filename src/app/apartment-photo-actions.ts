@@ -28,7 +28,7 @@ export async function uploadApartmentPhotoAction(
   formData: FormData
 ): Promise<UploadApartmentFileResult | void> {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) return;
 
   const file = formData.get("photo");
@@ -54,7 +54,7 @@ export async function deleteApartmentPhotoAction(photoId: string) {
     include: { apartment: { select: { id: true, projectId: true } } },
   });
   if (!photo) return;
-  const apt = await assertApartmentAccess(photo.apartmentId, user.id);
+  const apt = await assertApartmentAccess(photo.apartmentId, user);
   if (!apt) return;
 
   await deleteApartmentPhotoFile(photo.url);

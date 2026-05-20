@@ -4,16 +4,17 @@ import { createProjectAction } from "@/app/actions";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { getSessionUser, isAdmin } from "@/lib/auth";
+import { activeProjectsListWhere } from "@/lib/project-access";
 import { formatPrice } from "@/lib/scoring";
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (isAdmin(user)) redirect("/admin");
+  const admin = isAdmin(user);
 
   const projects = await prisma.project.findMany({
-    where: { members: { some: { userId: user.id } }, archivedAt: null },
+    where: activeProjectsListWhere(user),
     include: {
       _count: { select: { apartments: { where: { archivedAt: null } } } },
     },
@@ -22,12 +23,16 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <Nav userName={user.name} />
+      <Nav userName={user.name} isAdmin={admin} />
       <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold">Meine Projekte</h1>
-            <p className="text-pn-text-secondary">Jedes Projekt ist eine Immobiliensuche.</p>
+            <h1 className="text-2xl font-bold">{admin ? "Alle Projekte" : "Meine Projekte"}</h1>
+            <p className="text-pn-text-secondary">
+              {admin
+                ? "Alle Immobiliensuchen im System."
+                : "Jedes Projekt ist eine Immobiliensuche."}
+            </p>
           </div>
           <NewProjectForm />
         </div>

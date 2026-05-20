@@ -30,6 +30,10 @@ import { readPasswordPair } from "@/lib/password";
 import { getApartmentUploadsRoot } from "@/lib/pickhome-data";
 import { join } from "path";
 import {
+  apartmentAccessWhere,
+  projectAccessWhere,
+} from "@/lib/project-access";
+import {
   assertApartmentAccess,
   assertCriterionGroupAccess,
   assertProjectAccess,
@@ -54,10 +58,9 @@ export async function logoutAction() {
 
 export async function deleteProjectAction(projectId: string) {
   const user = await requireUser();
-  if (isAdmin(user)) redirect("/admin");
 
   const project = await prisma.project.findFirst({
-    where: { id: projectId, members: { some: { userId: user.id } } },
+    where: projectAccessWhere(projectId, user),
     include: { apartments: { select: { id: true } } },
   });
   if (!project) redirect("/dashboard");
@@ -80,7 +83,6 @@ export async function deleteProjectAction(projectId: string) {
 
 export async function createProjectAction(formData: FormData) {
   const user = await requireUser();
-  if (isAdmin(user)) redirect("/admin");
   const name = String(formData.get("name") ?? "").trim();
   const budgetRaw = String(formData.get("budget") ?? "").trim();
   if (!name) return;
@@ -99,7 +101,6 @@ export async function createProjectAction(formData: FormData) {
 
 export async function updateProjectAction(projectId: string, formData: FormData) {
   const user = await requireUser();
-  if (isAdmin(user)) redirect("/admin");
 
   const base = `/project/${projectId}?tab=settings`;
   const name = String(formData.get("name") ?? "").trim();
@@ -127,9 +128,7 @@ export async function updateProjectAction(projectId: string, formData: FormData)
     String(formData.get("dealbreakerThreshold") ?? "")
   );
 
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, members: { some: { userId: user.id } } },
-  });
+  const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
   await prisma.project.update({
@@ -154,9 +153,8 @@ export async function updateProjectAction(projectId: string, formData: FormData)
 
 export async function reindexProjectDocumentsAction(projectId: string) {
   const user = await requireUser();
-  if (isAdmin(user)) redirect("/admin");
 
-  const project = await assertProjectAccess(projectId, user.id);
+  const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
   const { reindexProjectPdfDocuments } = await import("@/lib/pdf-reindex");
@@ -175,9 +173,8 @@ export async function reindexProjectDocumentsAction(projectId: string) {
 
 export async function reindexProjectCommuteAction(projectId: string) {
   const user = await requireUser();
-  if (isAdmin(user)) redirect("/admin");
 
-  const project = await assertProjectAccess(projectId, user.id);
+  const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
   const { reindexProjectCommute } = await import("@/lib/commute-reindex");
@@ -198,10 +195,7 @@ export async function reindexProjectCommuteAction(projectId: string) {
 export async function archiveApartmentAction(apartmentId: string) {
   const user = await requireUser();
   const apt = await prisma.apartment.findFirst({
-    where: {
-      id: apartmentId,
-      project: { members: { some: { userId: user.id } } },
-    },
+    where: apartmentAccessWhere(apartmentId, user),
   });
   if (!apt) return;
   await prisma.apartment.update({
@@ -215,10 +209,7 @@ export async function archiveApartmentAction(apartmentId: string) {
 export async function unarchiveApartmentAction(apartmentId: string) {
   const user = await requireUser();
   const apt = await prisma.apartment.findFirst({
-    where: {
-      id: apartmentId,
-      project: { members: { some: { userId: user.id } } },
-    },
+    where: apartmentAccessWhere(apartmentId, user),
   });
   if (!apt) return;
   await prisma.apartment.update({
@@ -232,10 +223,7 @@ export async function unarchiveApartmentAction(apartmentId: string) {
 export async function deleteApartmentAction(apartmentId: string) {
   const user = await requireUser();
   const apt = await prisma.apartment.findFirst({
-    where: {
-      id: apartmentId,
-      project: { members: { some: { userId: user.id } } },
-    },
+    where: apartmentAccessWhere(apartmentId, user),
     select: { id: true, projectId: true, archivedAt: true },
   });
   if (!apt) redirect("/dashboard");
@@ -256,7 +244,7 @@ export async function deleteApartmentAction(apartmentId: string) {
 
 export async function createApartmentAction(projectId: string, formData: FormData) {
   const user = await requireUser();
-  const project = await assertProjectAccess(projectId, user.id);
+  const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
   const title = String(formData.get("title") ?? "").trim();
@@ -294,7 +282,7 @@ export async function createApartmentAction(projectId: string, formData: FormDat
 
 export async function updateApartmentBrokerAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) redirect("/dashboard");
 
   const brokerInvolved = formData.get("brokerInvolved") === "on";
@@ -308,7 +296,7 @@ export async function updateApartmentBrokerAction(apartmentId: string, formData:
 
 export async function updateApartmentListingUrlAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) redirect("/dashboard");
 
   const raw = String(formData.get("listingUrl") ?? "");
@@ -342,7 +330,7 @@ async function geocodeApartmentAddressFields(address: string) {
 
 export async function updateApartmentBasicsAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) redirect("/dashboard");
 
   const priceRaw = String(formData.get("price") ?? "").trim();
@@ -370,7 +358,7 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
 
 export async function updateApartmentNotesAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) redirect("/dashboard");
 
   const raw = String(formData.get("notes") ?? "");
@@ -387,7 +375,7 @@ export async function updateApartmentNotesAction(apartmentId: string, formData: 
 
 export async function updateApartmentDescriptionAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) redirect("/dashboard");
 
   const raw = String(formData.get("description") ?? "");
@@ -414,7 +402,7 @@ export async function uploadApartmentDocumentAction(
   formData: FormData
 ): Promise<UploadApartmentFileResult | void> {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) return;
 
   const file = formData.get("document");
@@ -450,7 +438,7 @@ export async function deleteApartmentDocumentAction(documentId: string) {
     include: { apartment: { select: { id: true, projectId: true } } },
   });
   if (!doc) return;
-  const apt = await assertApartmentAccess(doc.apartmentId, user.id);
+  const apt = await assertApartmentAccess(doc.apartmentId, user);
   if (!apt) return;
 
   await deleteApartmentPhotoFile(doc.url);
@@ -460,7 +448,7 @@ export async function deleteApartmentDocumentAction(documentId: string) {
 
 export async function addViewingAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) return;
 
   const scheduledRaw = String(formData.get("scheduledAt") ?? "").trim();
@@ -482,7 +470,7 @@ export async function updateViewingAction(viewingId: string, formData: FormData)
     include: { apartment: { select: { id: true, projectId: true } } },
   });
   if (!viewing) return;
-  const apt = await assertApartmentAccess(viewing.apartmentId, user.id);
+  const apt = await assertApartmentAccess(viewing.apartmentId, user);
   if (!apt) return;
 
   const scheduledRaw = String(formData.get("scheduledAt") ?? "").trim();
@@ -505,7 +493,7 @@ export async function deleteViewingAction(viewingId: string) {
     include: { apartment: { select: { id: true, projectId: true } } },
   });
   if (!viewing) return;
-  const apt = await assertApartmentAccess(viewing.apartmentId, user.id);
+  const apt = await assertApartmentAccess(viewing.apartmentId, user);
   if (!apt) return;
 
   await prisma.viewingAppointment.delete({ where: { id: viewingId } });
@@ -520,7 +508,7 @@ export async function saveRatingAction(
   note?: string | null
 ) {
   const user = await requireUser();
-  const apt = await assertApartmentAccess(apartmentId, user.id);
+  const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) return;
   if (!Number.isInteger(score) || score < 0 || score > 10) return;
 
@@ -555,7 +543,7 @@ export async function updateCriterionAction(
     include: { group: true },
   });
   if (!c) return;
-  const group = await assertCriterionGroupAccess(c.groupId, user.id);
+  const group = await assertCriterionGroupAccess(c.groupId, user);
   if (!group) return;
 
   const update: typeof data = {};
@@ -580,9 +568,7 @@ export async function addProjectMemberAction(projectId: string, formData: FormDa
   const base = `/project/${projectId}?tab=team`;
   if (!username) redirect(base);
 
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, members: { some: { userId: user.id } } },
-  });
+  const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
   const invitee = await prisma.user.findUnique({ where: { username } });
@@ -608,9 +594,7 @@ export async function removeProjectMemberAction(projectId: string, memberUserId:
   const user = await requireUser();
   const base = `/project/${projectId}?tab=team`;
 
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, members: { some: { userId: user.id } } },
-  });
+  const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
   const memberCount = await prisma.projectMember.count({ where: { projectId } });
@@ -637,7 +621,7 @@ export async function removeProjectMemberAction(projectId: string, memberUserId:
 
 export async function addCriterionAction(projectId: string, groupId: string, name: string) {
   const user = await requireUser();
-  const group = await assertCriterionGroupAccess(groupId, user.id);
+  const group = await assertCriterionGroupAccess(groupId, user);
   if (!group || !name.trim()) return;
   const max = await prisma.criterion.aggregate({
     where: { groupId },
@@ -651,7 +635,7 @@ export async function addCriterionAction(projectId: string, groupId: string, nam
 
 export async function createCriterionGroupAction(projectId: string, name: string) {
   const user = await requireUser();
-  const project = await assertProjectAccess(projectId, user.id);
+  const project = await assertProjectAccess(projectId, user);
   if (!project || !name.trim()) return;
   const max = await prisma.criterionGroup.aggregate({
     where: { projectId },
@@ -669,7 +653,7 @@ export async function createCriterionGroupAction(projectId: string, name: string
 
 export async function updateCriterionGroupAction(groupId: string, name: string) {
   const user = await requireUser();
-  const group = await assertCriterionGroupAccess(groupId, user.id);
+  const group = await assertCriterionGroupAccess(groupId, user);
   if (!group || !name.trim()) return;
   await prisma.criterionGroup.update({
     where: { id: groupId },
@@ -680,7 +664,7 @@ export async function updateCriterionGroupAction(groupId: string, name: string) 
 
 export async function deleteCriterionGroupAction(groupId: string) {
   const user = await requireUser();
-  const group = await assertCriterionGroupAccess(groupId, user.id);
+  const group = await assertCriterionGroupAccess(groupId, user);
   if (!group) return;
   await prisma.criterionGroup.delete({ where: { id: groupId } });
   revalidatePath(`/project/${group.projectId}`);
@@ -688,7 +672,7 @@ export async function deleteCriterionGroupAction(groupId: string) {
 
 export async function reorderCriterionGroupsAction(projectId: string, orderedIds: string[]) {
   const user = await requireUser();
-  const project = await assertProjectAccess(projectId, user.id);
+  const project = await assertProjectAccess(projectId, user);
   if (!project || orderedIds.length === 0) return;
 
   const existing = await prisma.criterionGroup.findMany({

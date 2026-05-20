@@ -16,6 +16,7 @@ import { CompareView } from "@/components/CompareView";
 import { ProjectMap } from "@/components/ProjectMap";
 import { ProjectCalendar } from "@/components/ProjectCalendar";
 import { getSessionUser, isAdmin } from "@/lib/auth";
+import { nestedProjectAccessFilter } from "@/lib/project-access";
 import {
   apartmentScore,
   flattenCriteria,
@@ -69,17 +70,17 @@ export default async function ProjectPage({
   const projectId = resolvedParams.id;
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (isAdmin(user)) redirect("/admin");
+  const admin = isAdmin(user);
 
   const tab = resolvedSearchParams.tab ?? "apartments";
   const isArchivedTab = tab === "archived";
 
-  const project = await getProjectForUser(projectId, user.id, { archived: isArchivedTab });
+  const project = await getProjectForUser(projectId, user, { archived: isArchivedTab });
   if (!project) redirect("/dashboard");
 
   const needsActiveList = tab === "compare" || tab === "map" || tab === "calendar";
   const activeProject = needsActiveList
-    ? await getProjectForUser(projectId, user.id, { archived: false })
+    ? await getProjectForUser(projectId, user, { archived: false })
     : null;
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -110,7 +111,7 @@ export default async function ProjectPage({
       }))
     ) ?? [];
 
-  const memberFilter = { project: { members: { some: { userId: user.id } } } };
+  const memberFilter = { project: nestedProjectAccessFilter(user) };
   const [activeCount, archivedCount] = await Promise.all([
     prisma.apartment.count({ where: { projectId, archivedAt: null, ...memberFilter } }),
     prisma.apartment.count({
@@ -169,7 +170,7 @@ export default async function ProjectPage({
 
   return (
     <>
-      <Nav userName={user.name} />
+      <Nav userName={user.name} isAdmin={admin} />
       <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
