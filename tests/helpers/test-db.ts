@@ -6,24 +6,34 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { ROLE_USER } from "@/lib/auth";
 import { DEFAULT_CRITERIA_GROUPS } from "@/lib/defaults";
+import { resetPrismaForTests } from "@/lib/prisma";
 
-export const TEST_DB_PATH = join(process.cwd(), "data", "test.db");
-export const TEST_DATABASE_URL = `file:${TEST_DB_PATH.replace(/\\/g, "/")}`;
+/** One SQLite file per Vitest fork (process.pid is unique across parallel test files). */
+export function getTestDbPath(): string {
+  return join(process.cwd(), "data", `test-${process.pid}.db`);
+}
+
+export function getTestDatabaseUrl(): string {
+  return `file:${getTestDbPath().replace(/\\/g, "/")}`;
+}
 
 export function createTestPrisma() {
   return new PrismaClient({
-    datasources: { db: { url: TEST_DATABASE_URL } },
+    datasources: { db: { url: getTestDatabaseUrl() } },
   });
 }
 
 export async function resetTestDatabase() {
+  const testDbPath = getTestDbPath();
+  const testDatabaseUrl = getTestDatabaseUrl();
   mkdirSync(join(process.cwd(), "data"), { recursive: true });
-  if (existsSync(TEST_DB_PATH)) {
-    unlinkSync(TEST_DB_PATH);
+  await resetPrismaForTests();
+  if (existsSync(testDbPath)) {
+    unlinkSync(testDbPath);
   }
   execSync("npx prisma db push --skip-generate", {
     stdio: "pipe",
-    env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
+    env: { ...process.env, DATABASE_URL: testDatabaseUrl },
   });
 
   const prisma = createTestPrisma();

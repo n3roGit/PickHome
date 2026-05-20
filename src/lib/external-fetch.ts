@@ -1,4 +1,15 @@
+import {
+  backgroundThrottlePause,
+  isBackgroundTaskActive,
+  yieldToEventLoop,
+} from "@/lib/background-task";
+
 export type ExternalService = "nominatim" | "osrm" | "transit" | "listing";
+
+export type FetchExternalOptions = {
+  /** Slower rate limits and yields so interactive requests stay responsive. */
+  background?: boolean;
+};
 
 type ServiceConfig = {
   minIntervalMs: number;
@@ -43,6 +54,16 @@ const LISTING_CONFIG: ServiceConfig = {
 };
 
 const nextSlotAt = new Map<ExternalService, number>();
+const serviceCooldownUntil = new Map<ExternalService, number>();
+const pendingUnavailable = new Set<ExternalService>();
+
+/** Cooldown after background 5xx/429 — avoids hammering a struggling API. */
+const BACKGROUND_SERVICE_COOLDOWN_MS: Record<ExternalService, number> = {
+  transit: 120_000,
+  osrm: 45_000,
+  nominatim: 60_000,
+  listing: 60_000,
+};
 
 function serviceConfig(service: ExternalService): ServiceConfig {
   if (service === "nominatim") return NOMINATIM_CONFIG;
@@ -57,6 +78,29 @@ function sleep(ms: number): Promise<void> {
 
 export function resetExternalFetchState(): void {
   nextSlotAt.clear();
+  serviceCooldownUntil.clear();
+  pendingUnavailable.clear();
+}
+
+export function isExternalServiceInCooldown(service: ExternalService): boolean {
+  return (serviceCooldownUntil.get(service) ?? 0) > Date.now();
+}
+
+/** True once after a background fetch was skipped or failed due to API unavailability. */
+export function consumeExternalServiceUnavailable(service: ExternalService): boolean {
+  if (!pendingUnavailable.has(service)) return false;
+  pendingUnavailable.delete(service);
+  return true;
+}
+
+function activateServiceCooldown(service: ExternalService): void {
+  serviceCooldownUntil.set(service, Date.now() + BACKGROUND_SERVICE_COOLDOWN_MS[service]);
+  pendingUnavailable.add(service);
+}
+
+function backgroundMaxAttempts(service: ExternalService, config: ServiceConfig): number {
+  if (service === "transit") return 0;
+  return Math.min(config.maxRetries, 1);
 }
 
 async function waitForRateLimitSlot(service: ExternalService, minIntervalMs: number): Promise<void> {
@@ -87,21 +131,48 @@ function retryDelayMs(attempt: number, config: ServiceConfig, retryAfterHeader?:
 export async function fetchExternal(
   service: ExternalService,
   url: string,
-  init?: RequestInit
+  init?: RequestInit,
+  options?: FetchExternalOptions
 ): Promise<Response | null> {
   const config = serviceConfig(service);
+  const intervalMs = options?.background
+    ? Math.round(config.minIntervalMs * 2.5)
+    : config.minIntervalMs;
+  const maxAttempts = options?.background
+    ? backgroundMaxAttempts(service, config)
+    : config.maxRetries;
 
-  for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
-    await waitForRateLimitSlot(service, config.minIntervalMs);
+  for (let attempt = 0; attempt <= maxAttempts; attempt++) {
+    if (options?.background) {
+      if (isExternalServiceInCooldown(service)) {
+        pendingUnavailable.add(service);
+        return null;
+      }
+      await backgroundThrottlePause(150);
+    } else if (isBackgroundTaskActive()) {
+      await yieldToEventLoop();
+    }
+
+    await waitForRateLimitSlot(service, intervalMs);
 
     try {
       const res = await fetch(url, init);
-      if (res.ok || !isRetriableStatus(res.status) || attempt === config.maxRetries) {
-        return res;
+      if (res.ok) return res;
+      if (!isRetriableStatus(res.status)) return res;
+
+      if (options?.background) {
+        activateServiceCooldown(service);
+        return null;
       }
+
+      if (attempt === maxAttempts) return res;
       await sleep(retryDelayMs(attempt, config, res.headers.get("Retry-After")));
     } catch {
-      if (attempt === config.maxRetries) return null;
+      if (options?.background) {
+        activateServiceCooldown(service);
+        return null;
+      }
+      if (attempt === maxAttempts) return null;
       await sleep(retryDelayMs(attempt, config));
     }
   }

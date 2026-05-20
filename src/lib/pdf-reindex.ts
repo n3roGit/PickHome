@@ -1,4 +1,5 @@
 import { readFile } from "fs/promises";
+import { backgroundThrottlePause } from "@/lib/background-task";
 import { prisma } from "@/lib/prisma";
 import { publicPhotoPath } from "@/lib/pickhome-data";
 import { extractPdfText } from "@/lib/pdf-text";
@@ -50,6 +51,8 @@ export async function reindexProjectPdfDocuments(
 
     if (extractedText) withText += 1;
     else withoutText += 1;
+
+    await backgroundThrottlePause(50);
   }
 
   return {

@@ -1,4 +1,4 @@
-import { fetchExternal } from "@/lib/external-fetch";
+import { fetchExternal, type FetchExternalOptions } from "@/lib/external-fetch";
 import { formatRouteDistance, formatRouteDuration } from "@/lib/routing";
 import {
   formatTransitArrivalForApi,
@@ -169,13 +169,16 @@ export function buildArrivalTargetLabel(settings: TransitSettings): string {
   return `Ankunft ${day} ${time}`;
 }
 
-export async function fetchTransitJourney(input: {
-  from: RoutePoint;
-  fromAddress: string;
-  to: RoutePoint;
-  toAddress: string;
-  settings: TransitSettings;
-}): Promise<TransitJourneyResult | null> {
+export async function fetchTransitJourney(
+  input: {
+    from: RoutePoint;
+    fromAddress: string;
+    to: RoutePoint;
+    toAddress: string;
+    settings: TransitSettings;
+  },
+  options?: FetchExternalOptions
+): Promise<TransitJourneyResult | null> {
   const arrivalDate = nextTransitArrivalDate(
     input.settings.arrivalWeekday,
     input.settings.arrivalHour,
@@ -197,10 +200,15 @@ export async function fetchTransitJourney(input: {
   });
 
   const url = `${TRANSIT_API_BASE}/journeys?${params.toString()}`;
-  const res = await fetchExternal("transit", url, {
-    headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
-    next: { revalidate: 3600 },
-  });
+  const res = await fetchExternal(
+    "transit",
+    url,
+    {
+      headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
+      next: { revalidate: 3600 },
+    },
+    options
+  );
   if (!res?.ok) return null;
 
   try {

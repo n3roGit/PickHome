@@ -37,6 +37,7 @@ describe("formatCommuteReindexMessage", () => {
         routesComputed: 0,
         routesSkipped: 0,
         routesFailed: 0,
+        routesApiUnavailable: 0,
       })
     ).toBe("Keine aktiven Immobilien in diesem Projekt.");
   });
@@ -49,9 +50,23 @@ describe("formatCommuteReindexMessage", () => {
         routesComputed: 4,
         routesSkipped: 1,
         routesFailed: 0,
+        routesApiUnavailable: 0,
       })
     ).toBe(
       "4 Route(n) berechnet (2 von 2 Immobilie(n) mit Koordinaten), 1 übersprungen."
     );
+  });
+
+  it("reports API unavailability separately", () => {
+    expect(
+      formatCommuteReindexMessage({
+        apartmentsTotal: 1,
+        apartmentsWithCoords: 1,
+        routesComputed: 2,
+        routesSkipped: 0,
+        routesFailed: 0,
+        routesApiUnavailable: 3,
+      })
+    ).toContain("3 wegen API-Ausfall");
   });
 });

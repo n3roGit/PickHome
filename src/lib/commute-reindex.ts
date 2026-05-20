@@ -1,3 +1,4 @@
+import { backgroundThrottlePause } from "@/lib/background-task";
 import { computeCommuteLegs, type CommuteLeg } from "@/lib/commute";
 import { invalidateCommuteCacheForProject } from "@/lib/commute-cache";
 import { prisma } from "@/lib/prisma";
@@ -12,10 +13,12 @@ export type ReindexProjectCommuteResult = {
   routesComputed: number;
   routesSkipped: number;
   routesFailed: number;
+  routesApiUnavailable: number;
 };
 
-function countLegOutcome(leg: CommuteLeg): "computed" | "skipped" | "failed" {
+function countLegOutcome(leg: CommuteLeg): "computed" | "skipped" | "failed" | "api_unavailable" {
   if (!leg.unavailableReason) return "computed";
+  if (leg.unavailableReason === "api_unavailable") return "api_unavailable";
   if (leg.unavailableReason === "routing_failed") return "failed";
   return "skipped";
 }
@@ -85,6 +88,7 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
   let routesComputed = 0;
   let routesSkipped = 0;
   let routesFailed = 0;
+  let routesApiUnavailable = 0;
   let apartmentsWithCoords = 0;
 
   for (const apt of apartments) {
@@ -123,15 +127,24 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
         companyCarContributionEur: member.companyCarContributionEur,
         companyCarSelfPaidCostsEur: member.companyCarSelfPaidCostsEur,
         companyCarEmployerFuelCard: member.companyCarEmployerFuelCard,
+        background: true,
       });
 
+      let hadApiUnavailable = false;
       for (const leg of legs) {
         const outcome = countLegOutcome(leg);
         if (outcome === "computed") routesComputed += 1;
         else if (outcome === "failed") routesFailed += 1;
-        else routesSkipped += 1;
+        else if (outcome === "api_unavailable") {
+          routesApiUnavailable += 1;
+          hadApiUnavailable = true;
+        } else routesSkipped += 1;
       }
+
+      await backgroundThrottlePause(hadApiUnavailable ? 1000 : 250);
     }
+
+    await backgroundThrottlePause(150);
   }
 
   return {
@@ -140,5 +153,6 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
     routesComputed,
     routesSkipped,
     routesFailed,
+    routesApiUnavailable,
   };
 }

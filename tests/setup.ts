@@ -1,5 +1,4 @@
-import { join } from "path";
+import { getTestDatabaseUrl } from "./helpers/test-db";
 
-/** Always isolate integration tests from dev/prod DATABASE_URL in the shell. */
-const testDb = join(process.cwd(), "data", "test.db");
-process.env.DATABASE_URL = `file:${testDb.replace(/\\/g, "/")}`;
+/** Isolate integration tests from dev/prod DATABASE_URL and from other Vitest workers. */
+process.env.DATABASE_URL = getTestDatabaseUrl();

@@ -12,7 +12,7 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     setupFiles: ["tests/setup.ts"],
     hookTimeout: 60_000,
-    fileParallelism: false,
+    fileParallelism: true,
     pool: "forks",
   },
 });

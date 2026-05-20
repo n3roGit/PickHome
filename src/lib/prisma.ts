@@ -16,13 +16,39 @@ export function resolveDatabaseUrl(url = process.env.DATABASE_URL): string {
   return `file:${absolute}`;
 }
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient(): PrismaClient {
+  return new PrismaClient({
     datasources: { db: { url: resolveDatabaseUrl() } },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export function getPrismaClient(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
+}
+
+/** Lazily reconnects after `resetPrismaForTests()` (used in integration tests). */
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrismaClient();
+    const value = Reflect.get(client, prop, client) as unknown;
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(client) : value;
+  },
+});
+
+if (process.env.NODE_ENV !== "production") {
+  getPrismaClient();
+}
+
+/** Disconnect and drop the singleton so the next access opens a fresh DB (tests only). */
+export async function resetPrismaForTests(): Promise<void> {
+  if (globalForPrisma.prisma) {
+    await globalForPrisma.prisma.$disconnect();
+    globalForPrisma.prisma = undefined;
+  }
+}

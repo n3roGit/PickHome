@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchExternal, resetExternalFetchState } from "@/lib/external-fetch";
+import {
+  consumeExternalServiceUnavailable,
+  fetchExternal,
+  isExternalServiceInCooldown,
+  resetExternalFetchState,
+} from "@/lib/external-fetch";
 
 describe("fetchExternal", () => {
   beforeEach(() => {
@@ -87,6 +92,27 @@ describe("fetchExternal", () => {
     await promise;
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("background 503 activates cooldown and skips further transit calls", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = fetchExternal("transit", "https://example.test/1", undefined, {
+      background: true,
+    });
+    await vi.runAllTimersAsync();
+    expect(await first).toBeNull();
+    expect(consumeExternalServiceUnavailable("transit")).toBe(true);
+
+    fetchMock.mockClear();
+    const second = fetchExternal("transit", "https://example.test/2", undefined, {
+      background: true,
+    });
+    await vi.runAllTimersAsync();
+    expect(await second).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(isExternalServiceInCooldown("transit")).toBe(true);
   });
 
   it("rate-limits nominatim and osrm independently", async () => {

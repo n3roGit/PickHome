@@ -1,4 +1,4 @@
-import { fetchExternal } from "@/lib/external-fetch";
+import { fetchExternal, type FetchExternalOptions } from "@/lib/external-fetch";
 import type { TravelMode } from "@/lib/travel-mode";
 
 /** Modes routed via OSRM (excludes ÖPNV). */
@@ -72,16 +72,22 @@ export function osrmBaseUrl(): string {
 export async function fetchRoute(
   from: RoutePoint,
   to: RoutePoint,
-  mode: OsrmTravelMode
+  mode: OsrmTravelMode,
+  options?: FetchExternalOptions
 ): Promise<RouteResult | null> {
   const { baseUrl, profile } = osrmEndpointForMode(mode);
   const coords = `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`;
   const url = `${baseUrl}/route/v1/${profile}/${coords}?overview=false`;
 
-  const res = await fetchExternal("osrm", url, {
-    headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
-    next: { revalidate: 3600 },
-  });
+  const res = await fetchExternal(
+    "osrm",
+    url,
+    {
+      headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
+      next: { revalidate: 3600 },
+    },
+    options
+  );
   if (!res?.ok) return null;
 
   try {

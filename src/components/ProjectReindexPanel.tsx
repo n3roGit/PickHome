@@ -7,6 +7,7 @@ import {
 } from "@/app/actions";
 import type { ProjectReindexJobView } from "@/lib/project-reindex-jobs";
 import {
+  commuteReindexHadApiUnavailable,
   formatCommuteReindexMessage,
   formatDocumentsReindexMessage,
 } from "@/lib/project-reindex-messages";
@@ -45,6 +46,13 @@ function messageClassName(job: ProjectReindexJobView | null): string {
   }
   if (job?.status === "running") {
     return "text-sm text-pn-text-secondary bg-pn-bg-subtle px-3 py-2 rounded-lg";
+  }
+  if (
+    job?.kind === "commute" &&
+    job.commuteResult &&
+    commuteReindexHadApiUnavailable(job.commuteResult)
+  ) {
+    return "text-sm text-amber-800 bg-amber-500/15 px-3 py-2 rounded-lg";
   }
   return "text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg";
 }

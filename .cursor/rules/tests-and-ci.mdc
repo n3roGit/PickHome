@@ -8,13 +8,12 @@ globs: src/**/*,tests/**/*,vitest.config.ts,.github/**/*
 ## Vitest
 
 - Config: `vitest.config.ts` — Node environment, `tests/**/*.test.ts`, `setupFiles: ["tests/setup.ts"]`.
-- `fileParallelism: false`, `pool: "forks"`, `hookTimeout: 60_000`.
-- Run: `npm test` / `npm run test:watch`.
+- `fileParallelism: true`, `pool: "forks"`, `hookTimeout: 60_000` — test files run in parallel; each worker gets its own DB.
+- Run: `npm test` / `npm run test:unit` / `npm run test:integration` / `npm run test:watch`.
 
 ## Database in tests
 
-- `tests/setup.ts` sets `DATABASE_URL` to `file:<cwd>/data/test.db` if unset.
-- CI (`.github/workflows/test.yml`): `DATABASE_URL=file:../data/test.db`.
+- `tests/setup.ts` sets `DATABASE_URL` to `file:<cwd>/data/test-<pid>.db` (one DB per Vitest fork).
 - Integration helpers: `tests/helpers/test-db.ts` — `resetTestDatabase()`, `createTestPrisma()`, fixtures.
 
 Use `resetTestDatabase()` before integration tests that need a clean DB.

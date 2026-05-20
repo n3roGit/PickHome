@@ -8,5 +8,13 @@ export function formatDocumentsReindexMessage(result: ReindexProjectDocumentsRes
 
 export function formatCommuteReindexMessage(result: ReindexProjectCommuteResult): string {
   if (result.apartmentsTotal === 0) return "Keine aktiven Immobilien in diesem Projekt.";
-  return `${result.routesComputed} Route(n) berechnet (${result.apartmentsWithCoords} von ${result.apartmentsTotal} Immobilie(n) mit Koordinaten)${result.routesSkipped > 0 ? `, ${result.routesSkipped} übersprungen` : ""}${result.routesFailed > 0 ? `, ${result.routesFailed} fehlgeschlagen` : ""}.`;
+  const apiNote =
+    result.routesApiUnavailable > 0
+      ? `, ${result.routesApiUnavailable} wegen API-Ausfall übersprungen (später erneut indizieren)`
+      : "";
+  return `${result.routesComputed} Route(n) berechnet (${result.apartmentsWithCoords} von ${result.apartmentsTotal} Immobilie(n) mit Koordinaten)${result.routesSkipped > 0 ? `, ${result.routesSkipped} übersprungen` : ""}${result.routesFailed > 0 ? `, ${result.routesFailed} fehlgeschlagen` : ""}${apiNote}.`;
+}
+
+export function commuteReindexHadApiUnavailable(result: ReindexProjectCommuteResult): boolean {
+  return result.routesApiUnavailable > 0;
 }

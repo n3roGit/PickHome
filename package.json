@@ -18,6 +18,8 @@
     "data:export": "tsx scripts/backup-export.ts",
     "data:import": "tsx scripts/backup-import.ts",
     "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
     "test:watch": "vitest",
     "postinstall": "prisma generate"
   },

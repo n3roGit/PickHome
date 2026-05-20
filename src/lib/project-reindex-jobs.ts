@@ -1,5 +1,6 @@
 import type { ReindexProjectCommuteResult } from "@/lib/commute-reindex";
 import type { ReindexProjectDocumentsResult } from "@/lib/pdf-reindex";
+import { beginBackgroundTask, endBackgroundTask } from "@/lib/background-task";
 import { prisma } from "@/lib/prisma";
 
 export type ProjectReindexJobKind = "documents" | "commute";
@@ -82,6 +83,7 @@ async function recoverStaleJobs(projectId: string, kind: ProjectReindexJobKind) 
 }
 
 async function executeProjectReindexJob(jobId: string, key: string) {
+  beginBackgroundTask();
   try {
     const job = await prisma.projectReindexJob.findUnique({ where: { id: jobId } });
     if (!job || job.status !== "running") return;
@@ -110,6 +112,7 @@ async function executeProjectReindexJob(jobId: string, key: string) {
       },
     });
   } finally {
+    endBackgroundTask();
     inProcessLocks.delete(key);
   }
 }
@@ -177,4 +180,12 @@ export async function getProjectReindexJobs(projectId: string): Promise<{
 
 export function resetProjectReindexJobStateForTests() {
   inProcessLocks.clear();
+}
+
+export async function isCommuteReindexRunning(projectId: string): Promise<boolean> {
+  const job = await prisma.projectReindexJob.findFirst({
+    where: { projectId, kind: "commute", status: "running" },
+    select: { id: true },
+  });
+  return job != null;
 }
