@@ -13,7 +13,7 @@ Self-hosted apartment scoring for house hunting (German UI). Next.js 14 App Rout
 - `src/lib/` — domain logic (kebab-case filenames)
 - `src/components/` — React components (PascalCase)
 - `prisma/schema.prisma` — database schema
-- `scripts/` — CLI helpers (backup, data dirs)
+- `scripts/` — CLI helpers (backup, data dirs, `db-autoupdate.mjs` for prod schema + backfills)
 - `tests/` — Vitest (`unit/`, `integration/`, `helpers/`)
 - `data/` — runtime data (gitignored): `pickhome.db`, `uploads/`, `backups/`
 
@@ -37,6 +37,20 @@ Path alias: `@/*` → `src/*`.
 - Uploads: `src/lib/pickhome-data.ts`, `src/lib/apartment-media.ts`, served at `/uploads/...`.
 - Never commit: `data/`, `.env*`, secrets, `node_modules/`, `.next/`, user databases or backup ZIPs.
 - **Never put real data in the repo** — no production data, no exports, no backups, no local test/play databases or fixtures. Local dev data stays in `data/` (gitignored) only. For seeds, tests, docs, or examples: use invented/synthetic data only (fake names, addresses, URLs, listing IDs).
+
+## Database auto-update (production)
+
+Docker/production runs `scripts/db-autoupdate.mjs` on every container start (`docker-entrypoint.sh`), **before** `next start`. Users must not run manual migration scripts on prod.
+
+**When you change `prisma/schema.prisma` or add fields that replace data stored elsewhere (notes, description, old columns):**
+
+1. Implement idempotent backfill logic in `src/lib/backfill-*.ts` (only fill empty/new columns; never overwrite user-edited values).
+2. Add a thin runner `scripts/backfill-*.mjs` that imports the lib and logs only when rows were updated (`[pickhome] …`).
+3. **Register the runner in `scripts/db-autoupdate.mjs`** immediately after `pushSchemaWithRetry()` (same place as `backfill-size-sqm.mjs`). Do not rely on one-off manual scripts.
+4. Add unit tests for parsing/mapping logic where non-trivial.
+5. Update `scripts/backup-export.ts` / import if new fields must survive backup roundtrip.
+
+Existing backfills: `sizeSqm` ← description/notes (`src/lib/backfill-size-sqm.ts`).
 
 ## Releases and versioning
 
