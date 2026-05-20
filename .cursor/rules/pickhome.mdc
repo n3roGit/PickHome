@@ -36,6 +36,7 @@ Path alias: `@/*` → `src/*`.
 - `PICKHOME_DATA_DIR` (default `./data`), `DATABASE_URL` (SQLite `file:` paths relative to `prisma/`).
 - Uploads: `src/lib/pickhome-data.ts`, `src/lib/apartment-media.ts`, served at `/uploads/...`.
 - Never commit: `data/`, `.env*`, secrets, `node_modules/`, `.next/`, user databases or backup ZIPs.
+- **Never put real data in the repo** — no production data, no exports, no backups, no local test/play databases or fixtures. Local dev data stays in `data/` (gitignored) only. For seeds, tests, docs, or examples: use invented/synthetic data only (fake names, addresses, URLs, listing IDs).
 
 ## Releases and versioning
 
