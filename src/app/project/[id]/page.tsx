@@ -383,6 +383,7 @@ export default async function ProjectPage({
             apartments={activeProject.apartments.map((a) => ({
               id: a.id,
               title: a.title,
+              address: a.address,
               price: a.price,
               sizeSqm: a.sizeSqm,
               brokerInvolved: a.brokerInvolved,

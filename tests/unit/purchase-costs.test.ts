@@ -11,6 +11,7 @@ import {
   parseBrokerBuyerRatePercent,
   parseFederalStateCode,
   resolveBrokerBuyerRate,
+  resolveFederalStateCode,
 } from "@/lib/purchase-costs";
 
 describe("parseFederalStateCode", () => {
@@ -156,7 +157,7 @@ describe("apartmentCompareMetrics", () => {
 
   it("computes costs and monthly burden", () => {
     const result = apartmentCompareMetrics(
-      { price: 300_000, sizeSqm: 100, brokerInvolved: true },
+      { price: 300_000, sizeSqm: 100, brokerInvolved: true, address: null },
       finance
     );
     expect(result.totalCost).toBe(331_425);
@@ -164,9 +165,17 @@ describe("apartmentCompareMetrics", () => {
     expect(result.burdenShare).toBeGreaterThan(0);
   });
 
+  it("uses address Bundesland instead of project default", () => {
+    const result = apartmentCompareMetrics(
+      { price: 300_000, sizeSqm: null, brokerInvolved: false, address: "80331 München" },
+      { ...finance, federalStateCode: "HB" }
+    );
+    expect(result.totalCost).toBe(316_500);
+  });
+
   it("returns partial metrics without finance settings", () => {
     const result = apartmentCompareMetrics(
-      { price: 300_000, sizeSqm: null, brokerInvolved: false },
+      { price: 300_000, sizeSqm: null, brokerInvolved: false, address: null },
       { ...finance, equityAmount: null, loanTermYears: null }
     );
     expect(result.totalCost).toBe(322_500);

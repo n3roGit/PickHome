@@ -11,6 +11,7 @@ type Member = { user: { id: string; name: string } };
 type Apartment = {
   id: string;
   title: string;
+  address: string | null;
   price: number | null;
   sizeSqm: number | null;
   brokerInvolved: boolean;

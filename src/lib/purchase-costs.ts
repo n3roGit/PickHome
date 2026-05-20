@@ -1,3 +1,5 @@
+import { federalStateCodeFromAddress } from "@/lib/federal-state-from-address";
+
 /** Rough ancillary purchase cost estimates (not legal/tax advice). */
 
 export const NOTARY_REGISTRY_RATE = 0.02;
@@ -111,6 +113,16 @@ export function resolveBrokerBuyerRate(
 ): number {
   if (projectRate != null) return projectRate;
   return brokerBuyerShareRate(stateCode);
+}
+
+/** Apartment address overrides project default when a Bundesland can be derived. */
+export function resolveFederalStateCode(input: {
+  projectFederalStateCode: string | null | undefined;
+  apartmentAddress: string | null | undefined;
+}): FederalStateCode | null {
+  const fromAddress = federalStateCodeFromAddress(input.apartmentAddress);
+  if (fromAddress) return fromAddress;
+  return parseFederalStateCode(input.projectFederalStateCode);
 }
 
 export type PurchaseCostLine = {
@@ -298,6 +310,7 @@ export type ApartmentCompareInput = {
   price: number | null;
   sizeSqm: number | null;
   brokerInvolved: boolean;
+  address: string | null;
 };
 
 export type ApartmentCompareMetrics = {
@@ -311,7 +324,10 @@ export function apartmentCompareMetrics(
   apartment: ApartmentCompareInput,
   finance: ProjectFinanceSettings
 ): ApartmentCompareMetrics {
-  const stateCode = parseFederalStateCode(finance.federalStateCode);
+  const stateCode = resolveFederalStateCode({
+    projectFederalStateCode: finance.federalStateCode,
+    apartmentAddress: apartment.address,
+  });
   if (apartment.price == null || !stateCode) {
     return { totalCost: null, monthlyPayment: null, burdenShare: null, burdenLevel: null };
   }

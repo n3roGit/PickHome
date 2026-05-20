@@ -161,6 +161,7 @@ export default async function ApartmentPage({
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
           price={apartment.price}
+          address={apartment.address}
           federalStateCode={project.federalStateCode}
           brokerBuyerRate={project.brokerBuyerRate}
           brokerInvolved={apartment.brokerInvolved}

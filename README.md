@@ -10,6 +10,24 @@ Repository: [github.com/n3roGit/PickHome](https://github.com/n3roGit/PickHome)
 - **Users**: projects, apartments, criteria (weight & dealbreaker), ratings 0–10, leaderboard, archive
 - **Per apartment**: photos, viewing appointments (past/upcoming), notes on ratings
 
+## Screenshots
+
+| Dashboard | Project leaderboard |
+|-----------|---------------------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Apartments](docs/screenshots/apartments.png) |
+
+| Apartment overview | Criteria rating |
+|--------------------|-----------------|
+| ![Apartment overview](docs/screenshots/apartment-overview.png) | ![Apartment detail](docs/screenshots/apartment-detail.png) |
+
+| Compare | Map |
+|---------|-----|
+| ![Compare](docs/screenshots/compare.png) | ![Map](docs/screenshots/map.png) |
+
+| Calendar |
+|----------|
+| ![Calendar](docs/screenshots/calendar.png) |
+
 ## Quick start (Docker)
 
 Requirements: [Docker](https://docs.docker.com/get-docker/) with Compose.

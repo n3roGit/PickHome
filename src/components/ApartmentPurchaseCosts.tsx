@@ -5,7 +5,7 @@ import {
   estimatePurchaseCosts,
   formatBurdenShare,
   formatPercent,
-  parseFederalStateCode,
+  resolveFederalStateCode,
   type AffordabilityEstimate,
   type FinancingEstimate,
   type PurchaseCostEstimate,
@@ -132,6 +132,7 @@ function FinancingTable({
 export function ApartmentPurchaseCosts({
   apartmentId,
   price,
+  address,
   federalStateCode,
   brokerBuyerRate,
   brokerInvolved,
@@ -143,6 +144,7 @@ export function ApartmentPurchaseCosts({
 }: {
   apartmentId: string;
   price: number | null;
+  address: string | null;
   federalStateCode: string | null;
   brokerBuyerRate: number | null;
   brokerInvolved: boolean;
@@ -152,7 +154,10 @@ export function ApartmentPurchaseCosts({
   netHouseholdIncome: number | null;
   settingsHref: string;
 }) {
-  const stateCode = parseFederalStateCode(federalStateCode);
+  const stateCode = resolveFederalStateCode({
+    projectFederalStateCode: federalStateCode,
+    apartmentAddress: address,
+  });
   const canEstimateCosts = price != null && stateCode != null;
   const costEstimate = canEstimateCosts
     ? estimatePurchaseCosts({
