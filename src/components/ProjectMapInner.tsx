@@ -8,32 +8,12 @@ import { createRoot, type Root } from "react-dom/client";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { DesiredAreaBadge } from "@/components/DesiredAreaBadge";
 import { markerColorForScore } from "@/lib/scoring";
-import type { MappedApartment, MapPinColorMode, PlzMapOverlay } from "@/components/ProjectMap";
+import type { MappedApartment, PlzMapOverlay } from "@/components/ProjectMap";
 import { DEFAULT_PLZ_OVERLAY_RADIUS_M } from "@/lib/plz-map-overlays";
-import type { AreaMatchStatus } from "@/lib/area-filter";
 
 const DESIRED_AREA_FILL = "#22c55e";
 const DESIRED_AREA_STROKE = "#15803d";
 const DESIRED_AREA_FILL_OPACITY = 0.28;
-
-const AREA_MARKER_COLORS: Record<Exclude<AreaMatchStatus, "unset">, string> = {
-  inside: "#16a34a",
-  outside: "#94a3b8",
-  unknown: "#ca8a04",
-};
-
-function markerColorForApartment(
-  apartment: MappedApartment,
-  colorMode: MapPinColorMode
-): string {
-  if (colorMode === "area") {
-    const status = apartment.areaMatchStatus ?? "unknown";
-    if (status === "unset") return AREA_MARKER_COLORS.unknown;
-    return AREA_MARKER_COLORS[status];
-  }
-  const shown = apartment.displayScore ?? apartment.score;
-  return markerColorForScore(shown, apartment.dealbreaker, colorMode);
-}
 
 function markerIcon(color: string) {
   return L.divIcon({
@@ -80,12 +60,10 @@ function PopupContent({
 export default function ProjectMapInner({
   projectId,
   apartments,
-  colorMode,
   areaFilterPlzOverlays,
 }: {
   projectId: string;
   apartments: MappedApartment[];
-  colorMode: MapPinColorMode;
   areaFilterPlzOverlays: PlzMapOverlay[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -123,7 +101,8 @@ export default function ProjectMapInner({
     }
 
     for (const apartment of apartments) {
-      const color = markerColorForApartment(apartment, colorMode);
+      const shown = apartment.displayScore ?? apartment.score;
+      const color = markerColorForScore(shown, apartment.dealbreaker, "score");
       const marker = L.marker([apartment.latitude, apartment.longitude], {
         icon: markerIcon(color),
       }).addTo(map);
@@ -152,7 +131,7 @@ export default function ProjectMapInner({
         }
       });
     };
-  }, [apartments, areaFilterPlzOverlays, colorMode, projectId]);
+  }, [apartments, areaFilterPlzOverlays, projectId]);
 
   return (
     <div

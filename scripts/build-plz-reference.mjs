@@ -10,6 +10,8 @@ import { join } from "node:path";
 
 const SOURCE_URL =
   "https://raw.githubusercontent.com/plzTeam/web-snippets/master/plz-suche/data/zuordnung_plz_ort.csv";
+const GEOCOORD_URL =
+  "https://raw.githubusercontent.com/WZBSocialScienceCenter/plz_geocoord/master/plz_geocoord.csv";
 
 function parseCsvLine(line) {
   const parts = [];
@@ -35,13 +37,36 @@ function ortKey(name, bundesland) {
   return `${name.trim()}|${bundesland.trim()}`;
 }
 
+async function fetchText(url) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ${url}: ${res.status}`);
+  }
+  return res.text();
+}
+
+async function loadPlzGeocoords() {
+  console.log("[pickhome] Fetching PLZ geocoordinates...");
+  const text = await fetchText(GEOCOORD_URL);
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  /** @type {Map<string, { lat: number, lng: number }>} */
+  const coords = new Map();
+
+  for (const line of lines.slice(1)) {
+    const [plzRaw, latRaw, lngRaw] = line.split(",");
+    const plz = plzRaw?.replace(/\D/g, "");
+    const lat = Number.parseFloat(latRaw ?? "");
+    const lng = Number.parseFloat(lngRaw ?? "");
+    if (!/^\d{5}$/.test(plz ?? "") || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    coords.set(plz, { lat, lng });
+  }
+
+  return coords;
+}
+
 async function main() {
   console.log("[pickhome] Fetching PLZ reference data...");
-  const res = await fetch(SOURCE_URL);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${SOURCE_URL}: ${res.status}`);
-  }
-  const text = await res.text();
+  const [text, geocoords] = await Promise.all([fetchText(SOURCE_URL), loadPlzGeocoords()]);
   const lines = text.split(/\r?\n/).filter(Boolean);
   const header = parseCsvLine(lines[0]);
   const plzIdx = header.indexOf("plz");
@@ -92,22 +117,30 @@ async function main() {
     });
 
   const plzEntries = [...plzIndex.entries()]
-    .map(([plz, data]) => ({
-      plz,
-      bundesland: data.bundesland,
-      orte: [...data.orte].sort((a, b) => a.localeCompare(b, "de")),
-    }))
+    .map(([plz, data]) => {
+      const centroid = geocoords.get(plz);
+      return {
+        plz,
+        bundesland: data.bundesland,
+        orte: [...data.orte].sort((a, b) => a.localeCompare(b, "de")),
+        ...(centroid ? { lat: centroid.lat, lng: centroid.lng } : {}),
+      };
+    })
     .sort((a, b) => a.plz.localeCompare(b.plz));
+
+  const plzWithCoords = plzEntries.filter((entry) => entry.lat != null && entry.lng != null).length;
 
   const bundeslaender = [...new Set(orteList.map((o) => o.bundesland))].sort((a, b) =>
     a.localeCompare(b, "de")
   );
 
   const output = {
-    source: "suche-postleitzahl.org / OpenStreetMap (ODbL 1.0)",
+    source:
+      "suche-postleitzahl.org / OpenStreetMap (ODbL 1.0); PLZ centroids: WZB plz_geocoord (Apache-2.0)",
     generatedAt: new Date().toISOString().slice(0, 10),
     ortCount: orteList.length,
     plzCount: plzEntries.length,
+    plzWithCoords,
     bundeslaender,
     orte: orteList,
     plz: plzEntries,
@@ -120,7 +153,7 @@ async function main() {
 
   const sizeKb = Math.round((JSON.stringify(output).length / 1024) * 10) / 10;
   console.log(
-    `[pickhome] Wrote ${outPath} — ${output.plzCount} PLZ, ${output.ortCount} Orte (${sizeKb} KB)`
+    `[pickhome] Wrote ${outPath} — ${output.plzCount} PLZ (${plzWithCoords} with coords), ${output.ortCount} Orte (${sizeKb} KB)`
   );
 }
 

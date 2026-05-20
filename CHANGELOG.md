@@ -4,7 +4,12 @@
 
 ### Features
 
-- Map tab: separate green PLZ circles per Wunschgebiet, Wunschgebiet pin color mode (in/out/unknown), and client-side overlay loading without tab flicker.
+- Map tab: instant Wunschgebiet PLZ circles from static PLZ centroids in `plz-de.json` (8158 PLZ).
+- Map tab: toggle to show/hide Wunschgebiet circles; pins always colored by score.
+
+### Changed
+
+- Map tab: removed separate pin color modes for Wunschgebiet and Dealbreaker.
 
 ## [1.2.0](https://github.com/n3roGit/PickHome/releases/tag/v1.2.0) (2026-05-20)
 

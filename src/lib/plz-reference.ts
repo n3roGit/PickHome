@@ -19,6 +19,7 @@ export type PlzReferenceData = {
   generatedAt: string;
   ortCount: number;
   plzCount: number;
+  plzWithCoords?: number;
   bundeslaender: string[];
   orte: PlzReferenceOrt[];
   plz: PlzReferenceEntry[];
