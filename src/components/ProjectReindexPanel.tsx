@@ -12,6 +12,7 @@ type ReindexJobsResponse = {
   documents: ProjectReindexJobView | null;
   commute: ProjectReindexJobView | null;
   commutePendingLegs: number;
+  commuteTotalLegs: number;
 };
 
 const reindexErrors: Record<string, string> = {
@@ -46,16 +47,18 @@ function messageClassName(job: ProjectReindexJobView | null): string {
 
 function commutePendingStatusText(
   pending: number,
+  total: number,
   running: boolean
 ): string {
-  if (running) {
-    return pending > 0
-      ? `Berechnung läuft — ${pending} Route(n) noch offen`
-      : "Berechnung läuft…";
+  if (total === 0) {
+    return "Keine berechenbaren Routen (Koordinaten oder Adressen fehlen).";
   }
-  if (pending === 1) return "1 Route noch offen";
-  if (pending > 1) return `${pending} Routen noch offen`;
-  return "Alle Routen berechnet";
+  const progress = `${pending} von ${total} Routen`;
+  if (running) {
+    return pending > 0 ? `Berechnung läuft — ${progress} offen` : "Berechnung läuft…";
+  }
+  if (pending > 0) return `${progress} offen`;
+  return `${total} von ${total} Routen berechnet`;
 }
 
 export function ProjectReindexPanel({
@@ -81,6 +84,7 @@ export function ProjectReindexPanel({
       setJobs({
         ...data,
         commutePendingLegs: data.commutePendingLegs ?? 0,
+        commuteTotalLegs: data.commuteTotalLegs ?? 0,
       });
       setLoadError(null);
     } catch {
@@ -108,6 +112,7 @@ export function ProjectReindexPanel({
   const documentsRunning = jobs?.documents?.status === "running";
   const commuteRunning = jobs?.commute?.status === "running";
   const commutePendingLegs = jobs?.commutePendingLegs ?? 0;
+  const commuteTotalLegs = jobs?.commuteTotalLegs ?? 0;
   const documentsMessage = jobMessage(jobs?.documents ?? null);
 
   return (
@@ -160,7 +165,7 @@ export function ProjectReindexPanel({
               : "text-pn-text-secondary"
           }`}
         >
-          {commutePendingStatusText(commutePendingLegs, commuteRunning)}
+          {commutePendingStatusText(commutePendingLegs, commuteTotalLegs, commuteRunning)}
         </p>
         {jobs?.commute?.status === "failed" && (
           <p className={messageClassName(jobs.commute)}>Indizierung fehlgeschlagen.</p>

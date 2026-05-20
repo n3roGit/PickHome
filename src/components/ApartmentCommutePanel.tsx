@@ -1,6 +1,7 @@
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { CommuteTransitConnection } from "@/components/CommuteTransitConnection";
 import {
+  COMMUTE_PENDING_NOTE,
   commuteUnavailableMessage,
   type CommuteLeg,
   type CommutePersonEstimate,
@@ -8,7 +9,13 @@ import {
 import { companyCarCommuteMethodLabel, formatCommuteBenefitEur } from "@/lib/company-car";
 import { travelModeLabel } from "@/lib/travel-mode";
 
-function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
+function CommuteLegList({
+  legs,
+  travelMode,
+}: {
+  legs: CommuteLeg[];
+  travelMode: CommutePersonEstimate["travelMode"];
+}) {
   return (
     <ul className="space-y-3">
       {legs.map((leg) => (
@@ -170,7 +177,7 @@ export function ApartmentCommutePanel({
                 )}
               </p>
             ) : (
-              <CommuteLegList legs={person.legs} />
+              <CommuteLegList legs={person.legs} travelMode={person.travelMode} />
             )}
           </div>
         ))}

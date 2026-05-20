@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { countMissingCommuteLegsForProject } from "@/lib/commute-backfill";
+import {
+  countMissingCommuteLegsForProject,
+  countTotalCommuteLegsForProject,
+} from "@/lib/commute-backfill";
 import { getProjectReindexJobs } from "@/lib/project-reindex-jobs";
 import { projectAccessWhere } from "@/lib/project-access";
 import { prisma } from "@/lib/prisma";
@@ -23,9 +26,10 @@ export async function GET(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const [jobs, commutePendingLegs] = await Promise.all([
+  const [jobs, commutePendingLegs, commuteTotalLegs] = await Promise.all([
     getProjectReindexJobs(resolvedParams.projectId),
     countMissingCommuteLegsForProject(resolvedParams.projectId),
+    countTotalCommuteLegsForProject(resolvedParams.projectId),
   ]);
-  return NextResponse.json({ ...jobs, commutePendingLegs });
+  return NextResponse.json({ ...jobs, commutePendingLegs, commuteTotalLegs });
 }

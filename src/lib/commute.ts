@@ -93,13 +93,13 @@ const UNAVAILABLE_MESSAGES: Record<NonNullable<CommuteLeg["unavailableReason"]>,
   missing_address_coords: "Adresse konnte nicht geocodiert werden.",
   routing_failed: "Route konnte nicht berechnet werden.",
   api_unavailable:
-    "Routing-API vorübergehend nicht erreichbar — wird im Hintergrund erneut versucht.",
+    "Daten werden berechnet",
 };
 
-export const COMMUTE_PENDING_NOTE =
-  "Anfahrtszeit wird im Hintergrund berechnet — Seite später neu laden.";
+export const COMMUTE_PENDING_NOTE = "Daten werden berechnet";
 
-export const COMMUTE_TRANSIT_PENDING_NOTE = "Daten werden berechnet";
+/** @deprecated Use COMMUTE_PENDING_NOTE */
+export const COMMUTE_TRANSIT_PENDING_NOTE = COMMUTE_PENDING_NOTE;
 
 /** @deprecated Use COMMUTE_PENDING_NOTE */
 export const COMMUTE_REINDEX_PENDING_NOTE = COMMUTE_PENDING_NOTE;
@@ -202,15 +202,14 @@ export async function computeCommuteLegs(input: {
   });
   const cacheByAddressId = new Map(cachedRows.map((row) => [row.userAddressId, row]));
   const fetchOptions: FetchExternalOptions | undefined = input.background ? { background: true } : undefined;
-  const drivingDistanceHints =
-    input.cacheOnly && input.travelMode === "transit"
-      ? await ensureDrivingDistanceHints({
-          apartmentId: input.apartmentId,
-          apartment: input.apartment,
-          addresses: input.addresses,
-          fetchOptions,
-        })
-      : null;
+  const drivingDistanceHints = input.cacheOnly
+    ? await ensureDrivingDistanceHints({
+        apartmentId: input.apartmentId,
+        apartment: input.apartment,
+        addresses: input.addresses,
+        fetchOptions,
+      })
+    : null;
 
   const computeOne = async (addr: CommuteAddress): Promise<CommuteLeg> => {
     if (addr.latitude == null || addr.longitude == null) {
@@ -243,10 +242,11 @@ export async function computeCommuteLegs(input: {
     }
 
     if (input.cacheOnly) {
+      const distanceHint = drivingDistanceHints?.get(addr.id) ?? null;
       if (input.travelMode === "transit") {
-        return legTransitPending(addr, drivingDistanceHints?.get(addr.id) ?? null);
+        return legTransitPending(addr, distanceHint);
       }
-      return legReindexPending(addr);
+      return legReindexPending(addr, distanceHint);
     }
 
     const resolved = await resolveCommuteRoute(
@@ -592,7 +592,7 @@ function legTransitPending(addr: CommuteAddress, drivingDistanceText: string | n
     durationText: null,
     connectionSummary: null,
     transitDetailTooltip: null,
-    routingNote: COMMUTE_TRANSIT_PENDING_NOTE,
+    routingNote: COMMUTE_PENDING_NOTE,
     unavailableReason: null,
     distanceKmOneWay: null,
     monthlyCompanyCarBaseBenefitEur: null,
@@ -608,12 +608,12 @@ function legTransitPending(addr: CommuteAddress, drivingDistanceText: string | n
   };
 }
 
-function legReindexPending(addr: CommuteAddress): CommuteLeg {
+function legReindexPending(addr: CommuteAddress, distanceText: string | null = null): CommuteLeg {
   return {
     addressId: addr.id,
     label: addr.label,
     address: addr.address,
-    distanceText: null,
+    distanceText,
     durationText: null,
     connectionSummary: null,
     transitDetailTooltip: null,
