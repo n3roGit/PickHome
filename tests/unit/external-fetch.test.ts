@@ -115,6 +115,24 @@ describe("fetchExternal", () => {
     expect(isExternalServiceInCooldown("transit")).toBe(true);
   });
 
+  it("foreground calls are not delayed by background rate-limit slots", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const background = fetchExternal("transit", "https://example.test/bg", undefined, {
+      background: true,
+    });
+    await vi.runAllTimersAsync();
+    await background;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fetchMock.mockClear();
+    const foreground = fetchExternal("transit", "https://example.test/fg");
+    await vi.runAllTimersAsync();
+    await foreground;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("rate-limits nominatim and osrm independently", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

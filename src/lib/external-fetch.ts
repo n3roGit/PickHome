@@ -53,7 +53,8 @@ const LISTING_CONFIG: ServiceConfig = {
   retryMaxDelayMs: 8000,
 };
 
-const nextSlotAt = new Map<ExternalService, number>();
+const foregroundNextSlotAt = new Map<ExternalService, number>();
+const backgroundNextSlotAt = new Map<ExternalService, number>();
 const serviceCooldownUntil = new Map<ExternalService, number>();
 const pendingUnavailable = new Set<ExternalService>();
 
@@ -77,7 +78,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 export function resetExternalFetchState(): void {
-  nextSlotAt.clear();
+  foregroundNextSlotAt.clear();
+  backgroundNextSlotAt.clear();
   serviceCooldownUntil.clear();
   pendingUnavailable.clear();
 }
@@ -103,10 +105,15 @@ function backgroundMaxAttempts(service: ExternalService, config: ServiceConfig):
   return Math.min(config.maxRetries, 1);
 }
 
-async function waitForRateLimitSlot(service: ExternalService, minIntervalMs: number): Promise<void> {
+async function waitForRateLimitSlot(
+  service: ExternalService,
+  minIntervalMs: number,
+  background: boolean
+): Promise<void> {
+  const slots = background ? backgroundNextSlotAt : foregroundNextSlotAt;
   const now = Date.now();
-  const slot = Math.max(now, nextSlotAt.get(service) ?? 0);
-  nextSlotAt.set(service, slot + minIntervalMs);
+  const slot = Math.max(now, slots.get(service) ?? 0);
+  slots.set(service, slot + minIntervalMs);
   const delay = slot - now;
   if (delay > 0) await sleep(delay);
 }
@@ -153,7 +160,7 @@ export async function fetchExternal(
       await yieldToEventLoop();
     }
 
-    await waitForRateLimitSlot(service, intervalMs);
+    await waitForRateLimitSlot(service, intervalMs, !!options?.background);
 
     try {
       const res = await fetch(url, init);

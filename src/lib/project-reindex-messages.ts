@@ -10,7 +10,7 @@ export function formatCommuteReindexMessage(result: ReindexProjectCommuteResult)
   if (result.apartmentsTotal === 0) return "Keine aktiven Immobilien in diesem Projekt.";
   const apiNote =
     result.routesApiUnavailable > 0
-      ? `, ${result.routesApiUnavailable} wegen API-Ausfall übersprungen (später erneut indizieren)`
+      ? `, ${result.routesApiUnavailable} wegen API-Ausfall übersprungen (werden im Hintergrund nachgezogen)`
       : "";
   return `${result.routesComputed} Route(n) berechnet (${result.apartmentsWithCoords} von ${result.apartmentsTotal} Immobilie(n) mit Koordinaten)${result.routesSkipped > 0 ? `, ${result.routesSkipped} übersprungen` : ""}${result.routesFailed > 0 ? `, ${result.routesFailed} fehlgeschlagen` : ""}${apiNote}.`;
 }

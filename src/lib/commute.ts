@@ -96,8 +96,11 @@ const UNAVAILABLE_MESSAGES: Record<NonNullable<CommuteLeg["unavailableReason"]>,
     "Routing-API vorübergehend nicht erreichbar — wird im Hintergrund erneut versucht.",
 };
 
-export const COMMUTE_REINDEX_PENDING_NOTE =
-  "Anfahrtszeit wird gerade neu berechnet — bitte in Kürze erneut laden.";
+export const COMMUTE_PENDING_NOTE =
+  "Anfahrtszeit wird im Hintergrund berechnet — Seite später neu laden.";
+
+/** @deprecated Use COMMUTE_PENDING_NOTE */
+export const COMMUTE_REINDEX_PENDING_NOTE = COMMUTE_PENDING_NOTE;
 
 export function commuteUnavailableMessage(reason: CommuteLeg["unavailableReason"]): string | null {
   if (!reason) return null;
@@ -505,7 +508,7 @@ function legReindexPending(addr: CommuteAddress): CommuteLeg {
     durationText: null,
     connectionSummary: null,
     transitDetailTooltip: null,
-    routingNote: COMMUTE_REINDEX_PENDING_NOTE,
+    routingNote: COMMUTE_PENDING_NOTE,
     unavailableReason: null,
     distanceKmOneWay: null,
     monthlyCompanyCarBaseBenefitEur: null,
