@@ -61,13 +61,7 @@ function CommuteCompanyCarBenefit({ leg }: { leg: CommuteLeg }) {
   );
 }
 
-function CommuteLegList({
-  legs,
-  travelMode,
-}: {
-  legs: CommuteLeg[];
-  travelMode: CommutePersonEstimate["travelMode"];
-}) {
+function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
   return (
     <ul className="space-y-3">
       {legs.map((leg) => (
@@ -111,9 +105,6 @@ function CommuteLegList({
               {leg.distanceText && (
                 <p>
                   <span className="font-medium">{leg.distanceText}</span>
-                  {travelMode === "transit" && (
-                    <span className="text-pn-text-tertiary"> (Auto)</span>
-                  )}
                 </p>
               )}
               <p className="text-pn-text-tertiary mt-1">({leg.routingNote})</p>
@@ -183,7 +174,7 @@ export function ApartmentCommutePanel({
                 )}
               </p>
             ) : (
-              <CommuteLegList legs={person.legs} travelMode={person.travelMode} />
+              <CommuteLegList legs={person.legs} />
             )}
           </div>
         ))}

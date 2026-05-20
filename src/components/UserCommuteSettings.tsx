@@ -1,10 +1,9 @@
 import {
   createUserAddressAction,
-  deleteUserAddressAction,
   updateTravelModeAction,
   updateUserAddressAction,
 } from "@/app/actions";
-import { ConfirmActionButton } from "@/components/ConfirmActionButton";
+import { DeleteUserAddressButton } from "@/components/DeleteUserAddressButton";
 import { TravelModeForm } from "@/components/TravelModeForm";
 import type { TransitFallbackMode } from "@/lib/transit-settings";
 import { travelModeLabel, type TravelMode } from "@/lib/travel-mode";
@@ -110,7 +109,7 @@ export function UserCommuteSettings({
           companyCarOfficeTripsPerMonth={companyCarOfficeTripsPerMonth}
           companyCarContributionEur={companyCarContributionEur}
           companyCarSelfPaidCostsEur={companyCarSelfPaidCostsEur}
-          companyCarEmployerFuelCard={companyCarEmployerFuelCard}
+          companyCarEmployerFuelCard={companyCarEmployerFuelCard ?? true}
           action={updateTravelModeAction}
         />
       </section>
@@ -169,14 +168,7 @@ export function UserCommuteSettings({
                 Aktualisieren
               </button>
             </form>
-            <ConfirmActionButton
-              confirmMessage={`Adresse „${addr.label}" wirklich löschen?`}
-              action={() => deleteUserAddressAction(addr.id)}
-              className="text-sm text-pn-score-low hover:underline disabled:opacity-50"
-              pendingLabel="Löscht…"
-            >
-              Löschen
-            </ConfirmActionButton>
+            <DeleteUserAddressButton addressId={addr.id} label={addr.label} />
           </div>
         ))}
 

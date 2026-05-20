@@ -80,9 +80,15 @@ export function resolveTransitSettings(user: {
   transitFallbackMode: string | null;
 }): TransitSettings {
   return {
-    arrivalHour: user.transitArrivalHour ?? DEFAULT_TRANSIT_ARRIVAL_HOUR,
-    arrivalMinute: user.transitArrivalMinute ?? DEFAULT_TRANSIT_ARRIVAL_MINUTE,
-    arrivalWeekday: user.transitArrivalWeekday ?? DEFAULT_TRANSIT_ARRIVAL_WEEKDAY,
+    arrivalHour: parseTransitArrivalHour(
+      user.transitArrivalHour != null ? String(user.transitArrivalHour) : null
+    ),
+    arrivalMinute: parseTransitArrivalMinute(
+      user.transitArrivalMinute != null ? String(user.transitArrivalMinute) : null
+    ),
+    arrivalWeekday: parseTransitArrivalWeekday(
+      user.transitArrivalWeekday != null ? String(user.transitArrivalWeekday) : null
+    ),
     fallbackMaxKm:
       user.transitFallbackMaxKm != null
         ? user.transitFallbackMaxKm

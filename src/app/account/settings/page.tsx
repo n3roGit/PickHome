@@ -111,7 +111,7 @@ export default async function SettingsPage({
           companyCarOfficeTripsPerMonth={fresh.companyCarOfficeTripsPerMonth}
           companyCarContributionEur={fresh.companyCarContributionEur}
           companyCarSelfPaidCostsEur={fresh.companyCarSelfPaidCostsEur}
-          companyCarEmployerFuelCard={fresh.companyCarEmployerFuelCard}
+          companyCarEmployerFuelCard={fresh.companyCarEmployerFuelCard ?? true}
           addresses={fresh.addresses.map((a) => ({
             id: a.id,
             label: a.label,
