@@ -10,6 +10,8 @@ import { ScoreBadge } from "@/components/ScoreBadge";
 import { CriteriaEditor } from "@/components/CriteriaEditor";
 import { ProjectMembersPanel } from "@/components/ProjectMembersPanel";
 import { ProjectSettingsPanel } from "@/components/ProjectSettingsPanel";
+import { ProjectAreaFilterPanel } from "@/components/ProjectAreaFilterPanel";
+import { DesiredAreaBadge } from "@/components/DesiredAreaBadge";
 import { DeleteProjectButton } from "@/components/DeleteProjectButton";
 import { ApartmentDeleteButton } from "@/components/ApartmentDeleteButton";
 import { CompareView } from "@/components/CompareView";
@@ -42,6 +44,16 @@ import { DuplicateApartmentBadge } from "@/components/DuplicateApartmentBadge";
 import { archiveReasonLabel } from "@/lib/archive-reasons";
 import { buildDuplicateIndex } from "@/lib/apartment-duplicates";
 import { maxNotableDivergence, partnerComparisons } from "@/lib/rating-divergence";
+import {
+  isAreaFilterActive,
+  matchApartmentToAreaFilter,
+  parseAreaFilterConfig,
+} from "@/lib/area-filter";
+import {
+  getLocationCity,
+  loadLocationCities,
+  selectedPlzCentroids,
+} from "@/lib/location-areas";
 
 export default async function ProjectPage({
   params,
@@ -64,6 +76,8 @@ export default async function ProjectPage({
     commute_routes?: string;
     commute_skipped?: string;
     commute_failed?: string;
+    areas_saved?: string;
+    areas_error?: string;
     sort?: string;
     order?: string;
     q?: string;
@@ -139,6 +153,15 @@ export default async function ProjectPage({
     project.apartments.map((a) => ({ id: a.id, title: a.title, address: a.address }))
   );
 
+  const locationCatalog = loadLocationCities();
+  const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
+  const areaFilterEnabled = isAreaFilterActive(project.areaFilterCityId, areaFilterConfig);
+  const areaFilterCity = getLocationCity(locationCatalog, project.areaFilterCityId);
+  const areaFilterPlzOverlays =
+    areaFilterEnabled && areaFilterCity && areaFilterConfig
+      ? selectedPlzCentroids(areaFilterCity, areaFilterConfig.selectedPlz)
+      : [];
+
   const apartments = project.apartments.map((a) => {
     const result = apartmentScore(criteria, a.ratings, user.id, dealbreakerThreshold);
     const divergence =
@@ -154,11 +177,18 @@ export default async function ProjectPage({
             })
           )
         : null;
+    const areaMatch = matchApartmentToAreaFilter(
+      a.address,
+      project.areaFilterCityId,
+      areaFilterConfig,
+      locationCatalog
+    );
     return {
       ...a,
       ...result,
       divergence,
       duplicateMatches: duplicateIndex.get(a.id) ?? [],
+      areaMatch,
     };
   });
 
@@ -324,6 +354,9 @@ export default async function ProjectPage({
                         </a>
                       )}
                       {a.address && <p className="text-sm text-pn-text-secondary">{a.address}</p>}
+                      {areaFilterEnabled && (
+                        <DesiredAreaBadge status={a.areaMatch.status} className="mt-1" />
+                      )}
                       {tab === "archived" && a.archiveReason && (
                         <p className="text-xs text-pn-text-tertiary mt-1">
                           Grund: {archiveReasonLabel(a.archiveReason)}
@@ -481,28 +514,51 @@ export default async function ProjectPage({
         )}
 
         {tab === "map" && activeProject && (
-          <ProjectMap
-            key="project-map"
-            projectId={project.id}
-            apartments={activeProject.apartments.map((a) => {
-              const scored = apartmentScore(
-                criteria,
-                a.ratings,
-                user.id,
-                dealbreakerThreshold
-              );
-              return {
-                id: a.id,
-                title: a.title,
-                address: a.address,
-                latitude: a.latitude,
-                longitude: a.longitude,
-                score: scored.score,
-                displayScore: scored.displayScore,
-                dealbreaker: scored.dealbreaker,
-              };
-            })}
-          />
+          <div className="space-y-10">
+            <ProjectMap
+              key="project-map"
+              projectId={project.id}
+              areaFilterPlzOverlays={areaFilterPlzOverlays}
+              apartments={activeProject.apartments.map((a) => {
+                const scored = apartmentScore(
+                  criteria,
+                  a.ratings,
+                  user.id,
+                  dealbreakerThreshold
+                );
+                const areaMatch = matchApartmentToAreaFilter(
+                  a.address,
+                  project.areaFilterCityId,
+                  areaFilterConfig,
+                  locationCatalog
+                );
+                return {
+                  id: a.id,
+                  title: a.title,
+                  address: a.address,
+                  latitude: a.latitude,
+                  longitude: a.longitude,
+                  score: scored.score,
+                  displayScore: scored.displayScore,
+                  dealbreaker: scored.dealbreaker,
+                  areaMatchStatus: areaMatch.status,
+                };
+              })}
+            />
+            <section>
+              <h2 className="text-lg font-semibold mb-4">Wunschgebiet</h2>
+              <ProjectAreaFilterPanel
+                projectId={project.id}
+                saved={resolvedSearchParams.areas_saved === "1"}
+                error={resolvedSearchParams.areas_error}
+                catalog={locationCatalog}
+                initial={{
+                  cityId: project.areaFilterCityId,
+                  config: areaFilterConfig,
+                }}
+              />
+            </section>
+          </div>
         )}
 
         {tab === "calendar" && activeProject && (

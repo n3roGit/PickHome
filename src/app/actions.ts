@@ -153,6 +153,54 @@ export async function updateProjectAction(projectId: string, formData: FormData)
   redirect(`${base}&settings_saved=1`);
 }
 
+export async function updateProjectAreaFilterAction(
+  projectId: string,
+  payload: {
+    cityId: string | null;
+    selectedPlz: string[];
+    selectedDistricts: string[];
+  }
+) {
+  const user = await requireUser();
+  const base = `/project/${projectId}?tab=map`;
+
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  const cityId = payload.cityId?.trim() || null;
+  const selectedPlz = [...new Set(payload.selectedPlz.map(String))].sort();
+  const selectedDistricts = [...new Set(payload.selectedDistricts.map(String))].sort((a, b) =>
+    a.localeCompare(b, "de")
+  );
+
+  if (cityId && selectedPlz.length === 0) {
+    redirect(`${base}&areas_error=city`);
+  }
+
+  const { getLocationCity, loadLocationCities } = await import("@/lib/location-areas");
+  const catalog = loadLocationCities();
+  if (cityId && !getLocationCity(catalog, cityId)) {
+    redirect(`${base}&areas_error=city`);
+  }
+
+  const { serializeAreaFilterConfig } = await import("@/lib/area-filter");
+  const config =
+    cityId && selectedPlz.length > 0
+      ? serializeAreaFilterConfig({ selectedPlz, selectedDistricts })
+      : null;
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      areaFilterCityId: cityId,
+      areaFilterConfig: config,
+    },
+  });
+
+  revalidatePath(`/project/${projectId}`);
+  redirect(`${base}&areas_saved=1`);
+}
+
 export async function reindexProjectDocumentsAction(projectId: string) {
   const user = await requireUser();
 

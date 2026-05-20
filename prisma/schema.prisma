@@ -60,6 +60,8 @@ model Project {
   interestRate      Float?
   netHouseholdIncome Int?
   dealbreakerThreshold Int           @default(3)
+  areaFilterCityId  String?
+  areaFilterConfig  String?
   icalToken         String?          @unique
   createdAt   DateTime         @default(now())
   archivedAt  DateTime?

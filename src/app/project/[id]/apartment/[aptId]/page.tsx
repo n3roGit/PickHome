@@ -30,9 +30,16 @@ import { PartnerDivergencePanel } from "@/components/PartnerDivergencePanel";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DuplicateApartmentBadge } from "@/components/DuplicateApartmentBadge";
+import { DesiredAreaBadge } from "@/components/DesiredAreaBadge";
 import { findDuplicatesForApartment } from "@/lib/apartment-duplicates";
 import { partnerComparisons } from "@/lib/rating-divergence";
 import { resolveDealbreakerThreshold } from "@/lib/scoring";
+import {
+  isAreaFilterActive,
+  matchApartmentToAreaFilter,
+  parseAreaFilterConfig,
+} from "@/lib/area-filter";
+import { loadLocationCities } from "@/lib/location-areas";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -88,6 +95,16 @@ export default async function ApartmentPage({
   });
   const myScore = apartmentScore(criteria, apartment.ratings, user.id, dealbreakerThreshold);
   const archived = apartment.archivedAt != null;
+
+  const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
+  const locationCatalog = loadLocationCities();
+  const areaFilterEnabled = isAreaFilterActive(project.areaFilterCityId, areaFilterConfig);
+  const areaMatch = matchApartmentToAreaFilter(
+    apartment.address,
+    project.areaFilterCityId,
+    areaFilterConfig,
+    locationCatalog
+  );
 
   const groupsWithRatings = project.groups.map((g) => ({
     id: g.id,
@@ -173,6 +190,11 @@ export default async function ApartmentPage({
               </a>
             )}
             <DuplicateApartmentBadge projectId={project.id} matches={duplicateMatches} />
+            {areaFilterEnabled && (
+              <div className="mt-2">
+                <DesiredAreaBadge status={areaMatch.status} />
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />

@@ -44,6 +44,7 @@ async function ensureDataDirs() {
     ? join(process.cwd(), process.env.PICKHOME_DATA_DIR)
     : join(process.cwd(), "data");
   await mkdir(join(dataDir, "uploads", "apartments"), { recursive: true });
+  await mkdir(join(dataDir, "location-areas"), { recursive: true });
 }
 
 async function pushSchemaWithRetry() {

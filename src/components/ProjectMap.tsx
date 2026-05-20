@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { MAP_MARKER_COLORS } from "@/lib/scoring";
+import type { AreaMatchStatus } from "@/lib/area-filter";
+
+export type PlzMapOverlay = { plz: string; lat: number; lng: number };
 
 export type MapApartment = {
   id: string;
@@ -14,6 +17,7 @@ export type MapApartment = {
   score: number;
   displayScore: number;
   dealbreaker: boolean;
+  areaMatchStatus?: AreaMatchStatus;
 };
 
 export type MappedApartment = MapApartment & { latitude: number; longitude: number };
@@ -23,9 +27,11 @@ const MapInner = dynamic(() => import("@/components/ProjectMapInner"), { ssr: fa
 export function ProjectMap({
   projectId,
   apartments,
+  areaFilterPlzOverlays = [],
 }: {
   projectId: string;
   apartments: MapApartment[];
+  areaFilterPlzOverlays?: PlzMapOverlay[];
 }) {
   const [points, setPoints] = useState(apartments);
   const [loading, setLoading] = useState(false);
@@ -100,6 +106,11 @@ export function ProjectMap({
           {mapped.length} von {withAddress.length} mit Koordinaten
         </span>
       </div>
+      {mapped.length > 0 && areaFilterPlzOverlays.length > 0 && (
+        <p className="text-xs text-pn-text-secondary">
+          Grüne Kreise markieren die gewählten PLZ-Bereiche des Wunschgebiets.
+        </p>
+      )}
       {mapped.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-pn-text-secondary">Pin-Farbe:</span>
@@ -139,6 +150,7 @@ export function ProjectMap({
             projectId={projectId}
             apartments={mapped}
             colorMode={colorMode}
+            areaFilterPlzOverlays={areaFilterPlzOverlays}
           />
           <div className="flex flex-wrap items-center gap-4 text-xs text-pn-text-secondary">
             <ScoreLegend />
@@ -162,11 +174,13 @@ function DeferredMapInner({
   projectId,
   apartments,
   colorMode,
+  areaFilterPlzOverlays,
 }: {
   mountKey: number | null;
   projectId: string;
   apartments: MappedApartment[];
   colorMode: "score" | "dealbreaker";
+  areaFilterPlzOverlays: PlzMapOverlay[];
 }) {
   if (mountKey == null) {
     return (
@@ -179,6 +193,7 @@ function DeferredMapInner({
       projectId={projectId}
       apartments={apartments}
       colorMode={colorMode}
+      areaFilterPlzOverlays={areaFilterPlzOverlays}
     />
   );
 }
