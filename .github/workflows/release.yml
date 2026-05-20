@@ -9,32 +9,48 @@ permissions:
 
 jobs:
   release:
+    if: >-
+      github.event_name == 'push' &&
+      !startsWith(github.event.head_commit.message, 'chore: bump version to')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Read version from package.json
+      - name: Bump patch version in package.json
         id: version
         run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const path = "package.json";
+          const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+          const parts = pkg.version.split(".").map((n) => parseInt(n, 10));
+          if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
+            throw new Error(`Invalid semver in package.json: ${pkg.version}`);
+          }
+          parts[2] += 1;
+          pkg.version = parts.join(".");
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+          console.log(pkg.version);
+          NODE
           VERSION=$(node -p "require('./package.json').version")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Skip if tag already exists
-        id: check
+      - name: Commit, tag, and push
         env:
+          VERSION: ${{ steps.version.outputs.version }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Tag ${TAG} already exists — no release created."
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "Creating release ${TAG}."
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: bump version to ${VERSION}"
+          git tag "${TAG}"
+          git push origin main --tags
 
       - name: Create GitHub Release
-        if: steps.check.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}

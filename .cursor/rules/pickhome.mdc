@@ -40,7 +40,7 @@ Path alias: `@/*` → `src/*`.
 ## Releases and versioning
 
 - Version source: `"version"` in `package.json`.
-- Bump the version, commit, push to `main` → GitHub Actions creates tag `v*` and a [GitHub Release](https://github.com/n3roGit/PickHome/releases) if the tag is new. Docker publish runs on tag push (`n3ro88/pickhome:latest`, `n3ro88/pickhome:1.2.3`, …).
+- Push to `main` → CI bumps patch (`1.2.0` → `1.2.1`), tags `v*`, and creates a [GitHub Release](https://github.com/n3roGit/PickHome/releases). Set major/minor in `package.json` manually when needed. Docker publish runs on tag push (`n3ro88/pickhome:latest`, `n3ro88/pickhome:1.2.3`, …).
 - Update `CHANGELOG.md` manually when releasing.
 
 ## Git workflow

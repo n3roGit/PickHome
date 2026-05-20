@@ -37,4 +37,4 @@ First public release. See [release notes](https://github.com/n3roGit/PickHome/re
 
 All notable changes are also listed in [GitHub Releases](https://github.com/n3roGit/PickHome/releases).
 
-Release versions follow [Semantic Versioning](https://semver.org/). Set `"version"` in `package.json`, push to `main` — CI creates tag `v*` and a [GitHub Release](https://github.com/n3roGit/PickHome/releases) when that tag does not exist yet.
+Release versions follow [Semantic Versioning](https://semver.org/). Each push to `main` bumps the patch digit in `package.json` and creates tag `v*` plus a [GitHub Release](https://github.com/n3roGit/PickHome/releases). Set major/minor in `package.json` manually when needed.

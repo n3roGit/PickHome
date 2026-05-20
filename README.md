@@ -111,7 +111,7 @@ After a [GitHub Release](https://github.com/n3roGit/PickHome/releases), use a ve
 image: n3ro88/pickhome:1.2.3
 ```
 
-Releases: set `"version"` in `package.json`, push to `main`. GitHub Actions creates tag `v*` and a release when that tag does not exist yet. Update `CHANGELOG.md` manually.
+Releases: push to `main` — CI bumps the patch version in `package.json` (e.g. `1.2.0` → `1.2.1`), tags `v*`, and creates a GitHub Release. For minor/major bumps, set the first two digits in `package.json` before pushing. Update `CHANGELOG.md` manually.
 
 ## Local development (without Docker)
 
