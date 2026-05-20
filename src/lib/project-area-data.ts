@@ -51,3 +51,18 @@ export async function deleteProjectAreaDistrict(
     where: { projectId, plz, name },
   });
 }
+
+export async function clearProjectAreaDistricts(projectId: string): Promise<void> {
+  await prisma.projectAreaDistrict.deleteMany({ where: { projectId } });
+}
+
+export async function replaceProjectAreaDistrictsFromImport(
+  projectId: string,
+  rows: Array<{ plz: string; districts: string[] }>
+): Promise<{ plzCount: number; districtCount: number }> {
+  await clearProjectAreaDistricts(projectId);
+  if (rows.length === 0) {
+    return { plzCount: 0, districtCount: 0 };
+  }
+  return upsertProjectAreaDistrictsFromImport(projectId, rows);
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseLocationCatalogImport } from "@/lib/location-catalog-import";
+import { parseLocationCatalogImport, serializeProjectAreaDistrictsImport } from "@/lib/location-catalog-import";
 
 describe("parseLocationCatalogImport", () => {
   it("parses pipe-separated table rows", () => {
@@ -28,5 +28,18 @@ describe("parseLocationCatalogImport", () => {
   it("returns null for empty input", () => {
     expect(parseLocationCatalogImport("", "Bremen")).toBeNull();
     expect(parseLocationCatalogImport("no plz here", "Bremen")).toBeNull();
+  });
+
+  it("serializes custom districts back to import text", () => {
+    const text = serializeProjectAreaDistrictsImport(
+      {
+        "28203": ["Fesenfeld", "Ostertor"],
+        "28205": ["Findorff", "Walle"],
+      },
+      "Bremen"
+    );
+    expect(text).toBe(
+      "28203 | Bremen | Fesenfeld, Ostertor\n28205 | Bremen | Findorff, Walle"
+    );
   });
 });

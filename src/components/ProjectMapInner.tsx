@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
-import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
+import { createRoot, type Root } from "react-dom/client";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { DesiredAreaBadge } from "@/components/DesiredAreaBadge";
 import { markerColorForScore } from "@/lib/scoring";
 import type { MappedApartment, PlzMapOverlay } from "@/components/ProjectMap";
+import { DEFAULT_PLZ_OVERLAY_RADIUS_M } from "@/lib/plz-map-overlays";
 
-const DESIRED_AREA_FILL = "rgba(34, 197, 94, 0.18)";
-const DESIRED_AREA_STROKE = "rgba(22, 163, 74, 0.55)";
+const DESIRED_AREA_FILL = "#22c55e";
+const DESIRED_AREA_STROKE = "#15803d";
+const DESIRED_AREA_FILL_OPACITY = 0.28;
 
 function markerIcon(color: string) {
   return L.divIcon({
@@ -22,14 +24,37 @@ function markerIcon(color: string) {
   });
 }
 
-function MapCleanup() {
-  const map = useMap();
-  useEffect(() => {
-    return () => {
-      map.remove();
-    };
-  }, [map]);
-  return null;
+function PopupContent({
+  apartment,
+  projectId,
+}: {
+  apartment: MappedApartment;
+  projectId: string;
+}) {
+  return (
+    <div>
+      <p className="font-semibold text-sm">{apartment.title}</p>
+      {apartment.address && <p className="text-xs mt-1">{apartment.address}</p>}
+      {apartment.areaMatchStatus && apartment.areaMatchStatus !== "unset" && (
+        <div className="mt-1">
+          <DesiredAreaBadge status={apartment.areaMatchStatus} />
+        </div>
+      )}
+      <div className="mt-2">
+        <ScoreBadge
+          score={apartment.score}
+          displayScore={apartment.displayScore}
+          dealbreaker={apartment.dealbreaker}
+        />
+      </div>
+      <Link
+        href={`/project/${projectId}/apartment/${apartment.id}`}
+        className="text-xs text-pn-accent hover:underline mt-2 inline-block"
+      >
+        Details öffnen
+      </Link>
+    </div>
+  );
 }
 
 export default function ProjectMapInner({
@@ -43,69 +68,77 @@ export default function ProjectMapInner({
   colorMode: "score" | "dealbreaker";
   areaFilterPlzOverlays: PlzMapOverlay[];
 }) {
-  const center = apartments[0];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const popupRootsRef = useRef<Root[]>([]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || apartments.length === 0) return;
+
+    const center = apartments[0];
+    const map = L.map(container, { scrollWheelZoom: true }).setView(
+      [center.latitude, center.longitude],
+      11
+    );
+    mapRef.current = map;
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+
+    const bounds = L.latLngBounds([]);
+
+    for (const entry of areaFilterPlzOverlays) {
+      const radiusM = entry.radiusM ?? DEFAULT_PLZ_OVERLAY_RADIUS_M;
+      const circle = L.circle([entry.lat, entry.lng], {
+        radius: radiusM,
+        color: DESIRED_AREA_STROKE,
+        fillColor: DESIRED_AREA_FILL,
+        fillOpacity: DESIRED_AREA_FILL_OPACITY,
+        weight: 2.5,
+      }).addTo(map);
+      bounds.extend(circle.getBounds());
+    }
+
+    for (const apartment of apartments) {
+      const shown = apartment.displayScore ?? apartment.score;
+      const color = markerColorForScore(shown, apartment.dealbreaker, colorMode);
+      const marker = L.marker([apartment.latitude, apartment.longitude], {
+        icon: markerIcon(color),
+      }).addTo(map);
+
+      bounds.extend([apartment.latitude, apartment.longitude]);
+
+      const popupEl = document.createElement("div");
+      const root = createRoot(popupEl);
+      popupRootsRef.current.push(root);
+      root.render(<PopupContent apartment={apartment} projectId={projectId} />);
+      marker.bindPopup(popupEl);
+    }
+
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 12 });
+    }
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      const roots = popupRootsRef.current;
+      popupRootsRef.current = [];
+      queueMicrotask(() => {
+        for (const root of roots) {
+          root.unmount();
+        }
+      });
+    };
+  }, [apartments, areaFilterPlzOverlays, colorMode, projectId]);
 
   return (
-    <div className="h-[min(50vh,480px)] min-h-[280px] sm:h-[480px] w-full rounded-xl overflow-hidden border border-pn-border z-0">
-      <MapContainer
-        center={[center.latitude, center.longitude]}
-        zoom={11}
-        scrollWheelZoom
-        className="h-full w-full"
-      >
-        <MapCleanup />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {areaFilterPlzOverlays.map((entry) => (
-          <Circle
-            key={entry.plz}
-            center={[entry.lat, entry.lng]}
-            radius={1800}
-            pathOptions={{
-              color: DESIRED_AREA_STROKE,
-              fillColor: DESIRED_AREA_FILL,
-              fillOpacity: 1,
-              weight: 2,
-            }}
-          />
-        ))}
-        {apartments.map((a) => {
-          const shown = a.displayScore ?? a.score;
-          const color = markerColorForScore(shown, a.dealbreaker, colorMode);
-          return (
-            <Marker
-              key={a.id}
-              position={[a.latitude, a.longitude]}
-              icon={markerIcon(color)}
-            >
-              <Popup>
-                <p className="font-semibold text-sm">{a.title}</p>
-                {a.address && <p className="text-xs mt-1">{a.address}</p>}
-                {a.areaMatchStatus && a.areaMatchStatus !== "unset" && (
-                  <div className="mt-1">
-                    <DesiredAreaBadge status={a.areaMatchStatus} />
-                  </div>
-                )}
-                <div className="mt-2">
-                  <ScoreBadge
-                    score={a.score}
-                    displayScore={a.displayScore}
-                    dealbreaker={a.dealbreaker}
-                  />
-                </div>
-                <Link
-                  href={`/project/${projectId}/apartment/${a.id}`}
-                  className="text-xs text-pn-accent hover:underline mt-2 inline-block"
-                >
-                  Details öffnen
-                </Link>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
-    </div>
+    <div
+      ref={containerRef}
+      className="h-[min(50vh,480px)] min-h-[280px] sm:h-[480px] w-full rounded-xl overflow-hidden border border-pn-border z-0"
+    />
   );
 }

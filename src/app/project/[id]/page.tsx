@@ -52,6 +52,8 @@ import {
 import { findOrtByKey, getPlzReferenceData } from "@/lib/plz-reference";
 import { mergeDistrictsByPlz } from "@/lib/ortsteile-reference";
 import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
+import { resolvePlzMapOverlays } from "@/lib/plz-map-overlays";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 
 export default async function ProjectPage({
   params,
@@ -77,6 +79,7 @@ export default async function ProjectPage({
     areas_saved?: string;
     areas_error?: string;
     districts_saved?: string;
+    districts_cleared?: string;
     districts_error?: string;
     sort?: string;
     order?: string;
@@ -159,6 +162,14 @@ export default async function ProjectPage({
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
   const areaFilterEnabled = isAreaFilterActive(project.areaFilterOrtKey, areaFilterConfig);
   const initialOrt = findOrtByKey(project.areaFilterOrtKey ?? "");
+  const areaFilterSummary =
+    areaFilterEnabled && initialOrt && areaFilterConfig
+      ? `${initialOrt.name} · ${areaFilterConfig.selectedPlz.length} PLZ`
+      : undefined;
+  const areaFilterPlzOverlays =
+    tab === "map" && areaFilterEnabled && areaFilterConfig && activeProject
+      ? await resolvePlzMapOverlays(areaFilterConfig.selectedPlz, activeProject.apartments)
+      : [];
 
   const apartments = project.apartments.map((a) => {
     const result = apartmentScore(criteria, a.ratings, user.id, dealbreakerThreshold);
@@ -516,6 +527,7 @@ export default async function ProjectPage({
             <ProjectMap
               key="project-map"
               projectId={project.id}
+              areaFilterPlzOverlays={areaFilterPlzOverlays}
               apartments={activeProject.apartments.map((a) => {
                 const scored = apartmentScore(
                   criteria,
@@ -542,13 +554,13 @@ export default async function ProjectPage({
                 };
               })}
             />
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold">Wunschgebiet</h2>
+            <CollapsibleSection title="Wunschgebiet" defaultOpen={false} headerAside={areaFilterSummary}>
               <ProjectAreaFilterPanel
                 projectId={project.id}
                 saved={resolvedSearchParams.areas_saved === "1"}
                 error={resolvedSearchParams.areas_error}
                 districtsSaved={resolvedSearchParams.districts_saved === "1"}
+                districtsCleared={resolvedSearchParams.districts_cleared === "1"}
                 districtsError={resolvedSearchParams.districts_error}
                 bundeslaender={plzReference.bundeslaender}
                 initialOrt={initialOrt}
@@ -559,7 +571,7 @@ export default async function ProjectPage({
                   config: areaFilterConfig,
                 }}
               />
-            </section>
+            </CollapsibleSection>
           </div>
         )}
 

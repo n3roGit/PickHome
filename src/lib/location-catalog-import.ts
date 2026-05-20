@@ -72,3 +72,17 @@ export function parseLocationCatalogImport(
 
   return { cityName: resolvedCity, rows };
 }
+
+export function serializeProjectAreaDistrictsImport(
+  districtsByPlz: Record<string, string[]>,
+  cityName?: string | null
+): string {
+  return Object.entries(districtsByPlz)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([plz, districts]) => {
+      const list = districts.join(", ");
+      const city = cityName?.trim();
+      return city ? `${plz} | ${city} | ${list}` : `${plz} | ${list}`;
+    })
+    .join("\n");
+}

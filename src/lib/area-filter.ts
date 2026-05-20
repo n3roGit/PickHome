@@ -1,4 +1,5 @@
 import { extractGermanPlz } from "@/lib/federal-state-from-address";
+import { staticDistrictsForPlz } from "@/lib/ortsteile-reference";
 
 export type AreaFilterConfig = {
   selectedPlz: string[];
@@ -100,15 +101,34 @@ function allDistrictsForPlz(
   return customDistrictsByPlz[plz] ?? [];
 }
 
-function allDistrictsSelectedForPlz(
-  customDistrictsByPlz: Record<string, string[]>,
+function isPartialDistrictFilter(
   plz: string,
-  selectedDistricts: string[]
+  catalogDistricts: string[],
+  selectedForPlz: string[]
 ): boolean {
-  const all = allDistrictsForPlz(customDistrictsByPlz, plz);
-  if (all.length === 0) return true;
-  const selected = new Set(selectedDistricts);
-  return all.every((d) => selected.has(d));
+  if (selectedForPlz.length === 0) return false;
+
+  const staticDistricts = staticDistrictsForPlz(plz);
+  const staticSelected = selectedForPlz.filter((d) => staticDistricts.includes(d));
+  if (
+    staticDistricts.length > 0 &&
+    staticSelected.length > 0 &&
+    staticSelected.length < staticDistricts.length
+  ) {
+    return true;
+  }
+
+  const customOnly = catalogDistricts.filter((d) => !staticDistricts.includes(d));
+  const customSelected = selectedForPlz.filter((d) => customOnly.includes(d));
+  if (
+    customOnly.length > 0 &&
+    customSelected.length > 0 &&
+    customSelected.length < customOnly.length
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export function matchApartmentToAreaFilter(
@@ -135,17 +155,16 @@ export function matchApartmentToAreaFilter(
     return { status: "outside", plz, district: null };
   }
 
-  const plzDistricts = allDistrictsForPlz(customDistrictsByPlz, plz);
-  if (plzDistricts.length === 0) {
+  const catalogDistricts = allDistrictsForPlz(customDistrictsByPlz, plz);
+  const selectedForPlz = config.selectedDistricts.filter((d) =>
+    catalogDistricts.includes(d)
+  );
+
+  if (catalogDistricts.length === 0 || selectedForPlz.length === 0) {
     return { status: "inside", plz, district: null };
   }
 
-  const selectedForPlz = config.selectedDistricts.filter((d) => plzDistricts.includes(d));
-  if (selectedForPlz.length === 0) {
-    return { status: "outside", plz, district: null };
-  }
-
-  const district = extractDistrictFromAddress(trimmed, plzDistricts);
+  const district = extractDistrictFromAddress(trimmed, catalogDistricts);
   if (district) {
     if (selectedForPlz.includes(district)) {
       return { status: "inside", plz, district };
@@ -153,11 +172,11 @@ export function matchApartmentToAreaFilter(
     return { status: "outside", plz, district };
   }
 
-  if (allDistrictsSelectedForPlz(customDistrictsByPlz, plz, config.selectedDistricts)) {
-    return { status: "inside", plz, district: null };
+  if (isPartialDistrictFilter(plz, catalogDistricts, selectedForPlz)) {
+    return { status: "unknown", plz, district: null };
   }
 
-  return { status: "unknown", plz, district: null };
+  return { status: "inside", plz, district: null };
 }
 
 export function defaultDistrictsForPlzSelection(

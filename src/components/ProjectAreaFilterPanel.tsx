@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
+  clearProjectAreaDistrictsAction,
   deleteProjectAreaDistrictAction,
   importProjectAreaDistrictsAction,
   searchOrteAction,
@@ -12,6 +13,7 @@ import {
   defaultDistrictsForPlzSelection,
   districtsForPlzList,
 } from "@/lib/area-filter";
+import { serializeProjectAreaDistrictsImport } from "@/lib/location-catalog-import";
 import {
   formatOrtLabel,
   ortReferenceKey,
@@ -28,6 +30,7 @@ export function ProjectAreaFilterPanel({
   saved,
   error,
   districtsSaved,
+  districtsCleared,
   districtsError,
   initial,
   initialOrt,
@@ -39,6 +42,7 @@ export function ProjectAreaFilterPanel({
   saved?: boolean;
   error?: string;
   districtsSaved?: boolean;
+  districtsCleared?: boolean;
   districtsError?: string;
   initial: SavedConfig;
   initialOrt: PlzReferenceOrt | null;
@@ -54,8 +58,12 @@ export function ProjectAreaFilterPanel({
   const [bundeslandFilter, setBundeslandFilter] = useState(initialOrt?.bundesland ?? "");
   const [ortQuery, setOrtQuery] = useState(initialOrt ? formatOrtLabel(initialOrt) : "");
   const [ortResults, setOrtResults] = useState<PlzReferenceOrt[]>([]);
-  const [importTable, setImportTable] = useState("");
+  const [importTable, setImportTable] = useState(() =>
+    serializeProjectAreaDistrictsImport(projectAreaDistricts, initialOrt?.name ?? null)
+  );
   const [pending, startTransition] = useTransition();
+
+  const hasCustomDistricts = Object.keys(projectAreaDistricts).length > 0;
 
   const availableDistricts = useMemo(
     () => districtsForPlzList(districtsByPlz, selectedPlz),
@@ -162,7 +170,11 @@ export function ProjectAreaFilterPanel({
     <div className="space-y-6 max-w-2xl">
       {(saved || districtsSaved) && (
         <p className="text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
-          {saved ? "Wunschgebiet wurde gespeichert." : "Ortsteile wurden importiert."}
+          {saved
+            ? "Wunschgebiet wurde gespeichert."
+            : districtsCleared
+              ? "Optionale Ortsteile wurden entfernt."
+              : "Ortsteile wurden übernommen."}
         </p>
       )}
       {error === "ort" && (
@@ -333,14 +345,17 @@ export function ProjectAreaFilterPanel({
             </p>
           )}
 
-          <details className="bg-pn-bg-subtle border border-pn-border rounded-xl p-4">
+          <details
+            className="bg-pn-bg-subtle border border-pn-border rounded-xl p-4"
+            open={hasCustomDistricts}
+          >
             <summary className="cursor-pointer text-sm font-medium text-pn-text-secondary">
-              Fehlende Ortsteile ergänzen (optional)
+              Optionale Ortsteile {hasCustomDistricts ? `(${Object.values(projectAreaDistricts).flat().length})` : ""}
             </summary>
             <div className="mt-4 space-y-4">
               <p className="text-xs text-pn-text-tertiary">
-                Nur nötig, wenn die hinterlegten OSM-Ortsteile unvollständig sind oder andere
-                Bezeichnungen verwenden.
+                Ergänzungen zu den hinterlegten OSM-Ortsteilen. Text bearbeiten und übernehmen —
+                leerer Inhalt entfernt alle optionalen Einträge.
               </p>
               <form
                 className="space-y-3"
@@ -348,7 +363,6 @@ export function ProjectAreaFilterPanel({
                   e.preventDefault();
                   run(async () => {
                     await importProjectAreaDistrictsAction(projectId, importTable);
-                    setImportTable("");
                   });
                 }}
               >
@@ -357,18 +371,35 @@ export function ProjectAreaFilterPanel({
                   onChange={(e) => setImportTable(e.target.value)}
                   placeholder={`28203 | Bremen | Fesenfeld, Ostertor, Steintor\n28205 | Bremen | Findorff, Walle`}
                   disabled={pending}
-                  rows={6}
-                  className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full font-mono text-xs"
+                  rows={8}
+                  className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full font-mono"
                 />
-                <button
-                  type="submit"
-                  disabled={pending || !importTable.trim()}
-                  className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm disabled:opacity-50"
-                >
-                  Ortsteile importieren
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="bg-pn-accent text-white font-medium px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                  >
+                    {pending ? "Speichern…" : "Ortsteile übernehmen"}
+                  </button>
+                  {hasCustomDistricts && (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() =>
+                        run(async () => {
+                          await clearProjectAreaDistrictsAction(projectId);
+                          setImportTable("");
+                        })
+                      }
+                      className="border border-pn-border bg-pn-bg-surface text-pn-text-primary font-medium px-4 py-2 rounded-lg text-sm hover:bg-pn-bg-subtle disabled:opacity-50"
+                    >
+                      Alle entfernen
+                    </button>
+                  )}
+                </div>
               </form>
-              {Object.keys(projectAreaDistricts).length > 0 && (
+              {hasCustomDistricts && (
                 <ul className="space-y-2">
                   {Object.entries(projectAreaDistricts)
                     .sort(([a], [b]) => a.localeCompare(b))

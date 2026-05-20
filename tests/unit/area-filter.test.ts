@@ -107,6 +107,32 @@ describe("area-filter", () => {
     expect(result.status).toBe("unknown");
   });
 
+  it("matches inside on PLZ when custom districts exist but none are selected", () => {
+    const importedLikeCatalog: Record<string, string[]> = {
+      "28209": [
+        "Barkhof",
+        "Bremen-Mitte",
+        "Bremen-Ost",
+        "Bürgerpark",
+        "Bürgerweide",
+        "Mitte",
+        "Schwachhausen",
+      ],
+    };
+    const importedConfig = {
+      selectedPlz: ["28209"],
+      selectedDistricts: ["Bremen-Mitte", "Bremen-Ost", "Mitte", "Schwachhausen"],
+    };
+    const result = matchApartmentToAreaFilter(
+      "Carl-Schurz-Str. 29; 28209 Bremen",
+      "Bremen|Bremen",
+      importedConfig,
+      importedLikeCatalog
+    );
+    expect(result.status).toBe("inside");
+    expect(result.plz).toBe("28209");
+  });
+
   it("extracts district with slash variant", () => {
     const district = extractDistrictFromAddress("28209 Bremen Bürgerweide Barkhof", [
       "Bürgerweide/Barkhof",

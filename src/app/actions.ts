@@ -222,15 +222,32 @@ export async function importProjectAreaDistrictsAction(projectId: string, tableR
   if (!project) redirect("/dashboard");
 
   const { parseLocationCatalogImport } = await import("@/lib/location-catalog-import");
-  const { upsertProjectAreaDistrictsFromImport } = await import("@/lib/project-area-data");
+  const { replaceProjectAreaDistrictsFromImport } = await import("@/lib/project-area-data");
+
+  if (!tableRaw.trim()) {
+    const { clearProjectAreaDistricts } = await import("@/lib/project-area-data");
+    await clearProjectAreaDistricts(projectId);
+    areaDistrictRedirect(projectId, { districts_saved: "1", districts_cleared: "1" });
+  }
+
   const parsed = parseLocationCatalogImport(tableRaw, "Import");
   if (!parsed) areaDistrictRedirect(projectId, { districts_error: "import" });
 
-  const result = await upsertProjectAreaDistrictsFromImport(projectId, parsed.rows);
+  const result = await replaceProjectAreaDistrictsFromImport(projectId, parsed.rows);
   areaDistrictRedirect(projectId, {
     districts_saved: "1",
     districts_plz: String(result.plzCount),
   });
+}
+
+export async function clearProjectAreaDistrictsAction(projectId: string) {
+  const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  const { clearProjectAreaDistricts } = await import("@/lib/project-area-data");
+  await clearProjectAreaDistricts(projectId);
+  areaDistrictRedirect(projectId, { districts_saved: "1", districts_cleared: "1" });
 }
 
 export async function deleteProjectAreaDistrictAction(

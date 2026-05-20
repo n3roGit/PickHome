@@ -10,6 +10,8 @@ export type PlzReferenceEntry = {
   plz: string;
   bundesland: string;
   orte: string[];
+  lat?: number;
+  lng?: number;
 };
 
 export type PlzReferenceData = {
@@ -72,6 +74,12 @@ export function searchOrte(query: string, bundesland?: string, limit = 40): PlzR
 
 export function plzEntry(plz: string): PlzReferenceEntry | null {
   return data.plz.find((e) => e.plz === plz) ?? null;
+}
+
+export function plzCentroid(plz: string): { lat: number; lng: number } | null {
+  const entry = plzEntry(plz);
+  if (entry?.lat == null || entry?.lng == null) return null;
+  return { lat: entry.lat, lng: entry.lng };
 }
 
 export function formatOrtLabel(ort: Pick<PlzReferenceOrt, "name" | "bundesland">): string {

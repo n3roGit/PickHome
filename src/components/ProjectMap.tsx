@@ -5,8 +5,9 @@ import dynamic from "next/dynamic";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { MAP_MARKER_COLORS } from "@/lib/scoring";
 import type { AreaMatchStatus } from "@/lib/area-filter";
+import type { PlzMapOverlay } from "@/lib/plz-map-overlays";
 
-export type PlzMapOverlay = { plz: string; lat: number; lng: number };
+export type { PlzMapOverlay };
 
 export type MapApartment = {
   id: string;
@@ -36,12 +37,13 @@ export function ProjectMap({
   const [points, setPoints] = useState(apartments);
   const [loading, setLoading] = useState(false);
   const [colorMode, setColorMode] = useState<"score" | "dealbreaker">("score");
-  const [mapMountKey, setMapMountKey] = useState<number | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapMountKey] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
-    setMapMountKey(Date.now());
-    return () => setMapMountKey(null);
+    setMapReady(true);
   }, []);
+
   const scoreById = useMemo(
     () => new Map(apartments.map((a) => [a.id, a])),
     [apartments]
@@ -143,10 +145,12 @@ export function ProjectMap({
           Noch keine Standorte. Adressen bei den Immobilien eintragen und „Adressen auf Karte laden“
           klicken.
         </p>
+      ) : !mapReady ? (
+        <div className="h-[min(50vh,480px)] min-h-[280px] sm:h-[480px] w-full rounded-xl border border-pn-border bg-pn-bg-subtle" />
       ) : (
         <>
-          <DeferredMapInner
-            mountKey={mapMountKey}
+          <MapInner
+            key={mapMountKey}
             projectId={projectId}
             apartments={mapped}
             colorMode={colorMode}
@@ -166,34 +170,5 @@ export function ProjectMap({
         </>
       )}
     </div>
-  );
-}
-
-function DeferredMapInner({
-  mountKey,
-  projectId,
-  apartments,
-  colorMode,
-  areaFilterPlzOverlays,
-}: {
-  mountKey: number | null;
-  projectId: string;
-  apartments: MappedApartment[];
-  colorMode: "score" | "dealbreaker";
-  areaFilterPlzOverlays: PlzMapOverlay[];
-}) {
-  if (mountKey == null) {
-    return (
-      <div className="h-[min(50vh,480px)] min-h-[280px] sm:h-[480px] w-full rounded-xl border border-pn-border bg-pn-bg-subtle" />
-    );
-  }
-  return (
-    <MapInner
-      key={mountKey}
-      projectId={projectId}
-      apartments={apartments}
-      colorMode={colorMode}
-      areaFilterPlzOverlays={areaFilterPlzOverlays}
-    />
   );
 }

@@ -38,7 +38,7 @@ describe("project area districts integration", () => {
 
   it("imports district rows from parsed catalog", async () => {
     const { parseLocationCatalogImport } = await import("@/lib/location-catalog-import");
-    const { upsertProjectAreaDistrictsFromImport, fetchProjectAreaDistricts } = await import(
+    const { replaceProjectAreaDistrictsFromImport, fetchProjectAreaDistricts } = await import(
       "@/lib/project-area-data"
     );
 
@@ -48,8 +48,26 @@ describe("project area districts integration", () => {
     );
     expect(parsed).not.toBeNull();
 
-    await upsertProjectAreaDistrictsFromImport(projectId, parsed!.rows);
+    await replaceProjectAreaDistrictsFromImport(projectId, parsed!.rows);
     const byPlz = await fetchProjectAreaDistricts(projectId);
     expect(byPlz["28205"]).toEqual(["Findorff", "Walle"]);
+  });
+
+  it("replace import clears districts removed from text", async () => {
+    const { replaceProjectAreaDistrictsFromImport, fetchProjectAreaDistricts } = await import(
+      "@/lib/project-area-data"
+    );
+
+    await replaceProjectAreaDistrictsFromImport(projectId, [
+      { plz: "28203", districts: ["Fesenfeld", "Ostertor"] },
+      { plz: "28205", districts: ["Findorff"] },
+    ]);
+    await replaceProjectAreaDistrictsFromImport(projectId, [
+      { plz: "28203", districts: ["Fesenfeld"] },
+    ]);
+
+    const byPlz = await fetchProjectAreaDistricts(projectId);
+    expect(byPlz["28203"]).toEqual(["Fesenfeld"]);
+    expect(byPlz["28205"]).toBeUndefined();
   });
 });
