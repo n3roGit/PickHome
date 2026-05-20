@@ -23,24 +23,26 @@ export type MapApartment = {
 
 export type MappedApartment = MapApartment & { latitude: number; longitude: number };
 
+export type MapPinColorMode = "score" | "dealbreaker" | "area";
+
 const MapInner = dynamic(() => import("@/components/ProjectMapInner"), { ssr: false });
 
 export function ProjectMap({
   projectId,
   apartments,
-  areaFilterPlzOverlays = [],
   areaFilterEnabled = false,
 }: {
   projectId: string;
   apartments: MapApartment[];
-  areaFilterPlzOverlays?: PlzMapOverlay[];
   areaFilterEnabled?: boolean;
 }) {
   const [points, setPoints] = useState(apartments);
   const [loading, setLoading] = useState(false);
-  const [plzOverlays, setPlzOverlays] = useState(areaFilterPlzOverlays);
+  const [plzOverlays, setPlzOverlays] = useState<PlzMapOverlay[]>([]);
   const [plzOverlaysLoading, setPlzOverlaysLoading] = useState(false);
-  const [colorMode, setColorMode] = useState<"score" | "dealbreaker">("score");
+  const [colorMode, setColorMode] = useState<MapPinColorMode>(
+    areaFilterEnabled ? "area" : "score"
+  );
   const [mapReady, setMapReady] = useState(false);
   const [mapMountKey] = useState(() => crypto.randomUUID());
 
@@ -63,11 +65,10 @@ export function ProjectMap({
   }, [apartments]);
 
   useEffect(() => {
-    setPlzOverlays(areaFilterPlzOverlays);
-  }, [areaFilterPlzOverlays]);
-
-  useEffect(() => {
-    if (!areaFilterEnabled) return;
+    if (!areaFilterEnabled) {
+      setPlzOverlays([]);
+      return;
+    }
 
     let cancelled = false;
     setPlzOverlaysLoading(true);
@@ -114,6 +115,7 @@ export function ProjectMap({
               score: scored?.score ?? 0,
               displayScore: scored?.displayScore ?? 0,
               dealbreaker: scored?.dealbreaker ?? false,
+              areaMatchStatus: scored?.areaMatchStatus,
             };
           })
         );
@@ -142,16 +144,31 @@ export function ProjectMap({
           {mapped.length} von {withAddress.length} mit Koordinaten
         </span>
       </div>
-      {mapped.length > 0 && (plzOverlays.length > 0 || plzOverlaysLoading) && (
+      {areaFilterEnabled && mapped.length > 0 && (
         <p className="text-xs text-pn-text-secondary">
           {plzOverlaysLoading
             ? "Wunschgebiet-Kreise werden geladen…"
-            : "Grüne Kreise markieren die gewählten PLZ-Bereiche des Wunschgebiets."}
+            : plzOverlays.length > 0
+              ? `${plzOverlays.length} grüne Kreise markieren die gewählten PLZ-Bereiche des Wunschgebiets.`
+              : "Wunschgebiet ist aktiv, aber es konnten keine PLZ-Bereiche auf der Karte dargestellt werden."}
         </p>
       )}
       {mapped.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-pn-text-secondary">Pin-Farbe:</span>
+          {areaFilterEnabled && (
+            <button
+              type="button"
+              onClick={() => setColorMode("area")}
+              className={`px-3 py-1 rounded-lg border ${
+                colorMode === "area"
+                  ? "border-pn-accent bg-pn-accent/10"
+                  : "border-pn-border"
+              }`}
+            >
+              Wunschgebiet
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setColorMode("score")}
@@ -193,14 +210,24 @@ export function ProjectMap({
             areaFilterPlzOverlays={plzOverlays}
           />
           <div className="flex flex-wrap items-center gap-4 text-xs text-pn-text-secondary">
-            <ScoreLegend />
-            {colorMode === "dealbreaker" && (
+            {colorMode === "area" ? (
               <span>
-                Rot = Dealbreaker · sonst nach Score (
-                <span style={{ color: MAP_MARKER_COLORS.high }}>grün</span> /{" "}
-                <span style={{ color: MAP_MARKER_COLORS.mid }}>gelb</span> /{" "}
-                <span style={{ color: MAP_MARKER_COLORS.low }}>rot</span>)
+                <span style={{ color: MAP_MARKER_COLORS.high }}>Grün</span> = im Wunschgebiet ·{" "}
+                <span className="text-pn-text-tertiary">Grau</span> = außerhalb ·{" "}
+                <span className="text-amber-700">Gelb</span> = Lage unklar
               </span>
+            ) : (
+              <>
+                <ScoreLegend />
+                {colorMode === "dealbreaker" && (
+                  <span>
+                    Rot = Dealbreaker · sonst nach Score (
+                    <span style={{ color: MAP_MARKER_COLORS.high }}>grün</span> /{" "}
+                    <span style={{ color: MAP_MARKER_COLORS.mid }}>gelb</span> /{" "}
+                    <span style={{ color: MAP_MARKER_COLORS.low }}>rot</span>)
+                  </span>
+                )}
+              </>
             )}
           </div>
         </>

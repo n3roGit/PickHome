@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Features
+
+- Map tab: separate green PLZ circles per Wunschgebiet, Wunschgebiet pin color mode (in/out/unknown), and client-side overlay loading without tab flicker.
+
 ## [1.2.0](https://github.com/n3roGit/PickHome/releases/tag/v1.2.0) (2026-05-20)
 
 ### Features

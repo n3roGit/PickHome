@@ -39,7 +39,7 @@ export async function GET(
   const overlays = await resolvePlzMapOverlays(
     areaFilterConfig.selectedPlz,
     project.apartments,
-    { geocode: true }
+    { geocode: true, merge: false }
   );
 
   return NextResponse.json({ overlays });

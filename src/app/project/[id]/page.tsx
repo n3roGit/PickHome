@@ -52,7 +52,6 @@ import {
 import { findOrtByKey, getPlzReferenceData } from "@/lib/plz-reference";
 import { mergeDistrictsByPlz } from "@/lib/ortsteile-reference";
 import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
-import { resolvePlzMapOverlays } from "@/lib/plz-map-overlays";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 
 export default async function ProjectPage({
@@ -166,12 +165,6 @@ export default async function ProjectPage({
     areaFilterEnabled && initialOrt && areaFilterConfig
       ? `${initialOrt.name} · ${areaFilterConfig.selectedPlz.length} PLZ`
       : undefined;
-  const areaFilterPlzOverlays =
-    tab === "map" && areaFilterEnabled && areaFilterConfig && activeProject
-      ? await resolvePlzMapOverlays(areaFilterConfig.selectedPlz, activeProject.apartments, {
-          geocode: false,
-        })
-      : [];
 
   const apartments = project.apartments.map((a) => {
     const result = apartmentScore(criteria, a.ratings, user.id, dealbreakerThreshold);
@@ -530,7 +523,6 @@ export default async function ProjectPage({
               key="project-map"
               projectId={project.id}
               areaFilterEnabled={areaFilterEnabled}
-              areaFilterPlzOverlays={areaFilterPlzOverlays}
               apartments={activeProject.apartments.map((a) => {
                 const scored = apartmentScore(
                   criteria,

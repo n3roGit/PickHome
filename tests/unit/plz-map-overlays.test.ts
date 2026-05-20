@@ -66,4 +66,22 @@ describe("plz-map-overlays", () => {
     expect(overlays).toHaveLength(0);
     expect(geocodeAddress).not.toHaveBeenCalled();
   });
+
+  it("keeps separate circles when merge option is false", async () => {
+    const { geocodeAddress } = await import("@/lib/geocode");
+    vi.mocked(geocodeAddress).mockClear();
+    vi.mocked(geocodeAddress).mockImplementation(async (address: string) => {
+      if (address.startsWith("28203")) return { latitude: 53.078, longitude: 8.825 };
+      if (address.startsWith("28209")) return { latitude: 53.067, longitude: 8.845 };
+      return null;
+    });
+
+    const overlays = await resolvePlzMapOverlays(["28203", "28209"], [], {
+      geocode: true,
+      merge: false,
+    });
+
+    expect(overlays).toHaveLength(2);
+    expect(overlays.map((entry) => entry.plz)).toEqual(["28203", "28209"]);
+  });
 });

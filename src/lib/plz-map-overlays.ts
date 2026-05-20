@@ -140,6 +140,8 @@ export function mergeOverlappingPlzOverlays(
 export type ResolvePlzMapOverlaysOptions = {
   /** When false, skip Nominatim lookups (fast path for SSR). */
   geocode?: boolean;
+  /** When false, keep one circle per PLZ instead of merging overlaps. */
+  merge?: boolean;
 };
 
 export async function resolvePlzMapOverlays(
@@ -148,6 +150,7 @@ export async function resolvePlzMapOverlays(
   options: ResolvePlzMapOverlaysOptions = {}
 ): Promise<PlzMapOverlay[]> {
   const geocode = options.geocode ?? true;
+  const merge = options.merge ?? true;
   if (selectedPlz.length === 0) return [];
 
   const fromApartments = averageApartmentCentroids(selectedPlz, apartments);
@@ -177,7 +180,12 @@ export async function resolvePlzMapOverlays(
     }
   }
 
-  return mergeOverlappingPlzOverlays(
-    overlays.sort((a, b) => a.plz.localeCompare(b.plz))
-  );
+  const sorted = overlays.sort((a, b) => a.plz.localeCompare(b.plz));
+  if (!merge) {
+    return sorted.map((overlay) => ({
+      ...overlay,
+      radiusM: overlay.radiusM ?? DEFAULT_PLZ_OVERLAY_RADIUS_M,
+    }));
+  }
+  return mergeOverlappingPlzOverlays(sorted);
 }
