@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  BASE_RATE_MONTHLY,
   COMMUTE_RATE_PER_KM,
   companyCarRateLabel,
+  DEFAULT_MARGINAL_TAX_RATE_PERCENT,
   distanceKmOneWay,
+  estimateNetLoadEur,
   formatCommuteBenefitEur,
+  monthlyBaseBenefitEur,
   monthlyCommuteBenefitEur,
+  monthlyCompanyCarBenefitEur,
   parseCompanyCarRate,
   parseListPriceEuros,
+  parseMarginalTaxRatePercent,
+  resolveMarginalTaxRatePercent,
   roundListPrice,
 } from "@/lib/company-car";
 
@@ -23,6 +30,28 @@ describe("distanceKmOneWay", () => {
     expect(distanceKmOneWay(24000)).toBe(24);
     expect(distanceKmOneWay(24001)).toBe(25);
     expect(distanceKmOneWay(500)).toBe(1);
+  });
+});
+
+describe("marginal tax rate", () => {
+  it("defaults to 42 percent", () => {
+    expect(resolveMarginalTaxRatePercent(null)).toBe(DEFAULT_MARGINAL_TAX_RATE_PERCENT);
+    expect(parseMarginalTaxRatePercent("")).toBe(42);
+    expect(parseMarginalTaxRatePercent("35")).toBe(35);
+  });
+
+  it("estimates net load from gross benefit", () => {
+    expect(estimateNetLoadEur(712.25, 42)).toBe(299.15);
+  });
+});
+
+describe("monthlyBaseBenefitEur", () => {
+  it("uses 1% of rounded list price for combustion", () => {
+    expect(monthlyBaseBenefitEur({ listPriceEuros: 40750, rate: "standard" })).toBe(407);
+  });
+
+  it("uses 0.25% for electric", () => {
+    expect(monthlyBaseBenefitEur({ listPriceEuros: 40700, rate: "electric" })).toBe(101.75);
   });
 });
 
@@ -55,6 +84,26 @@ describe("monthlyCommuteBenefitEur", () => {
   });
 });
 
+describe("monthlyCompanyCarBenefitEur", () => {
+  it("combines gross base, commute and net estimate", () => {
+    const benefit = monthlyCompanyCarBenefitEur({
+      listPriceEuros: 40750,
+      rate: "standard",
+      distanceMeters: 25_000,
+      marginalTaxRatePercent: 42,
+    });
+    expect(benefit).toEqual({
+      baseGrossEur: 407,
+      commuteGrossEur: 305.25,
+      totalGrossEur: 712.25,
+      baseNetEur: 170.94,
+      commuteNetEur: 128.2,
+      totalNetEur: 299.15,
+      marginalTaxRatePercent: 42,
+    });
+  });
+});
+
 describe("parseCompanyCarRate", () => {
   it("defaults to standard for unknown values", () => {
     expect(parseCompanyCarRate("")).toBe("standard");
@@ -78,7 +127,8 @@ describe("formatCommuteBenefitEur", () => {
 
 describe("companyCarRateLabel", () => {
   it("labels all rates", () => {
-    expect(companyCarRateLabel("standard")).toContain("0,03");
+    expect(companyCarRateLabel("standard")).toContain("1 %");
+    expect(BASE_RATE_MONTHLY.standard).toBe(0.01);
     expect(COMMUTE_RATE_PER_KM.standard).toBe(0.0003);
   });
 });

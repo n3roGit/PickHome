@@ -5,7 +5,7 @@ import {
   invalidateCommuteCacheForUserAddress,
 } from "@/lib/commute-cache";
 import type { CompanyCarRate } from "@/lib/company-car";
-import { distanceKmOneWay, monthlyCommuteBenefitEur } from "@/lib/company-car";
+import { distanceKmOneWay, monthlyCompanyCarBenefitEur } from "@/lib/company-car";
 import { prisma } from "@/lib/prisma";
 import { fetchRoute, formatRouteDistance, formatRouteDuration, type RoutePoint } from "@/lib/routing";
 import type { TravelMode } from "@/lib/travel-mode";
@@ -27,7 +27,11 @@ export type CommuteLeg = {
   durationText: string | null;
   unavailableReason: "missing_apartment_coords" | "missing_address_coords" | "routing_failed" | null;
   distanceKmOneWay: number | null;
-  monthlyCommuteBenefitEur: number | null;
+  monthlyCompanyCarBaseBenefitEur: number | null;
+  monthlyCompanyCarCommuteBenefitEur: number | null;
+  monthlyCompanyCarTotalBenefitEur: number | null;
+  monthlyCompanyCarTotalNetBenefitEur: number | null;
+  companyCarMarginalTaxRatePercent: number | null;
   commuteCostHint: string | null;
 };
 
@@ -39,6 +43,7 @@ export type CommuteMemberInput = {
   companyCar: boolean;
   companyCarRate: CompanyCarRate | null;
   listPrice: number | null;
+  marginalTaxRatePercent: number | null;
 };
 
 export type CommutePersonEstimate = {
@@ -87,6 +92,7 @@ export async function computeCommuteForMembers(input: {
         companyCar: member.companyCar,
         companyCarRate: member.companyCarRate,
         listPrice: member.listPrice,
+        marginalTaxRatePercent: member.marginalTaxRatePercent,
       }),
     }))
   );
@@ -106,6 +112,7 @@ export async function computeCommuteLegs(input: {
   companyCar: boolean;
   companyCarRate: CompanyCarRate | null;
   listPrice: number | null;
+  marginalTaxRatePercent: number | null;
 }): Promise<CommuteLeg[]> {
   if (input.addresses.length === 0) return [];
 
@@ -173,7 +180,10 @@ function legFromRoute(
   addr: CommuteAddress,
   distanceMeters: number,
   durationSeconds: number,
-  member: Pick<CommuteMemberInput, "travelMode" | "companyCar" | "companyCarRate" | "listPrice">
+  member: Pick<
+    CommuteMemberInput,
+    "travelMode" | "companyCar" | "companyCarRate" | "listPrice" | "marginalTaxRatePercent"
+  >
 ): CommuteLeg {
   const base: CommuteLeg = {
     addressId: addr.id,
@@ -183,7 +193,11 @@ function legFromRoute(
     durationText: formatRouteDuration(durationSeconds),
     unavailableReason: null,
     distanceKmOneWay: null,
-    monthlyCommuteBenefitEur: null,
+    monthlyCompanyCarBaseBenefitEur: null,
+    monthlyCompanyCarCommuteBenefitEur: null,
+    monthlyCompanyCarTotalBenefitEur: null,
+    monthlyCompanyCarTotalNetBenefitEur: null,
+    companyCarMarginalTaxRatePercent: null,
     commuteCostHint: null,
   };
   return applyCompanyCarCommuteCost(base, addr, distanceMeters, member);
@@ -193,7 +207,10 @@ function applyCompanyCarCommuteCost(
   leg: CommuteLeg,
   addr: CommuteAddress,
   distanceMeters: number,
-  member: Pick<CommuteMemberInput, "travelMode" | "companyCar" | "companyCarRate" | "listPrice">
+  member: Pick<
+    CommuteMemberInput,
+    "travelMode" | "companyCar" | "companyCarRate" | "listPrice" | "marginalTaxRatePercent"
+  >
 ): CommuteLeg {
   if (member.travelMode !== "driving" || !member.companyCar || !addr.isWorkplace) {
     return leg;
@@ -208,17 +225,22 @@ function applyCompanyCarCommuteCost(
     };
   }
 
-  const monthly = monthlyCommuteBenefitEur({
+  const benefit = monthlyCompanyCarBenefitEur({
     listPriceEuros: member.listPrice,
     rate: member.companyCarRate,
     distanceMeters,
+    marginalTaxRatePercent: member.marginalTaxRatePercent,
   });
 
   return {
     ...leg,
     distanceKmOneWay: km,
-    monthlyCommuteBenefitEur: monthly,
-    commuteCostHint: monthly == null ? "Arbeitsweg-Kosten konnten nicht berechnet werden." : null,
+    monthlyCompanyCarBaseBenefitEur: benefit?.baseGrossEur ?? null,
+    monthlyCompanyCarCommuteBenefitEur: benefit?.commuteGrossEur ?? null,
+    monthlyCompanyCarTotalBenefitEur: benefit?.totalGrossEur ?? null,
+    monthlyCompanyCarTotalNetBenefitEur: benefit?.totalNetEur ?? null,
+    companyCarMarginalTaxRatePercent: benefit?.marginalTaxRatePercent ?? null,
+    commuteCostHint: benefit == null ? "Firmenwagen-Kosten konnten nicht berechnet werden." : null,
   };
 }
 
@@ -234,7 +256,11 @@ function legUnavailable(
     durationText: null,
     unavailableReason: reason,
     distanceKmOneWay: null,
-    monthlyCommuteBenefitEur: null,
+    monthlyCompanyCarBaseBenefitEur: null,
+    monthlyCompanyCarCommuteBenefitEur: null,
+    monthlyCompanyCarTotalBenefitEur: null,
+    monthlyCompanyCarTotalNetBenefitEur: null,
+    companyCarMarginalTaxRatePercent: null,
     commuteCostHint: null,
   };
 }

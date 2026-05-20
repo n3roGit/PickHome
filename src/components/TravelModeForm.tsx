@@ -4,6 +4,8 @@ import { useState } from "react";
 import {
   COMPANY_CAR_RATES,
   companyCarRateLabel,
+  MARGINAL_TAX_RATE_OPTIONS,
+  resolveMarginalTaxRatePercent,
   type CompanyCarRate,
 } from "@/lib/company-car";
 import { TRAVEL_MODES, travelModeLabel, type TravelMode } from "@/lib/travel-mode";
@@ -13,12 +15,14 @@ export function TravelModeForm({
   companyCar,
   companyCarRate,
   listPrice,
+  marginalTaxRatePercent,
   action,
 }: {
   travelMode: TravelMode;
   companyCar: boolean;
   companyCarRate: CompanyCarRate;
   listPrice: number | null;
+  marginalTaxRatePercent: number | null;
   action: (formData: FormData) => void | Promise<void>;
 }) {
   const [mode, setMode] = useState(travelMode);
@@ -64,7 +68,8 @@ export function TravelModeForm({
             <span>
               <span className="text-sm font-medium">Firmenwagen (Dienstwagen)</span>
               <span className="block text-xs text-pn-text-tertiary mt-0.5">
-                Zusätzliche monatliche Kosten für den Arbeitsweg (geldwerter Vorteil, 1‑%-Regelung).
+                Monatlicher geldwerter Vorteil nach 1‑%-Regelung: Grundanteil vom
+                Bruttolistenpreis plus Entfernungspauschale für den Arbeitsweg.
               </span>
             </span>
           </label>
@@ -99,6 +104,25 @@ export function TravelModeForm({
                 />
                 <span className="block text-xs text-pn-text-tertiary mt-1">
                   Wird auf volle 100 € abgerundet (wie beim Finanzamt).
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-pn-text-secondary">
+                  Geschätzter Grenzsteuersatz (%)
+                </span>
+                <select
+                  name="marginalTaxRatePercent"
+                  defaultValue={resolveMarginalTaxRatePercent(marginalTaxRatePercent)}
+                  className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+                >
+                  {MARGINAL_TAX_RATE_OPTIONS.map((rate) => (
+                    <option key={rate} value={rate}>
+                      {rate} %
+                    </option>
+                  ))}
+                </select>
+                <span className="block text-xs text-pn-text-tertiary mt-1">
+                  Für die ca. Netto-Belastung aus dem geldwerten Vorteil (vereinfacht, ohne Soli/Kirchensteuer).
                 </span>
               </label>
             </>

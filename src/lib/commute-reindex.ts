@@ -36,6 +36,7 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
             companyCar: true,
             companyCarRate: true,
             listPrice: true,
+            marginalTaxRatePercent: true,
             addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
           },
         },
@@ -48,6 +49,7 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
     companyCar: m.user.companyCar,
     companyCarRate: m.user.companyCar ? parseCompanyCarRate(m.user.companyCarRate) : null,
     listPrice: m.user.listPrice,
+    marginalTaxRatePercent: m.user.marginalTaxRatePercent,
     addresses: m.user.addresses.map((a) => ({
       id: a.id,
       label: a.label,
@@ -91,6 +93,7 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
         companyCar: member.companyCar,
         companyCarRate: member.companyCarRate,
         listPrice: member.listPrice,
+        marginalTaxRatePercent: member.marginalTaxRatePercent,
       });
 
       for (const leg of legs) {

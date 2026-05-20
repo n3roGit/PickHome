@@ -100,6 +100,7 @@ export default async function SettingsPage({
           companyCar={fresh.companyCar}
           companyCarRate={parseCompanyCarRate(fresh.companyCarRate)}
           listPrice={fresh.listPrice}
+          marginalTaxRatePercent={fresh.marginalTaxRatePercent}
           addresses={fresh.addresses.map((a) => ({
             id: a.id,
             label: a.label,

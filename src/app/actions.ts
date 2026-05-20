@@ -44,7 +44,7 @@ import { parseBrokerBuyerRatePercent, parseFederalStateCode, parseInterestRatePe
 import { parseArchiveNote, parseArchiveReason } from "@/lib/archive-reasons";
 import { parseDealbreakerThreshold } from "@/lib/scoring";
 import { syncApartmentViewedAt } from "@/lib/viewings";
-import { parseCompanyCarRate, parseListPriceEuros } from "@/lib/company-car";
+import { parseCompanyCarRate, parseListPriceEuros, parseMarginalTaxRatePercent } from "@/lib/company-car";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { isApartmentUploadError } from "@/lib/upload-limits";
 import type { UploadApartmentFileResult } from "@/app/apartment-photo-actions";
@@ -896,6 +896,9 @@ export async function updateTravelModeAction(formData: FormData) {
   const companyCar = formData.get("companyCar") === "on";
   const companyCarRate = parseCompanyCarRate(String(formData.get("companyCarRate") ?? ""));
   const listPrice = parseListPriceEuros(String(formData.get("listPrice") ?? ""));
+  const marginalTaxRatePercent = parseMarginalTaxRatePercent(
+    String(formData.get("marginalTaxRatePercent") ?? "")
+  );
 
   await prisma.user.update({
     where: { id: user.id },
@@ -904,6 +907,8 @@ export async function updateTravelModeAction(formData: FormData) {
       companyCar: travelMode === "driving" ? companyCar : false,
       companyCarRate: travelMode === "driving" && companyCar ? companyCarRate : null,
       listPrice: travelMode === "driving" && companyCar ? listPrice : null,
+      marginalTaxRatePercent:
+        travelMode === "driving" && companyCar ? marginalTaxRatePercent : null,
     },
   });
   await invalidateCommuteCacheForUser(user.id);

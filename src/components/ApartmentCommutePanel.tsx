@@ -14,7 +14,7 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
         <li key={leg.addressId} className="border border-pn-border rounded-lg px-4 py-3">
           <p className="font-medium">
             {leg.label}
-            {leg.monthlyCommuteBenefitEur != null && (
+            {leg.monthlyCompanyCarTotalBenefitEur != null && (
               <span className="ml-2 text-xs font-normal text-pn-text-tertiary">(Arbeitsstätte)</span>
             )}
           </p>
@@ -25,17 +25,36 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
                 <span className="font-medium">{leg.distanceText}</span>
                 <span className="text-pn-text-tertiary"> · ca. {leg.durationText}</span>
               </p>
-              {leg.monthlyCommuteBenefitEur != null && leg.distanceKmOneWay != null && (
+              {leg.monthlyCompanyCarTotalBenefitEur != null && leg.distanceKmOneWay != null && (
                 <p className="text-sm mt-2 text-pn-text-secondary">
-                  Firmenwagen Arbeitsweg: ca.{" "}
+                  Firmenwagen: Brutto ca.{" "}
                   <span className="font-medium text-pn-text-primary">
-                    {formatCommuteBenefitEur(leg.monthlyCommuteBenefitEur)}
+                    {formatCommuteBenefitEur(leg.monthlyCompanyCarTotalBenefitEur)}
                   </span>
                   /Monat
-                  <span className="text-pn-text-tertiary">
-                    {" "}
-                    (geldw. Vorteil, {leg.distanceKmOneWay} km einfach)
-                  </span>
+                  {leg.monthlyCompanyCarTotalNetBenefitEur != null &&
+                    leg.companyCarMarginalTaxRatePercent != null && (
+                      <>
+                        {" · "}
+                        Netto ca.{" "}
+                        <span className="font-medium text-pn-text-primary">
+                          {formatCommuteBenefitEur(leg.monthlyCompanyCarTotalNetBenefitEur)}
+                        </span>
+                        /Monat
+                        <span className="text-pn-text-tertiary">
+                          {" "}
+                          ({leg.companyCarMarginalTaxRatePercent} % Grenzsteuersatz)
+                        </span>
+                      </>
+                    )}
+                  {leg.monthlyCompanyCarBaseBenefitEur != null &&
+                    leg.monthlyCompanyCarCommuteBenefitEur != null && (
+                      <span className="block text-xs text-pn-text-tertiary mt-1">
+                        Brutto: Grundanteil {formatCommuteBenefitEur(leg.monthlyCompanyCarBaseBenefitEur)} ·
+                        Arbeitsweg ({leg.distanceKmOneWay} km einfach){" "}
+                        {formatCommuteBenefitEur(leg.monthlyCompanyCarCommuteBenefitEur)}
+                      </span>
+                    )}
                 </p>
               )}
               {leg.commuteCostHint && (

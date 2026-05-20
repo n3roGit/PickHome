@@ -128,6 +128,7 @@ export default async function ApartmentPage({
       companyCar: true,
       companyCarRate: true,
       listPrice: true,
+      marginalTaxRatePercent: true,
       addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
     },
   });
@@ -146,6 +147,7 @@ export default async function ApartmentPage({
       companyCar: member.companyCar,
       companyCarRate: member.companyCar ? parseCompanyCarRate(member.companyCarRate) : null,
       listPrice: member.listPrice,
+      marginalTaxRatePercent: member.marginalTaxRatePercent,
       addresses: member.addresses.map((a) => ({
         id: a.id,
         label: a.label,

@@ -22,6 +22,7 @@ export function UserCommuteSettings({
   companyCar,
   companyCarRate,
   listPrice,
+  marginalTaxRatePercent,
   addresses,
   saved,
   addressSaved,
@@ -32,6 +33,7 @@ export function UserCommuteSettings({
   companyCar: boolean;
   companyCarRate: CompanyCarRate;
   listPrice: number | null;
+  marginalTaxRatePercent: number | null;
   addresses: AddressRow[];
   saved?: boolean;
   addressSaved?: boolean;
@@ -76,6 +78,7 @@ export function UserCommuteSettings({
           companyCar={companyCar}
           companyCarRate={companyCarRate}
           listPrice={listPrice}
+          marginalTaxRatePercent={marginalTaxRatePercent}
           action={updateTravelModeAction}
         />
       </section>
