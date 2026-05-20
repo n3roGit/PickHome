@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { saveRatingAction } from "@/app/actions";
+import { useOptionalApartmentLiveScore } from "@/components/ApartmentScoreProvider";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { apartmentScore, type CriterionInput } from "@/lib/scoring";
@@ -65,6 +67,8 @@ export function RatingSliders({
     return init;
   });
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const liveScoreCtx = useOptionalApartmentLiveScore();
   const notesRef = useRef(notes);
   notesRef.current = notes;
 
@@ -77,32 +81,54 @@ export function RatingSliders({
     dealbreakerThreshold
   );
 
+  function scoreFromEntries(entries: Record<string, number | null>) {
+    return apartmentScore(
+      criteriaFlat,
+      Object.entries(entries)
+        .filter(([, v]) => v != null)
+        .map(([criterionId, score]) => ({ criterionId, userId: myUserId, score })),
+      myUserId,
+      dealbreakerThreshold
+    );
+  }
+
+  function applyScores(update: (prev: Record<string, number | null>) => Record<string, number | null>) {
+    setScores((prev) => {
+      const next = update(prev);
+      liveScoreCtx?.setLiveScore(scoreFromEntries(next));
+      return next;
+    });
+  }
+
+  function persistRating(criterionId: string, score: number) {
+    startTransition(async () => {
+      await saveRatingAction(
+        apartmentId,
+        criterionId,
+        score,
+        notesRef.current[criterionId] || null
+      );
+      router.refresh();
+    });
+  }
+
   function partnerRating(partner: Partner, criterionId: string) {
     return partner.ratings.find((r) => r.criterionId === criterionId);
   }
 
   function onSlide(criterionId: string, score: number) {
-    setScores((s) => ({ ...s, [criterionId]: score }));
+    applyScores((s) => ({ ...s, [criterionId]: score }));
   }
 
   function onCommit(criterionId: string, score: number) {
-    setScores((s) => ({ ...s, [criterionId]: score }));
-    startTransition(() =>
-      saveRatingAction(
-        apartmentId,
-        criterionId,
-        score,
-        notesRef.current[criterionId] || null
-      )
-    );
+    applyScores((s) => ({ ...s, [criterionId]: score }));
+    persistRating(criterionId, score);
   }
 
   function onNoteBlur(criterionId: string) {
     const score = scores[criterionId];
     if (score == null) return;
-    startTransition(() =>
-      saveRatingAction(apartmentId, criterionId, score, notes[criterionId] || null)
-    );
+    persistRating(criterionId, score);
   }
 
   function isRated(criterionId: string) {

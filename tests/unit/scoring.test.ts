@@ -255,6 +255,15 @@ describe("sortApartments", () => {
     const sorted = sortApartments(base, "date", "desc");
     expect(sorted.map((a) => a.id)).toEqual(["b", "c", "a"]);
   });
+
+  it("sorts by displayScore when dealbreaker zeros score", () => {
+    const items = [
+      { id: "a", score: 0, displayScore: 68, price: 500_000, createdAt: new Date("2024-01-01") },
+      { id: "b", score: 50, displayScore: 50, price: 300_000, createdAt: new Date("2024-06-01") },
+    ];
+    const sorted = sortApartments(items, "score");
+    expect(sorted.map((a) => a.id)).toEqual(["a", "b"]);
+  });
 });
 
 describe("budgetDelta", () => {

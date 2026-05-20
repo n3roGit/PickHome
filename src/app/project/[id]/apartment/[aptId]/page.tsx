@@ -3,11 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { ScoreBadge } from "@/components/ScoreBadge";
+import { ApartmentLiveScoreBadge } from "@/components/ApartmentLiveScoreBadge";
+import { ApartmentLiveScoreSummary } from "@/components/ApartmentLiveScoreSummary";
+import { ApartmentScoreProvider } from "@/components/ApartmentScoreProvider";
 import { ApartmentDocuments } from "@/components/ApartmentDocuments";
 import { RatingSliders } from "@/components/RatingSliders";
 import { ViewingAppointments } from "@/components/ViewingAppointments";
-import { formatDateDe } from "@/lib/dates";
 import { getSessionUser, isAdmin } from "@/lib/auth";
 import { ApartmentBasicsForm } from "@/components/ApartmentBasicsForm";
 import { ApartmentArchiveButton } from "@/components/ApartmentArchiveButton";
@@ -172,6 +173,7 @@ export default async function ApartmentPage({
     <>
       <Nav userName={user.name} isAdmin={admin} />
       <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
+        <ApartmentScoreProvider initial={myScore}>
         <Link
           href={archived ? `/project/${project.id}?tab=archived` : `/project/${project.id}`}
           className="text-sm text-pn-accent hover:underline mb-4 inline-block"
@@ -201,17 +203,10 @@ export default async function ApartmentPage({
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />
             <ApartmentDeleteButton apartmentId={apartment.id} />
-            <ScoreBadge
-              score={myScore.score}
-              displayScore={myScore.displayScore}
-              dealbreaker={myScore.dealbreaker}
-            />
+            <ApartmentLiveScoreBadge />
           </div>
         </div>
-        <p className="text-sm text-pn-text-secondary mb-2">
-          {myScore.rated}/{myScore.total} Kriterien bewertet · angemeldet als {user.name}
-          {apartment.viewedAt && ` · zuletzt besichtigt: ${formatDateDe(apartment.viewedAt)}`}
-        </p>
+        <ApartmentLiveScoreSummary userName={user.name} viewedAt={apartment.viewedAt} />
         <ScoreLegend className="mb-6" />
         <ApartmentBasicsForm
           apartmentId={apartment.id}
@@ -287,6 +282,7 @@ export default async function ApartmentPage({
             dealbreakerThreshold={dealbreakerThreshold}
           />
         </CollapsibleSection>
+        </ApartmentScoreProvider>
       </main>
       <Footer />
     </>

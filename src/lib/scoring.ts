@@ -140,8 +140,12 @@ export function parseApartmentSortOrder(value: string | undefined): ApartmentSor
   return DEFAULT_APARTMENT_SORT_ORDER;
 }
 
+function apartmentSortScore(item: { score: number; displayScore?: number }): number {
+  return item.displayScore ?? item.score;
+}
+
 function compareApartments<
-  T extends { score: number; price: number | null; createdAt: Date },
+  T extends { score: number; displayScore?: number; price: number | null; createdAt: Date },
 >(a: T, b: T, sort: ApartmentSortKey): number {
   switch (sort) {
     case "price": {
@@ -151,19 +155,21 @@ function compareApartments<
       return a.price - b.price;
     }
     case "ppp": {
-      const pa = a.price != null && a.score > 0 ? a.price / a.score : Number.POSITIVE_INFINITY;
-      const pb = b.price != null && b.score > 0 ? b.price / b.score : Number.POSITIVE_INFINITY;
+      const scoreA = apartmentSortScore(a);
+      const scoreB = apartmentSortScore(b);
+      const pa = a.price != null && scoreA > 0 ? a.price / scoreA : Number.POSITIVE_INFINITY;
+      const pb = b.price != null && scoreB > 0 ? b.price / scoreB : Number.POSITIVE_INFINITY;
       return pa - pb;
     }
     case "date":
       return a.createdAt.getTime() - b.createdAt.getTime();
     default:
-      return a.score - b.score;
+      return apartmentSortScore(a) - apartmentSortScore(b);
   }
 }
 
 export function sortApartments<
-  T extends { score: number; price: number | null; createdAt: Date },
+  T extends { score: number; displayScore?: number; price: number | null; createdAt: Date },
 >(items: T[], sort: ApartmentSortKey, order: ApartmentSortOrder = DEFAULT_APARTMENT_SORT_ORDER): T[] {
   const copy = [...items];
   return copy.sort((a, b) => {
