@@ -123,14 +123,14 @@ export default async function ProjectPage({
 
   const sortKey = parseApartmentSort(resolvedSearchParams.sort);
   const sortOrder = parseApartmentSortOrder(resolvedSearchParams.order);
-  sortApartments(apartments, sortKey, sortOrder);
+  const sortedApartments = sortApartments(apartments, sortKey, sortOrder);
 
   const searchQuery = resolvedSearchParams.q ?? "";
   const criterionNames = new Map(
     project.groups.flatMap((g) => g.criteria.map((c) => [c.id, c.name] as const))
   );
-  const totalApartmentCount = apartments.length;
-  const visibleApartments = filterApartmentsBySearch(apartments, searchQuery, criterionNames);
+  const totalApartmentCount = sortedApartments.length;
+  const visibleApartments = filterApartmentsBySearch(sortedApartments, searchQuery, criterionNames);
 
   const memberMessage = resolvedSearchParams.member_added
     ? `${resolvedSearchParams.member_added} wurde zum Projekt hinzugefügt.`
