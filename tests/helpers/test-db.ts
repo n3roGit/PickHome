@@ -1,5 +1,6 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, unlinkSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync } from "fs";
+import { tmpdir } from "os";
 import { join } from "path";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -153,12 +154,36 @@ export async function assertTestApartmentAccess(
 }
 
 export async function clearProjectData(prisma: PrismaClient) {
+  await prisma.commuteCache.deleteMany();
   await prisma.rating.deleteMany();
   await prisma.viewingAppointment.deleteMany();
+  await prisma.apartmentDocument.deleteMany();
   await prisma.apartmentPhoto.deleteMany();
   await prisma.apartment.deleteMany();
   await prisma.criterion.deleteMany();
   await prisma.criterionGroup.deleteMany();
   await prisma.projectMember.deleteMany();
   await prisma.project.deleteMany();
+  await prisma.userAddress.deleteMany();
+}
+
+export type IsolatedDataDir = {
+  dir: string;
+  restore: () => void;
+};
+
+/** Temp PICKHOME_DATA_DIR for upload/backup tests; call restore() in afterEach/afterAll. */
+export function withIsolatedDataDir(): IsolatedDataDir {
+  const dir = mkdtempSync(join(tmpdir(), "pickhome-test-"));
+  mkdirSync(dir, { recursive: true });
+  const previous = process.env.PICKHOME_DATA_DIR;
+  process.env.PICKHOME_DATA_DIR = dir;
+  return {
+    dir,
+    restore() {
+      if (previous === undefined) delete process.env.PICKHOME_DATA_DIR;
+      else process.env.PICKHOME_DATA_DIR = previous;
+      rmSync(dir, { recursive: true, force: true });
+    },
+  };
 }

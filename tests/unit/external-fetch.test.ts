@@ -72,4 +72,40 @@ describe("fetchExternal", () => {
     expect(res).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
+
+  it("honors Retry-After header on 429", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(null, { status: 429, headers: { "Retry-After": "2" } })
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = fetchExternal("osrm", "https://example.test/route");
+    await vi.advanceTimersByTimeAsync(2000);
+    await promise;
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rate-limits nominatim and osrm independently", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const osrm = fetchExternal("osrm", "https://example.test/osrm");
+    const nominatim = fetchExternal("nominatim", "https://example.test/nom");
+
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.all([osrm, nominatim]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    fetchMock.mockClear();
+    const nominatim2 = fetchExternal("nominatim", "https://example.test/nom2");
+    await vi.advanceTimersByTimeAsync(1099);
+    expect(fetchMock).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    await nominatim2;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

@@ -25,6 +25,12 @@ describe("pickhome-data paths", () => {
     expect(getPickHomeDataDir()).toBe(join(process.cwd(), "custom-data"));
   });
 
+  it("keeps absolute PICKHOME_DATA_DIR unchanged", () => {
+    const abs = join(process.cwd(), "absolute-data-root");
+    process.env.PICKHOME_DATA_DIR = abs;
+    expect(getPickHomeDataDir()).toBe(abs);
+  });
+
   it("maps public upload URLs to filesystem paths", () => {
     delete process.env.PICKHOME_DATA_DIR;
     const url = "/uploads/apartments/apt-1/photo.jpg";
