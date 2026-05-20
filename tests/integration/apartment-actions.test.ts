@@ -114,7 +114,7 @@ describe("apartment server actions", () => {
     await prisma.$disconnect();
   });
 
-  it("archive and unarchive toggle archivedAt", async () => {
+  it("archive and unarchive with reason", async () => {
     const prisma = createTestPrisma();
     const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
     const project = await createTestProject(prisma, user.id);
@@ -122,13 +122,21 @@ describe("apartment server actions", () => {
       data: { projectId: project.id, title: "Archive me" },
     });
 
-    await archiveApartmentAction(apt.id);
+    const form = new FormData();
+    form.set("archiveReason", "too_expensive");
+    form.set("archiveNote", "Über Budget");
+
+    await archiveApartmentAction(apt.id, form);
     let row = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
     expect(row.archivedAt).not.toBeNull();
+    expect(row.archiveReason).toBe("too_expensive");
+    expect(row.archiveNote).toBe("Über Budget");
 
     await unarchiveApartmentAction(apt.id);
     row = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
     expect(row.archivedAt).toBeNull();
+    expect(row.archiveReason).toBeNull();
+    expect(row.archiveNote).toBeNull();
     await prisma.$disconnect();
   });
 

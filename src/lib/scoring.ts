@@ -80,6 +80,22 @@ export function scoreColor(score: number, dealbreaker: boolean): "high" | "mid" 
   return "mid";
 }
 
+/** Leaflet marker fill colors aligned with score bands. */
+export const MAP_MARKER_COLORS: Record<"high" | "mid" | "low", string> = {
+  high: "#16a34a",
+  mid: "#ca8a04",
+  low: "#dc2626",
+};
+
+export function markerColorForScore(
+  score: number,
+  dealbreaker: boolean,
+  mode: "score" | "dealbreaker" = "score"
+): string {
+  if (mode === "dealbreaker" && dealbreaker) return MAP_MARKER_COLORS.low;
+  return MAP_MARKER_COLORS[scoreColor(score, dealbreaker)];
+}
+
 export function formatPrice(cents: number | null | undefined): string {
   if (cents == null) return "—";
   return new Intl.NumberFormat("de-DE", {

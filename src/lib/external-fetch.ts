@@ -1,4 +1,4 @@
-export type ExternalService = "nominatim" | "osrm";
+export type ExternalService = "nominatim" | "osrm" | "listing";
 
 type ServiceConfig = {
   minIntervalMs: number;
@@ -28,10 +28,18 @@ const OSRM_SELF_HOSTED_CONFIG: ServiceConfig = {
   retryMaxDelayMs: 2000,
 };
 
+const LISTING_CONFIG: ServiceConfig = {
+  minIntervalMs: 3000,
+  maxRetries: 2,
+  retryBaseDelayMs: 2000,
+  retryMaxDelayMs: 8000,
+};
+
 const nextSlotAt = new Map<ExternalService, number>();
 
 function serviceConfig(service: ExternalService): ServiceConfig {
   if (service === "nominatim") return NOMINATIM_CONFIG;
+  if (service === "listing") return LISTING_CONFIG;
   return process.env.OSRM_BASE_URL ? OSRM_SELF_HOSTED_CONFIG : OSRM_PUBLIC_CONFIG;
 }
 

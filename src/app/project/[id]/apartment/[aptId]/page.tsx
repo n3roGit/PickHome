@@ -26,7 +26,11 @@ import {
   getApartmentForUser,
   getProjectMetaForUser,
 } from "@/lib/project-data";
+import { PartnerDivergencePanel } from "@/components/PartnerDivergencePanel";
 import { ScoreLegend } from "@/components/ScoreLegend";
+import { DuplicateApartmentBadge } from "@/components/DuplicateApartmentBadge";
+import { findDuplicatesForApartment } from "@/lib/apartment-duplicates";
+import { partnerComparisons } from "@/lib/rating-divergence";
 import { resolveDealbreakerThreshold } from "@/lib/scoring";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
@@ -57,7 +61,30 @@ export default async function ApartmentPage({
   if (!apartment) redirect(`/project/${project.id}`);
 
   const criteria = flattenCriteria(project.groups);
+  const criteriaWithName = project.groups.flatMap((g) =>
+    g.criteria.map((c) => ({ ...c, name: c.name }))
+  );
   const dealbreakerThreshold = resolveDealbreakerThreshold(project.dealbreakerThreshold);
+  const partnerMembers = project.members
+    .filter((m) => m.userId !== user.id)
+    .map((m) => ({ userId: m.userId, name: m.user.name }));
+  const siblingApartments = await prisma.apartment.findMany({
+    where: { projectId: project.id, id: { not: apartment.id } },
+    select: { id: true, title: true, address: true },
+  });
+  const duplicateMatches = findDuplicatesForApartment(
+    { id: apartment.id, title: apartment.title, address: apartment.address },
+    siblingApartments
+  );
+
+  const divergenceComparisons = partnerComparisons({
+    criteria: criteriaWithName,
+    ratings: apartment.ratings.map((r) => ({ ...r, apartmentId: apartment.id })),
+    apartmentId: apartment.id,
+    currentUserId: user.id,
+    partners: partnerMembers,
+    dealbreakerThreshold,
+  });
   const myScore = apartmentScore(criteria, apartment.ratings, user.id, dealbreakerThreshold);
   const archived = apartment.archivedAt != null;
 
@@ -144,6 +171,7 @@ export default async function ApartmentPage({
                 Inserat öffnen ↗
               </a>
             )}
+            <DuplicateApartmentBadge projectId={project.id} matches={duplicateMatches} />
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />
@@ -164,6 +192,8 @@ export default async function ApartmentPage({
           apartmentId={apartment.id}
           address={apartment.address}
           price={apartment.price}
+          sizeSqm={apartment.sizeSqm}
+          energyClass={apartment.energyClass}
           budget={project.budget}
           saved={resolvedSearchParams.basics_saved === "1"}
         />
@@ -221,6 +251,7 @@ export default async function ApartmentPage({
             note: v.note,
           }))}
         />
+        <PartnerDivergencePanel comparisons={divergenceComparisons} />
         <h2 className="text-lg font-semibold mb-4">Kriterien bewerten</h2>
         <RatingSliders
           apartmentId={apartment.id}

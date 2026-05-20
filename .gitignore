@@ -9,3 +9,12 @@ prisma/dev.db-journal
 prisma/data/
 prisma/prisma/
 public/uploads/
+
+# Ad-hoc local dev scripts (may contain listing URLs / IDs from local DB)
+/scripts/api-smoke-test.mjs
+/scripts/e2e-smoke-test.mjs
+/scripts/debug-fetch-url.mjs
+/scripts/dump-project-apartments.mjs
+/scripts/list-listing-urls.mjs
+/scripts/test-kleinanzeigen-api.mjs
+/scripts/test-listing-import.mjs

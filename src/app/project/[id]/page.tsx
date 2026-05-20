@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDateDe } from "@/lib/dates";
 import { nextViewing } from "@/lib/viewings";
-import { createApartmentAction } from "@/app/actions";
+import { ListingImportAssist } from "@/components/ListingImportAssist";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ScoreBadge } from "@/components/ScoreBadge";
@@ -38,6 +38,10 @@ import {
   resolveDealbreakerThreshold,
   sortApartments,
 } from "@/lib/scoring";
+import { DuplicateApartmentBadge } from "@/components/DuplicateApartmentBadge";
+import { archiveReasonLabel } from "@/lib/archive-reasons";
+import { buildDuplicateIndex } from "@/lib/apartment-duplicates";
+import { maxNotableDivergence, partnerComparisons } from "@/lib/rating-divergence";
 
 export default async function ProjectPage({
   params,
@@ -120,11 +124,42 @@ export default async function ProjectPage({
   ]);
 
   const criteria = flattenCriteria(project.groups);
+  const criteriaWithName = project.groups.flatMap((g) =>
+    g.criteria.map((c) => ({ ...c, name: c.name }))
+  );
   const dealbreakerThreshold = resolveDealbreakerThreshold(project.dealbreakerThreshold);
+  const partnerMembers = project.members
+    .filter((m) => m.userId !== user.id)
+    .map((m) => ({ userId: m.userId, name: m.user.name }));
+  const allRatingsForDivergence = project.apartments.flatMap((a) =>
+    a.ratings.map((r) => ({ ...r, apartmentId: a.id }))
+  );
+
+  const duplicateIndex = buildDuplicateIndex(
+    project.apartments.map((a) => ({ id: a.id, title: a.title, address: a.address }))
+  );
 
   const apartments = project.apartments.map((a) => {
     const result = apartmentScore(criteria, a.ratings, user.id, dealbreakerThreshold);
-    return { ...a, ...result };
+    const divergence =
+      partnerMembers.length > 0
+        ? maxNotableDivergence(
+            partnerComparisons({
+              criteria: criteriaWithName,
+              ratings: allRatingsForDivergence,
+              apartmentId: a.id,
+              currentUserId: user.id,
+              partners: partnerMembers,
+              dealbreakerThreshold,
+            })
+          )
+        : null;
+    return {
+      ...a,
+      ...result,
+      divergence,
+      duplicateMatches: duplicateIndex.get(a.id) ?? [],
+    };
   });
 
   const sortKey = parseApartmentSort(resolvedSearchParams.sort);
@@ -167,6 +202,15 @@ export default async function ProjectPage({
           routesFailed: parseInt(resolvedSearchParams.commute_failed ?? "0", 10) || 0,
         }
       : undefined;
+
+  const archiveReasonStats =
+    tab === "archived" && archivedCount > 0
+      ? await prisma.apartment.groupBy({
+          by: ["archiveReason"],
+          where: { projectId, archivedAt: { not: null } },
+          _count: { _all: true },
+        })
+      : [];
 
   return (
     <>
@@ -215,21 +259,23 @@ export default async function ProjectPage({
 
         {(tab === "apartments" || tab === "archived") && (
           <>
-            {tab === "apartments" && (
-            <form action={createApartmentAction.bind(null, project.id)} className="flex flex-wrap gap-2 mb-6 items-stretch sm:items-center">
-              <input name="title" placeholder="Titel / Adresse" required className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[200px]" />
-              <input name="price" placeholder="Preis €" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-28 min-w-0" />
-              <input name="address" placeholder="Adresse" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[160px]" />
-              <input name="listingUrl" placeholder="Inserat-URL" type="url" className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[180px]" />
-              <label className="flex items-center gap-1.5 text-sm text-pn-text-secondary w-full sm:w-auto">
-                <input type="checkbox" name="brokerInvolved" className="rounded border-pn-border" />
-                Makler
-              </label>
-              <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm w-full sm:w-auto">
-                Immobilie hinzufügen
-              </button>
-            </form>
+            {tab === "archived" && archiveReasonStats.length > 0 && (
+              <section className="mb-6 bg-pn-bg-subtle border border-pn-border rounded-xl p-4">
+                <h2 className="text-sm font-semibold mb-2">Ablehnungsmuster</h2>
+                <ul className="text-sm text-pn-text-secondary space-y-1">
+                  {archiveReasonStats
+                    .filter((s) => s.archiveReason)
+                    .sort((a, b) => b._count._all - a._count._all)
+                    .map((s) => (
+                      <li key={s.archiveReason ?? "unknown"}>
+                        {archiveReasonLabel(s.archiveReason) ?? s.archiveReason}:{" "}
+                        <span className="font-medium text-pn-text-primary">{s._count._all}×</span>
+                      </li>
+                    ))}
+                </ul>
+              </section>
             )}
+            {tab === "apartments" && <ListingImportAssist projectId={project.id} />}
             <ScoreLegend className="mb-4" />
             <ApartmentProjectSearch
               projectId={project.id}
@@ -278,6 +324,16 @@ export default async function ProjectPage({
                         </a>
                       )}
                       {a.address && <p className="text-sm text-pn-text-secondary">{a.address}</p>}
+                      {tab === "archived" && a.archiveReason && (
+                        <p className="text-xs text-pn-text-tertiary mt-1">
+                          Grund: {archiveReasonLabel(a.archiveReason)}
+                          {a.archiveNote ? ` — ${a.archiveNote}` : ""}
+                        </p>
+                      )}
+                      <DuplicateApartmentBadge
+                        projectId={project.id}
+                        matches={a.duplicateMatches}
+                      />
                       {a.price != null && (
                         <p className="text-sm font-medium">
                           {formatPrice(a.price)}
@@ -323,6 +379,14 @@ export default async function ProjectPage({
                       displayScore={a.displayScore}
                       dealbreaker={a.dealbreaker}
                     />
+                    {a.divergence && (
+                      <span
+                        className="inline-flex items-center text-xs font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full"
+                        title={`Abweichung zu ${a.divergence.partnerName}`}
+                      >
+                        Δ {a.divergence.delta}
+                      </span>
+                    )}
                     </div>
                     <RatingProgressBar rated={a.rated} total={a.total} className="w-full" />
                     {pricePerPoint(a.price, a.displayScore) && (
@@ -412,19 +476,32 @@ export default async function ProjectPage({
               a.ratings.map((r) => ({ ...r, apartmentId: a.id }))
             )}
             dealbreakerThreshold={resolveDealbreakerThreshold(activeProject.dealbreakerThreshold)}
+            currentUserId={user.id}
           />
         )}
 
         {tab === "map" && activeProject && (
           <ProjectMap
+            key="project-map"
             projectId={project.id}
-            apartments={activeProject.apartments.map((a) => ({
-              id: a.id,
-              title: a.title,
-              address: a.address,
-              latitude: a.latitude,
-              longitude: a.longitude,
-            }))}
+            apartments={activeProject.apartments.map((a) => {
+              const scored = apartmentScore(
+                criteria,
+                a.ratings,
+                user.id,
+                dealbreakerThreshold
+              );
+              return {
+                id: a.id,
+                title: a.title,
+                address: a.address,
+                latitude: a.latitude,
+                longitude: a.longitude,
+                score: scored.score,
+                displayScore: scored.displayScore,
+                dealbreaker: scored.dealbreaker,
+              };
+            })}
           />
         )}
 

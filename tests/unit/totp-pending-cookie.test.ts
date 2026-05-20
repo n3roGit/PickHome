@@ -26,7 +26,7 @@ describe("pending TOTP cookie", () => {
 
   it("round-trips user id after setPendingTotpLogin", async () => {
     const { setPendingTotpLogin, getPendingTotpUserId } = await import("@/lib/totp");
-    const userId = "69e2dcd1-b122-48ab-8724-1156917109e5";
+    const userId = "00000000-0000-4000-8000-000000000099";
     await setPendingTotpLogin(userId);
     expect(await getPendingTotpUserId()).toBe(userId);
   });

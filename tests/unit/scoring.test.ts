@@ -10,6 +10,8 @@ import {
   parseDealbreakerThreshold,
   pricePerPoint,
   scoreColor,
+  markerColorForScore,
+  MAP_MARKER_COLORS,
   sortApartments,
 } from "@/lib/scoring";
 
@@ -157,6 +159,18 @@ describe("scoreColor", () => {
 
   it("returns mid otherwise", () => {
     expect(scoreColor(50, false)).toBe("mid");
+  });
+});
+
+describe("markerColorForScore", () => {
+  it("maps score bands to marker colors", () => {
+    expect(markerColorForScore(80, false)).toBe(MAP_MARKER_COLORS.high);
+    expect(markerColorForScore(50, false)).toBe(MAP_MARKER_COLORS.mid);
+    expect(markerColorForScore(30, false)).toBe(MAP_MARKER_COLORS.low);
+  });
+
+  it("uses low color for dealbreaker mode", () => {
+    expect(markerColorForScore(90, true, "dealbreaker")).toBe(MAP_MARKER_COLORS.low);
   });
 });
 

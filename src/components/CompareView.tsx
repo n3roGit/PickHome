@@ -8,6 +8,8 @@ import {
   type ProjectFinanceSettings,
 } from "@/lib/purchase-costs";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { PartnerDivergenceCompareBlock } from "@/components/PartnerDivergencePanel";
+import { partnerComparisons } from "@/lib/rating-divergence";
 import { apartmentScore, formatPrice, formatPricePerSqm } from "@/lib/scoring";
 
 const MAX_COMPARE = 5;
@@ -217,6 +219,7 @@ export function CompareView({
   allRatings,
   finance,
   dealbreakerThreshold,
+  currentUserId,
 }: {
   projectId: string;
   apartments: Apartment[];
@@ -225,7 +228,11 @@ export function CompareView({
   allRatings: Rating[];
   finance: ProjectFinanceSettings;
   dealbreakerThreshold: number;
+  currentUserId: string;
 }) {
+  const partners = members
+    .filter((m) => m.user.id !== currentUserId)
+    .map((m) => ({ userId: m.user.id, name: m.user.name }));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const toggleSelection = (id: string) => {
@@ -263,6 +270,28 @@ export function CompareView({
       ) : (
         <>
           <CompareNumbersTable apartments={selectedApartments} finance={finance} />
+
+          {partners.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold mb-3">Meinungsunterschiede</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {selectedApartments.map((a) => (
+                  <PartnerDivergenceCompareBlock
+                    key={a.id}
+                    apartmentTitle={a.title}
+                    comparisons={partnerComparisons({
+                      criteria,
+                      ratings: allRatings,
+                      apartmentId: a.id,
+                      currentUserId,
+                      partners,
+                      dealbreakerThreshold,
+                    })}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
           <section>
             <h2 className="text-lg font-semibold mb-3">Gesamtscore</h2>

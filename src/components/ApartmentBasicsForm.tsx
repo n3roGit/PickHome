@@ -5,12 +5,16 @@ export function ApartmentBasicsForm({
   apartmentId,
   address,
   price,
+  sizeSqm,
+  energyClass,
   budget,
   saved,
 }: {
   apartmentId: string;
   address: string | null;
   price: number | null;
+  sizeSqm?: number | null;
+  energyClass?: string | null;
   budget: number | null;
   saved?: boolean;
 }) {
@@ -44,6 +48,26 @@ export function ApartmentBasicsForm({
             className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
           />
         </label>
+        <div className="flex flex-wrap gap-3">
+          <label className="block flex-1 min-w-[120px]">
+            <span className="text-sm font-medium text-pn-text-secondary">Wohnfläche (m²)</span>
+            <input
+              name="sizeSqm"
+              defaultValue={sizeSqm != null ? String(sizeSqm) : ""}
+              placeholder="z. B. 85"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block w-28">
+            <span className="text-sm font-medium text-pn-text-secondary">Energieklasse</span>
+            <input
+              name="energyClass"
+              defaultValue={energyClass ?? ""}
+              placeholder="z. B. C"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+          </label>
+        </div>
         {price != null && budget != null && (
           <p
             className={`text-sm ${

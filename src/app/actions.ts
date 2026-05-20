@@ -25,6 +25,7 @@ import {
   invalidateCommuteCacheForUserAddress,
 } from "@/lib/commute-cache";
 import { geocodeAddress } from "@/lib/geocode";
+import { parseEnergyClassInput } from "@/lib/listing-import";
 import { normalizeListingUrl } from "@/lib/listing-url";
 import { readPasswordPair } from "@/lib/password";
 import { getApartmentUploadsRoot } from "@/lib/pickhome-data";
@@ -40,6 +41,7 @@ import {
   seedProjectCriteria,
 } from "@/lib/project-data";
 import { parseBrokerBuyerRatePercent, parseFederalStateCode, parseInterestRatePercent, parsePositiveInt } from "@/lib/purchase-costs";
+import { parseArchiveNote, parseArchiveReason } from "@/lib/archive-reasons";
 import { parseDealbreakerThreshold } from "@/lib/scoring";
 import { syncApartmentViewedAt } from "@/lib/viewings";
 import { parseTravelMode } from "@/lib/travel-mode";
@@ -192,15 +194,25 @@ export async function reindexProjectCommuteAction(projectId: string) {
   redirect(`${base}&${params.toString()}`);
 }
 
-export async function archiveApartmentAction(apartmentId: string) {
+export async function archiveApartmentAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
   const apt = await prisma.apartment.findFirst({
     where: apartmentAccessWhere(apartmentId, user),
   });
   if (!apt) return;
+
+  const archiveReason = parseArchiveReason(String(formData.get("archiveReason") ?? ""));
+  if (!archiveReason) return;
+
+  const archiveNote = parseArchiveNote(String(formData.get("archiveNote") ?? ""));
+
   await prisma.apartment.update({
     where: { id: apartmentId },
-    data: { archivedAt: new Date() },
+    data: {
+      archivedAt: new Date(),
+      archiveReason,
+      archiveNote,
+    },
   });
   revalidatePath(`/project/${apt.projectId}`);
   revalidatePath(`/project/${apt.projectId}/apartment/${apartmentId}`);
@@ -214,7 +226,7 @@ export async function unarchiveApartmentAction(apartmentId: string) {
   if (!apt) return;
   await prisma.apartment.update({
     where: { id: apartmentId },
-    data: { archivedAt: null },
+    data: { archivedAt: null, archiveReason: null, archiveNote: null },
   });
   revalidatePath(`/project/${apt.projectId}`);
   revalidatePath(`/project/${apt.projectId}/apartment/${apartmentId}`);
@@ -274,6 +286,7 @@ export async function createApartmentAction(projectId: string, formData: FormDat
       price: Number.isFinite(price) ? price : null,
       brokerInvolved,
       sizeSqm: parseInt(String(formData.get("sizeSqm") ?? ""), 10) || null,
+      energyClass: parseEnergyClassInput(String(formData.get("energyClass") ?? "")),
       listingUrl: normalizeListingUrl(String(formData.get("listingUrl") ?? "")),
     },
   });
@@ -340,6 +353,8 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
     ? await geocodeApartmentAddressFields(addressRaw)
     : { address: null, latitude: null, longitude: null };
   const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
+  const sizeSqmRaw = String(formData.get("sizeSqm") ?? "").trim();
+  const sizeSqm = sizeSqmRaw ? parseInt(sizeSqmRaw.replace(/\D/g, ""), 10) : null;
 
   await prisma.apartment.update({
     where: { id: apartmentId },
@@ -348,6 +363,8 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
       address: geocoded.address,
       latitude: geocoded.latitude,
       longitude: geocoded.longitude,
+      sizeSqm: Number.isFinite(sizeSqm) ? sizeSqm : null,
+      energyClass: parseEnergyClassInput(String(formData.get("energyClass") ?? "")),
     },
   });
   await invalidateCommuteCacheForApartment(apartmentId);

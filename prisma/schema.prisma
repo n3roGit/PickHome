@@ -113,9 +113,12 @@ model Apartment {
   yearBuilt   Int?
   description String?
   notes       String?
-  listingUrl  String?
-  viewedAt    DateTime?
-  archivedAt  DateTime?
+  listingUrl    String?
+  energyClass   String?
+  archiveReason String?
+  archiveNote   String?
+  viewedAt      DateTime?
+  archivedAt    DateTime?
   createdAt   DateTime             @default(now())
   project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   ratings     Rating[]

@@ -1,0 +1,137 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { createApartmentAction } from "@/app/actions";
+import type { ListingPreviewFields } from "@/lib/listing-import";
+
+export function ListingImportAssist({ projectId }: { projectId: string }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
+
+  async function loadFromListing() {
+    const form = formRef.current;
+    if (!form) return;
+    const urlInput = form.elements.namedItem("listingUrl") as HTMLInputElement | null;
+    const url = urlInput?.value?.trim();
+    if (!url) {
+      setMessage("Bitte zuerst eine Inserat-URL eintragen.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    setWarnings([]);
+    try {
+      const res = await fetch("/api/listing/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        fields?: ListingPreviewFields;
+        warnings?: string[];
+        error?: string;
+      };
+
+      if (!res.ok || !data.fields) {
+        setMessage("Daten konnten nicht geladen werden — Felder manuell ausfüllen.");
+        setWarnings(data.warnings ?? []);
+        return;
+      }
+
+      const set = (name: string, value: string | number | undefined) => {
+        if (value == null || value === "") return;
+        const el = form.elements.namedItem(name) as HTMLInputElement | null;
+        if (el) el.value = String(value);
+      };
+
+      set("title", data.fields.title);
+      set("price", data.fields.price);
+      set("address", data.fields.address);
+      set("sizeSqm", data.fields.sizeSqm);
+      set("energyClass", data.fields.energyClass);
+      setMessage("Vorschau übernommen — bitte prüfen und dann speichern.");
+      setWarnings(data.warnings ?? []);
+    } catch {
+      setMessage("Netzwerkfehler beim Laden der Inserat-Seite.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form
+      ref={formRef}
+      action={createApartmentAction.bind(null, projectId)}
+      className="flex flex-col gap-3 mb-6"
+    >
+      <div className="flex flex-wrap gap-2 items-stretch sm:items-center">
+        <input
+          name="listingUrl"
+          placeholder="Inserat-URL"
+          type="url"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[200px]"
+        />
+        <button
+          type="button"
+          onClick={loadFromListing}
+          disabled={loading}
+          className="border border-pn-border font-medium px-4 py-2 rounded-lg text-sm w-full sm:w-auto hover:bg-pn-bg-subtle disabled:opacity-50"
+        >
+          {loading ? "Lädt…" : "Daten laden"}
+        </button>
+      </div>
+      {message && (
+        <p className="text-sm text-pn-text-secondary bg-pn-bg-subtle px-3 py-2 rounded-lg">
+          {message}
+        </p>
+      )}
+      {warnings.map((w) => (
+        <p key={w} className="text-xs text-pn-text-tertiary">
+          {w}
+        </p>
+      ))}
+      <div className="flex flex-wrap gap-2 items-stretch sm:items-center">
+        <input
+          name="title"
+          placeholder="Titel / Adresse"
+          required
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[200px]"
+        />
+        <input
+          name="price"
+          placeholder="Preis €"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-28 min-w-0"
+        />
+        <input
+          name="sizeSqm"
+          placeholder="m²"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-20 min-w-0"
+        />
+        <input
+          name="energyClass"
+          placeholder="Energieklasse"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-24 min-w-0"
+        />
+        <input
+          name="address"
+          placeholder="Adresse"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[160px]"
+        />
+        <label className="flex items-center gap-1.5 text-sm text-pn-text-secondary w-full sm:w-auto">
+          <input type="checkbox" name="brokerInvolved" className="rounded border-pn-border" />
+          Makler
+        </label>
+        <button
+          type="submit"
+          className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm w-full sm:w-auto"
+        >
+          Immobilie hinzufügen
+        </button>
+      </div>
+    </form>
+  );
+}
