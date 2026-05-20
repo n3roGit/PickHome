@@ -16,6 +16,8 @@ export type MapApartment = {
   dealbreaker: boolean;
 };
 
+export type MappedApartment = MapApartment & { latitude: number; longitude: number };
+
 const MapInner = dynamic(() => import("@/components/ProjectMapInner"), { ssr: false });
 
 export function ProjectMap({
@@ -80,8 +82,7 @@ export function ProjectMap({
   }
 
   const mapped = withAddress.filter(
-    (a): a is MapApartment & { latitude: number; longitude: number } =>
-      a.latitude != null && a.longitude != null
+    (a): a is MappedApartment => a.latitude != null && a.longitude != null
   );
 
   return (
@@ -164,7 +165,7 @@ function DeferredMapInner({
 }: {
   mountKey: number | null;
   projectId: string;
-  apartments: MapApartment[];
+  apartments: MappedApartment[];
   colorMode: "score" | "dealbreaker";
 }) {
   if (mountKey == null) {

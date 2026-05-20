@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import Link from "next/link";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { markerColorForScore } from "@/lib/scoring";
-import type { MapApartment } from "@/components/ProjectMap";
+import type { MappedApartment } from "@/components/ProjectMap";
 
 function markerIcon(color: string) {
   return L.divIcon({
@@ -24,7 +24,7 @@ export default function ProjectMapInner({
   colorMode,
 }: {
   projectId: string;
-  apartments: (MapApartment & { latitude: number; longitude: number })[];
+  apartments: MappedApartment[];
   colorMode: "score" | "dealbreaker";
 }) {
   const center = apartments[0];
