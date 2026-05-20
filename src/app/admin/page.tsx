@@ -1,6 +1,7 @@
-import { createUserAction, deleteUserAction, resetUserPasswordAction } from "@/app/actions";
+import { createUserAction, resetUserPasswordAction } from "@/app/actions";
 import { AdminBackupPanel } from "@/components/AdminBackupPanel";
 import { AdminScheduledBackupPanel } from "@/components/AdminScheduledBackupPanel";
+import { DeleteUserButton } from "@/components/DeleteUserButton";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { requireAdmin, isAdmin } from "@/lib/auth";
@@ -128,14 +129,7 @@ export default async function AdminPage({
                     <td className="p-3">{u._count.projects}</td>
                     <td className="p-3">
                       {!isAdmin(u) && (
-                        <form action={deleteUserAction.bind(null, u.id)} className="inline">
-                          <button
-                            type="submit"
-                            className="text-pn-score-low text-xs hover:underline mr-3"
-                          >
-                            Löschen
-                          </button>
-                        </form>
+                        <DeleteUserButton userId={u.id} username={u.username} />
                       )}
                       <details className="inline">
                         <summary className="text-pn-accent text-xs cursor-pointer hover:underline">
