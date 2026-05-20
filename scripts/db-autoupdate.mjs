@@ -49,7 +49,13 @@ async function ensureDataDirs() {
 async function pushSchemaWithRetry() {
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
     console.log(`[pickhome] Applying database schema (attempt ${attempt}/${RETRIES})...`);
-    const result = spawnCommand("npx", ["prisma", "db", "push", "--skip-generate"]);
+    const result = spawnCommand("npx", [
+      "prisma",
+      "db",
+      "push",
+      "--skip-generate",
+      "--accept-data-loss",
+    ]);
     if (result.status === 0) {
       console.log("[pickhome] Database schema is up to date.");
       return;
