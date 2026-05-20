@@ -1,6 +1,9 @@
 import { fetchExternal } from "@/lib/external-fetch";
 import type { TravelMode } from "@/lib/travel-mode";
 
+/** Modes routed via OSRM (excludes ÖPNV). */
+export type OsrmTravelMode = Exclude<TravelMode, "transit">;
+
 export type RoutePoint = {
   latitude: number;
   longitude: number;
@@ -12,7 +15,7 @@ export type RouteResult = {
 };
 
 /** OSRM profile segment for a travel mode (depends on server build). */
-export function osrmProfileForMode(mode: TravelMode): string {
+export function osrmProfileForMode(mode: OsrmTravelMode): string {
   return osrmEndpointForMode(mode).profile;
 }
 
@@ -26,10 +29,10 @@ export type OsrmEndpoint = {
  * The public project-osrm.org demo only supports driving and returns car routes for every profile.
  * Self-hosted OSRM: set OSRM_BASE_URL; optional OSRM_PROFILE_FOOT / _BIKE / _DRIVING overrides.
  */
-export function osrmEndpointForMode(mode: TravelMode): OsrmEndpoint {
+export function osrmEndpointForMode(mode: OsrmTravelMode): OsrmEndpoint {
   const custom = process.env.OSRM_BASE_URL?.replace(/\/$/, "");
   if (custom) {
-    const profileByMode: Record<TravelMode, string> = {
+    const profileByMode: Record<OsrmTravelMode, string> = {
       foot: process.env.OSRM_PROFILE_FOOT ?? "foot",
       bike: process.env.OSRM_PROFILE_BIKE ?? "bike",
       driving: process.env.OSRM_PROFILE_DRIVING ?? "driving",
@@ -69,7 +72,7 @@ export function osrmBaseUrl(): string {
 export async function fetchRoute(
   from: RoutePoint,
   to: RoutePoint,
-  mode: TravelMode
+  mode: OsrmTravelMode
 ): Promise<RouteResult | null> {
   const { baseUrl, profile } = osrmEndpointForMode(mode);
   const coords = `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`;
