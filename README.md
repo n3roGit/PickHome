@@ -172,4 +172,4 @@ Optional: `npm run data:import -- backup.zip --keep` keeps `*.pre-import-*` copi
 
 ## License
 
-Private use — adjust as needed for your deployment.
+This project is licensed under GPL-3.0. See [LICENSE](LICENSE).
