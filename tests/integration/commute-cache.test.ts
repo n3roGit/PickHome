@@ -375,6 +375,93 @@ describe("commute cache integration", () => {
     await prisma.$disconnect();
   });
 
+  it("cacheOnly transit pending shows auto distance while ÖPNV is backfilled", async () => {
+    const fetchRoute = vi.spyOn(routing, "fetchRoute").mockResolvedValue({
+      distanceMeters: 15_200,
+      durationSeconds: 14 * 60,
+    });
+    const fetchTransit = vi.spyOn(transitRouting, "fetchTransitJourney");
+
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apartment = await prisma.apartment.create({
+      data: {
+        projectId: project.id,
+        title: "Test apt",
+        latitude: 53.08,
+        longitude: 8.8,
+      },
+    });
+    const userAddress = await prisma.userAddress.create({
+      data: {
+        userId: user.id,
+        label: "Arbeit",
+        address: "Bremen",
+        latitude: 53.1,
+        longitude: 8.85,
+      },
+    });
+
+    const legs = await computeCommuteLegs({
+      apartmentId: apartment.id,
+      apartment: { latitude: apartment.latitude!, longitude: apartment.longitude! },
+      apartmentAddress: apartment.address,
+      addresses: [
+        {
+          id: userAddress.id,
+          label: userAddress.label,
+          address: userAddress.address,
+          latitude: userAddress.latitude,
+          longitude: userAddress.longitude,
+          isWorkplace: false,
+        },
+      ],
+      travelMode: "transit",
+      transitSettings: {
+        arrivalWeekday: 1,
+        arrivalHour: 8,
+        arrivalMinute: 0,
+        fallbackMaxKm: 5,
+        fallbackMode: "bike",
+      },
+      companyCar: false,
+      companyCarRate: null,
+      listPrice: null,
+      marginalTaxRatePercent: null,
+      companyCarCommuteMethod: null,
+      companyCarOfficeTripsPerMonth: null,
+      companyCarContributionEur: null,
+      companyCarSelfPaidCostsEur: null,
+      companyCarEmployerFuelCard: true,
+      cacheOnly: true,
+    });
+
+    expect(legs[0]?.distanceText).toBe("15,2 km");
+    expect(legs[0]?.routingNote).toBe("Daten werden berechnet");
+    expect(legs[0]?.durationText).toBeNull();
+    expect(fetchRoute).toHaveBeenCalledTimes(1);
+    expect(fetchRoute).toHaveBeenCalledWith(
+      { latitude: apartment.latitude, longitude: apartment.longitude },
+      { latitude: userAddress.latitude, longitude: userAddress.longitude },
+      "driving",
+      undefined
+    );
+    expect(fetchTransit).not.toHaveBeenCalled();
+
+    const drivingCache = await prisma.commuteCache.findUnique({
+      where: {
+        apartmentId_userAddressId_travelMode: {
+          apartmentId: apartment.id,
+          userAddressId: userAddress.id,
+          travelMode: "driving",
+        },
+      },
+    });
+    expect(drivingCache?.distanceMeters).toBe(15200);
+    await prisma.$disconnect();
+  });
+
   it("findMissingCommuteLegs lists legs without cache", async () => {
     const prisma = createTestPrisma();
     const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });

@@ -99,6 +99,16 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
                 <p className="text-xs text-pn-text-tertiary mt-1">{leg.commuteCostHint}</p>
               )}
             </>
+          ) : leg.routingNote ? (
+            <div className="text-sm mt-2">
+              {leg.distanceText && (
+                <p>
+                  <span className="font-medium">{leg.distanceText}</span>
+                  <span className="text-pn-text-tertiary"> (Auto)</span>
+                </p>
+              )}
+              <p className="text-pn-text-tertiary mt-1">({leg.routingNote})</p>
+            </div>
           ) : (
             <p className="text-sm text-pn-text-tertiary mt-2">
               {commuteUnavailableMessage(leg.unavailableReason)}

@@ -99,6 +99,8 @@ const UNAVAILABLE_MESSAGES: Record<NonNullable<CommuteLeg["unavailableReason"]>,
 export const COMMUTE_PENDING_NOTE =
   "Anfahrtszeit wird im Hintergrund berechnet — Seite später neu laden.";
 
+export const COMMUTE_TRANSIT_PENDING_NOTE = "Daten werden berechnet";
+
 /** @deprecated Use COMMUTE_PENDING_NOTE */
 export const COMMUTE_REINDEX_PENDING_NOTE = COMMUTE_PENDING_NOTE;
 
@@ -200,6 +202,15 @@ export async function computeCommuteLegs(input: {
   });
   const cacheByAddressId = new Map(cachedRows.map((row) => [row.userAddressId, row]));
   const fetchOptions: FetchExternalOptions | undefined = input.background ? { background: true } : undefined;
+  const drivingDistanceHints =
+    input.cacheOnly && input.travelMode === "transit"
+      ? await ensureDrivingDistanceHints({
+          apartmentId: input.apartmentId,
+          apartment: input.apartment,
+          addresses: input.addresses,
+          fetchOptions,
+        })
+      : null;
 
   const computeOne = async (addr: CommuteAddress): Promise<CommuteLeg> => {
     if (addr.latitude == null || addr.longitude == null) {
@@ -232,6 +243,9 @@ export async function computeCommuteLegs(input: {
     }
 
     if (input.cacheOnly) {
+      if (input.travelMode === "transit") {
+        return legTransitPending(addr, drivingDistanceHints?.get(addr.id) ?? null);
+      }
       return legReindexPending(addr);
     }
 
@@ -297,6 +311,76 @@ export async function computeCommuteLegs(input: {
   }
 
   return Promise.all(input.addresses.map((addr) => computeOne(addr)));
+}
+
+async function ensureDrivingDistanceHints(input: {
+  apartmentId: string;
+  apartment: RoutePoint;
+  addresses: CommuteAddress[];
+  fetchOptions?: FetchExternalOptions;
+}): Promise<Map<string, string>> {
+  const hints = new Map<string, string>();
+  const routableAddresses = input.addresses.filter(
+    (addr) => addr.latitude != null && addr.longitude != null
+  );
+  if (routableAddresses.length === 0) return hints;
+
+  const cachedDriving = await prisma.commuteCache.findMany({
+    where: {
+      apartmentId: input.apartmentId,
+      travelMode: "driving",
+      userAddressId: { in: routableAddresses.map((addr) => addr.id) },
+    },
+  });
+  for (const row of cachedDriving) {
+    hints.set(row.userAddressId, formatRouteDistance(row.distanceMeters));
+  }
+
+  const missing = routableAddresses.filter((addr) => !hints.has(addr.id));
+  await Promise.all(
+    missing.map(async (addr) => {
+      const route = await fetchRoute(
+        input.apartment,
+        { latitude: addr.latitude!, longitude: addr.longitude! },
+        "driving",
+        input.fetchOptions
+      );
+      if (!route) return;
+
+      hints.set(addr.id, formatRouteDistance(route.distanceMeters));
+      await prisma.commuteCache.upsert({
+        where: {
+          apartmentId_userAddressId_travelMode: {
+            apartmentId: input.apartmentId,
+            userAddressId: addr.id,
+            travelMode: "driving",
+          },
+        },
+        create: {
+          apartmentId: input.apartmentId,
+          userAddressId: addr.id,
+          travelMode: "driving",
+          distanceMeters: Math.round(route.distanceMeters),
+          durationSeconds: Math.round(route.durationSeconds),
+          routeKind: "osrm",
+          connectionSummary: null,
+          transitDetailJson: null,
+          effectiveMode: null,
+        },
+        update: {
+          distanceMeters: Math.round(route.distanceMeters),
+          durationSeconds: Math.round(route.durationSeconds),
+          routeKind: "osrm",
+          connectionSummary: null,
+          transitDetailJson: null,
+          effectiveMode: null,
+          computedAt: new Date(),
+        },
+      });
+    })
+  );
+
+  return hints;
 }
 
 async function resolveCommuteRoute(
@@ -496,6 +580,31 @@ function applyCompanyCarCommuteCost(
     companyCarOfficeTripsPerMonth: benefit?.officeTripsPerMonth ?? null,
     companyCarEmployerFuelCard: benefit?.employerFuelCard ?? null,
     commuteCostHint: benefit == null ? "Firmenwagen-Kosten konnten nicht berechnet werden." : null,
+  };
+}
+
+function legTransitPending(addr: CommuteAddress, drivingDistanceText: string | null): CommuteLeg {
+  return {
+    addressId: addr.id,
+    label: addr.label,
+    address: addr.address,
+    distanceText: drivingDistanceText,
+    durationText: null,
+    connectionSummary: null,
+    transitDetailTooltip: null,
+    routingNote: COMMUTE_TRANSIT_PENDING_NOTE,
+    unavailableReason: null,
+    distanceKmOneWay: null,
+    monthlyCompanyCarBaseBenefitEur: null,
+    monthlyCompanyCarCommuteBenefitEur: null,
+    monthlyCompanyCarTotalBenefitEur: null,
+    monthlyCompanyCarTotalNetBenefitEur: null,
+    monthlyCompanyCarDeductionsEur: null,
+    companyCarMarginalTaxRatePercent: null,
+    companyCarCommuteMethod: null,
+    companyCarOfficeTripsPerMonth: null,
+    companyCarEmployerFuelCard: null,
+    commuteCostHint: null,
   };
 }
 
