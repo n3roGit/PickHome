@@ -1,5 +1,6 @@
 import { fetchExternal, type FetchExternalOptions } from "@/lib/external-fetch";
 import { formatRouteDistance, formatRouteDuration } from "@/lib/routing";
+import { resolveTransitApiBases } from "@/lib/transit-providers";
 import {
   formatTransitArrivalForApi,
   nextTransitArrivalDate,
@@ -7,7 +8,9 @@ import {
 } from "@/lib/transit-settings";
 import type { RoutePoint } from "@/lib/routing";
 
-const TRANSIT_API_BASE = "https://v6.db.transport.rest";
+function isRetriableTransitStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
 
 export type TransitJourneyLeg = {
   walking?: boolean;
@@ -169,6 +172,35 @@ export function buildArrivalTargetLabel(settings: TransitSettings): string {
   return `Ankunft ${day} ${time}`;
 }
 
+async function parseTransitJourneyResponse(
+  res: Response,
+  settings: TransitSettings
+): Promise<TransitJourneyResult | null> {
+  try {
+    const data = (await res.json()) as {
+      journeys?: { legs?: TransitJourneyLeg[] }[];
+    };
+    const legs = data.journeys?.[0]?.legs;
+    if (!legs?.length) return null;
+
+    const durationSeconds = journeyDurationSeconds(legs);
+    if (durationSeconds == null) return null;
+
+    const legDetails = buildTransitLegDetails(legs);
+
+    return {
+      durationSeconds,
+      distanceMeters: journeyDistanceMeters(legs),
+      connectionSummary: formatConnectionSummary(legs),
+      arrivalTargetLabel: buildArrivalTargetLabel(settings),
+      legDetails,
+      detailTooltip: formatTransitDetailTooltip(legDetails),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchTransitJourney(
   input: {
     from: RoutePoint;
@@ -199,41 +231,34 @@ export async function fetchTransitJourney(
     pretty: "false",
   });
 
-  const url = `${TRANSIT_API_BASE}/journeys?${params.toString()}`;
-  const res = await fetchExternal(
-    "transit",
-    url,
-    {
-      headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
-      next: { revalidate: 3600 },
-    },
-    options
-  );
-  if (!res?.ok) return null;
+  const bases = resolveTransitApiBases();
+  const fetchInit: RequestInit = {
+    headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
+    next: { revalidate: 3600 },
+  };
+  const attemptsPerProvider =
+    options?.maxAttempts ?? (bases.length > 1 ? 0 : undefined);
 
-  try {
-    const data = (await res.json()) as {
-      journeys?: { legs?: TransitJourneyLeg[] }[];
-    };
-    const legs = data.journeys?.[0]?.legs;
-    if (!legs?.length) return null;
+  for (let i = 0; i < bases.length; i++) {
+    const isLastProvider = i === bases.length - 1;
+    const url = `${bases[i]}/journeys?${params.toString()}`;
+    const res = await fetchExternal("transit", url, fetchInit, {
+      ...options,
+      maxAttempts: attemptsPerProvider,
+      activateCooldownOnFailure:
+        options?.background && isLastProvider ? options.activateCooldownOnFailure : false,
+    });
 
-    const durationSeconds = journeyDurationSeconds(legs);
-    if (durationSeconds == null) return null;
+    if (res?.ok) {
+      return parseTransitJourneyResponse(res, input.settings);
+    }
 
-    const legDetails = buildTransitLegDetails(legs);
-
-    return {
-      durationSeconds,
-      distanceMeters: journeyDistanceMeters(legs),
-      connectionSummary: formatConnectionSummary(legs),
-      arrivalTargetLabel: buildArrivalTargetLabel(input.settings),
-      legDetails,
-      detailTooltip: formatTransitDetailTooltip(legDetails),
-    };
-  } catch {
-    return null;
+    if (res && !isRetriableTransitStatus(res.status)) {
+      return null;
+    }
   }
+
+  return null;
 }
 
 export function formatTransitDuration(seconds: number): string {

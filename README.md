@@ -24,7 +24,7 @@ Repository: [github.com/n3roGit/PickHome](https://github.com/n3roGit/PickHome)
 - **Viewing appointments** (past/upcoming) on the apartment page and project calendar
 - **Purchase costs** (rough estimate): land transfer tax by Bundesland — from apartment address when detectable, else project default — plus notary/registry and buyer broker
 - **Financing** (rough estimate): equity, loan term, interest rate, monthly payment and lifetime cost from project settings
-- **Commute** times and distances to each team member’s saved addresses (driving / cycling / walking via OSRM; **public transit** via [transport.rest](https://v6.db.transport.rest); optional self-hosted `OSRM_BASE_URL`)
+- **Commute** times and distances to each team member’s saved addresses (driving / cycling / walking via OSRM; **public transit** via [transport.rest](https://v6.db.transport.rest) with automatic fallback to [v5.db.api.bahn.guru](https://v5.db.api.bahn.guru); optional `TRANSIT_API_BASES` and self-hosted `OSRM_BASE_URL`)
 - **Company car** benefit estimates on commute legs when configured in account settings
 - **Desired area** badge when the address matches the project’s Wunschgebiet filter
 
@@ -168,6 +168,22 @@ By default, commute routing uses the public OSRM demo (driving only). For reliab
 OSRM_BASE_URL=https://your-osrm.example/route/v1
 # optional profile overrides: OSRM_PROFILE_FOOT, OSRM_PROFILE_BIKE, OSRM_PROFILE_DRIVING
 ```
+
+### Public transit (ÖPNV) API fallback
+
+ÖPNV commute routes use community [transport.rest](https://v6.db.transport.rest) APIs (no API key). PickHome tries providers in order:
+
+1. Cache (SQLite commute cache)
+2. `https://v6.db.transport.rest`
+3. `https://v5.db.api.bahn.guru`
+
+Override the list (comma-separated base URLs, no trailing slash):
+
+```bash
+TRANSIT_API_BASES=https://v6.db.transport.rest,https://v5.db.api.bahn.guru
+```
+
+Background backfill stops hammering after all providers fail (120s cooldown). For bulk timetable data, GTFS/GTFS-RT local import is a possible future improvement — not required for single journey lookups.
 
 ## Local development (without Docker)
 

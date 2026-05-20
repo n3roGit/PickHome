@@ -94,6 +94,20 @@ describe("fetchExternal", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("background 503 with activateCooldownOnFailure false does not cooldown", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = fetchExternal("transit", "https://example.test/1", undefined, {
+      background: true,
+      activateCooldownOnFailure: false,
+    });
+    await vi.runAllTimersAsync();
+    expect(await promise).toBeNull();
+    expect(isExternalServiceInCooldown("transit")).toBe(false);
+    expect(consumeExternalServiceUnavailable("transit")).toBe(false);
+  });
+
   it("background 503 activates cooldown and skips further transit calls", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
     vi.stubGlobal("fetch", fetchMock);

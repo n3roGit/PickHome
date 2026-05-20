@@ -9,6 +9,13 @@ export type ExternalService = "nominatim" | "osrm" | "transit" | "listing";
 export type FetchExternalOptions = {
   /** Slower rate limits and yields so interactive requests stay responsive. */
   background?: boolean;
+  /**
+   * When false, background 5xx/429 do not activate service cooldown
+   * (e.g. before trying the next transit API provider).
+   */
+  activateCooldownOnFailure?: boolean;
+  /** Override configured retry count (0 = single attempt). */
+  maxAttempts?: number;
 };
 
 type ServiceConfig = {
@@ -145,9 +152,10 @@ export async function fetchExternal(
   const intervalMs = options?.background
     ? Math.round(config.minIntervalMs * 2.5)
     : config.minIntervalMs;
-  const maxAttempts = options?.background
+  const configuredAttempts = options?.background
     ? backgroundMaxAttempts(service, config)
     : config.maxRetries;
+  const maxAttempts = options?.maxAttempts ?? configuredAttempts;
 
   for (let attempt = 0; attempt <= maxAttempts; attempt++) {
     if (options?.background) {
@@ -168,7 +176,9 @@ export async function fetchExternal(
       if (!isRetriableStatus(res.status)) return res;
 
       if (options?.background) {
-        activateServiceCooldown(service);
+        if (options.activateCooldownOnFailure !== false) {
+          activateServiceCooldown(service);
+        }
         return null;
       }
 
@@ -176,7 +186,9 @@ export async function fetchExternal(
       await sleep(retryDelayMs(attempt, config, res.headers.get("Retry-After")));
     } catch {
       if (options?.background) {
-        activateServiceCooldown(service);
+        if (options.activateCooldownOnFailure !== false) {
+          activateServiceCooldown(service);
+        }
         return null;
       }
       if (attempt === maxAttempts) return null;
