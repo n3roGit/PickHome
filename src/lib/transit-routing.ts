@@ -106,7 +106,7 @@ async function parseMotisPlanResponse(
 
     const itinerary = data.itineraries?.[0];
     const rawLegs = itinerary?.legs;
-    if (!rawLegs?.length) return null;
+    if (!itinerary || !rawLegs?.length) return null;
 
     return buildTransitJourneyResult(
       motisLegsToTransitJourneyLegs(rawLegs),
