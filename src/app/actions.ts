@@ -355,26 +355,15 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
   const sizeSqmRaw = String(formData.get("sizeSqm") ?? "").trim();
   const energyClassRaw = String(formData.get("energyClass") ?? "").trim();
-  const data: {
-    price: number | null;
-    address: string | null;
-    latitude: number | null;
-    longitude: number | null;
-    sizeSqm?: number | null;
-    energyClass?: string | null;
-  } = {
+  const sizeSqmParsed = sizeSqmRaw ? parseInt(sizeSqmRaw.replace(/\D/g, ""), 10) : null;
+  const data = {
     price: Number.isFinite(price) ? price : null,
     address: geocoded.address,
     latitude: geocoded.latitude,
     longitude: geocoded.longitude,
+    sizeSqm: sizeSqmParsed != null && Number.isFinite(sizeSqmParsed) ? sizeSqmParsed : null,
+    energyClass: energyClassRaw ? parseEnergyClassInput(energyClassRaw) : null,
   };
-  if (sizeSqmRaw) {
-    const sizeSqm = parseInt(sizeSqmRaw.replace(/\D/g, ""), 10);
-    if (Number.isFinite(sizeSqm)) data.sizeSqm = sizeSqm;
-  }
-  if (energyClassRaw) {
-    data.energyClass = parseEnergyClassInput(energyClassRaw);
-  }
 
   await prisma.apartment.update({
     where: { id: apartmentId },

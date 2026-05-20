@@ -22,12 +22,14 @@ export function CollapsibleSection({
   title,
   subtitle,
   defaultOpen = false,
+  headerAside,
   children,
   className = "",
 }: {
   title: string;
   subtitle?: ReactNode;
   defaultOpen?: boolean;
+  headerAside?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -41,7 +43,12 @@ export function CollapsibleSection({
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <h2 className="font-semibold min-w-0">{title}</h2>
+        <div className="min-w-0 flex-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h2 className="font-semibold min-w-0">{title}</h2>
+          {headerAside && (
+            <span className="text-sm text-pn-text-tertiary shrink-0 tabular-nums">{headerAside}</span>
+          )}
+        </div>
         <span className="shrink-0 text-pn-text-tertiary group-hover:text-pn-text-secondary transition-colors">
           <ChevronIcon open={open} />
         </span>

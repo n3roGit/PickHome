@@ -27,6 +27,7 @@ import {
   getProjectMetaForUser,
 } from "@/lib/project-data";
 import { PartnerDivergencePanel } from "@/components/PartnerDivergencePanel";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DuplicateApartmentBadge } from "@/components/DuplicateApartmentBadge";
 import { findDuplicatesForApartment } from "@/lib/apartment-duplicates";
@@ -197,6 +198,12 @@ export default async function ApartmentPage({
           budget={project.budget}
           saved={resolvedSearchParams.basics_saved === "1"}
         />
+        <ApartmentListingUrlForm
+          apartmentId={apartment.id}
+          listingUrl={apartment.listingUrl}
+          saved={resolvedSearchParams.listing_saved === "1"}
+          invalid={resolvedSearchParams.listing_error === "invalid"}
+        />
         <ApartmentCommutePanel people={commutePeople} settingsHref="/account/settings" />
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
@@ -218,12 +225,6 @@ export default async function ApartmentPage({
             url: p.url,
             caption: p.caption,
           }))}
-        />
-        <ApartmentListingUrlForm
-          apartmentId={apartment.id}
-          listingUrl={apartment.listingUrl}
-          saved={resolvedSearchParams.listing_saved === "1"}
-          invalid={resolvedSearchParams.listing_error === "invalid"}
         />
         <ApartmentNotesForm
           apartmentId={apartment.id}
@@ -252,15 +253,16 @@ export default async function ApartmentPage({
           }))}
         />
         <PartnerDivergencePanel comparisons={divergenceComparisons} />
-        <h2 className="text-lg font-semibold mb-4">Kriterien bewerten</h2>
-        <RatingSliders
-          apartmentId={apartment.id}
-          groups={groupsWithRatings}
-          partners={partners}
-          criteriaFlat={criteria}
-          myUserId={user.id}
-          dealbreakerThreshold={dealbreakerThreshold}
-        />
+        <CollapsibleSection title="Kriterien bewerten" defaultOpen>
+          <RatingSliders
+            apartmentId={apartment.id}
+            groups={groupsWithRatings}
+            partners={partners}
+            criteriaFlat={criteria}
+            myUserId={user.id}
+            dealbreakerThreshold={dealbreakerThreshold}
+          />
+        </CollapsibleSection>
       </main>
       <Footer />
     </>

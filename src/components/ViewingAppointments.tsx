@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { addViewingAction, deleteViewingAction, updateViewingAction } from "@/app/actions";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { formatDateTimeDe, normalizeScheduledAtFormData, toDatetimeLocalValue } from "@/lib/dates";
 
 type Viewing = {
@@ -41,15 +42,17 @@ export function ViewingAppointments({
   }
 
   return (
-    <section className="mb-10">
-      <h2 className="text-lg font-semibold mb-3">Besichtigungstermine</h2>
-
+    <CollapsibleSection
+      title="Besichtigungstermine"
+      defaultOpen
+      headerAside={viewings.length > 0 ? `${viewings.length} Termine` : undefined}
+    >
       <form
         action={(formData) => {
           normalizeScheduledAtFormData(formData);
           startTransition(() => addViewingAction(apartmentId, formData));
         }}
-        className="flex flex-wrap gap-2 mb-6 p-4 bg-pn-bg-surface border border-pn-border rounded-xl"
+        className="flex flex-wrap gap-2 mb-6 p-4 bg-pn-bg-subtle border border-pn-border rounded-xl"
       >
         <label className="flex flex-col text-sm w-full min-w-0 sm:min-w-[200px] sm:flex-1">
           <span className="text-pn-text-secondary mb-1">Datum & Uhrzeit</span>
@@ -104,7 +107,7 @@ export function ViewingAppointments({
       {viewings.length === 0 && (
         <p className="text-sm text-pn-text-tertiary">Noch keine Besichtigungstermine.</p>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }
 

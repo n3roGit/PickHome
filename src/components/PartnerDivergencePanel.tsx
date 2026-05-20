@@ -2,6 +2,7 @@
 
 import type { PartnerComparison } from "@/lib/rating-divergence";
 import { isNotableDivergence } from "@/lib/rating-divergence";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { ScoreBadge } from "@/components/ScoreBadge";
 
 export function PartnerDivergencePanel({
@@ -31,8 +32,7 @@ export function PartnerDivergencePanel({
   }
 
   return (
-    <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-4 sm:p-5 mb-6">
-      <h2 className="text-lg font-semibold mb-3">Meinungsunterschiede</h2>
+    <CollapsibleSection title="Meinungsunterschiede" defaultOpen>
       <ul className="space-y-4">
         {comparisons.map((c) => (
           <li key={c.partnerUserId} className="border border-pn-border rounded-lg p-3">
@@ -73,7 +73,7 @@ export function PartnerDivergencePanel({
           </li>
         ))}
       </ul>
-    </section>
+    </CollapsibleSection>
   );
 }
 

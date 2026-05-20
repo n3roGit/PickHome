@@ -6,6 +6,7 @@ import {
   uploadApartmentDocumentAction,
 } from "@/app/actions";
 import { FileDropzone } from "@/components/FileDropzone";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { MAX_DOCUMENT_BYTES, MAX_DOCUMENT_MB } from "@/lib/upload-limits";
 import { apartmentDocumentUploadErrorMessage } from "@/lib/upload-messages";
 
@@ -38,14 +39,17 @@ export function ApartmentDocuments({
   }
 
   return (
-    <section className="mb-10">
-      <h2 className="text-lg font-semibold mb-3">Exposé & Dokumente</h2>
+    <CollapsibleSection
+      title="Exposé & Dokumente"
+      defaultOpen
+      headerAside={documents.length > 0 ? `${documents.length} Dateien` : undefined}
+    >
       {documents.length > 0 && (
         <ul className="space-y-2 mb-4">
           {documents.map((d) => (
             <li
               key={d.id}
-              className="flex items-center justify-between gap-3 bg-pn-bg-surface border border-pn-border rounded-lg px-4 py-2"
+              className="flex items-center justify-between gap-3 bg-pn-bg-subtle border border-pn-border rounded-lg px-4 py-2"
             >
               <a
                 href={d.url}
@@ -83,6 +87,6 @@ export function ApartmentDocuments({
         }
         onFiles={onUpload}
       />
-    </section>
+    </CollapsibleSection>
   );
 }

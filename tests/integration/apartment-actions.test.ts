@@ -114,6 +114,34 @@ describe("apartment server actions", () => {
     await prisma.$disconnect();
   });
 
+  it("updateApartmentBasicsAction clears optional fields when emptied", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apt = await prisma.apartment.create({
+      data: {
+        projectId: project.id,
+        title: "Apt",
+        price: 428000,
+        sizeSqm: 104,
+        energyClass: "G",
+      },
+    });
+
+    const form = new FormData();
+    form.set("price", "428000");
+    form.set("address", "");
+    form.set("sizeSqm", "");
+    form.set("energyClass", "");
+
+    await catchRedirect(() => updateApartmentBasicsAction(apt.id, form));
+
+    const updated = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
+    expect(updated.sizeSqm).toBeNull();
+    expect(updated.energyClass).toBeNull();
+    await prisma.$disconnect();
+  });
+
   it("archive and unarchive with reason", async () => {
     const prisma = createTestPrisma();
     const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });

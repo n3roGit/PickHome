@@ -7,6 +7,7 @@ import {
   uploadApartmentPhotoAction,
 } from "@/app/apartment-photo-actions";
 import { FileDropzone } from "@/components/FileDropzone";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { PhotoCaptureInput } from "@/components/PhotoCaptureInput";
 import type { GalleryPhoto } from "@/lib/gallery-photo";
 import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/upload-limits";
@@ -64,13 +65,11 @@ export default function ApartmentPhotos({
   }
 
   return (
-    <section className="mb-10">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-        <h2 className="text-lg font-semibold">Bilder</h2>
-        {photos.length > 0 && (
-          <p className="text-sm text-pn-text-tertiary tabular-nums">{photos.length} Bilder</p>
-        )}
-      </div>
+    <CollapsibleSection
+      title="Bilder"
+      defaultOpen
+      headerAside={photos.length > 0 ? `${photos.length} Bilder` : undefined}
+    >
       {photos.length > 0 ? (
         <PhotoGallery
           photos={photos}
@@ -114,6 +113,6 @@ export default function ApartmentPhotos({
         }
         onFiles={onUploadFormData}
       />
-    </section>
+    </CollapsibleSection>
   );
 }

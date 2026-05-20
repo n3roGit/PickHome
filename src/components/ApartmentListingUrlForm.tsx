@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { updateApartmentListingUrlAction } from "@/app/actions";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { apartmentBasicsFormId, applyListingPreviewFields } from "@/lib/listing-import-form";
 import type { ListingPreviewFields } from "@/lib/listing-import";
 
@@ -68,11 +69,12 @@ export function ApartmentListingUrlForm({
   }
 
   return (
-    <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6 max-w-lg">
-      <h2 className="font-semibold mb-1">Inserat-Link</h2>
-      <p className="text-sm text-pn-text-secondary mb-4">
-        URL zur Anzeige (z. B. ImmobilienScout, Kleinanzeigen).
-      </p>
+    <CollapsibleSection
+      title="Inserat-Link"
+      subtitle="URL zur Anzeige (z. B. ImmobilienScout, Kleinanzeigen)."
+      defaultOpen
+      className="max-w-lg"
+    >
       {saved && (
         <p className="text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg mb-4">
           Link wurde gespeichert.
@@ -117,6 +119,6 @@ export function ApartmentListingUrlForm({
           {w}
         </p>
       ))}
-    </section>
+    </CollapsibleSection>
   );
 }
