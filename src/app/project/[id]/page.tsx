@@ -51,9 +51,9 @@ import {
 } from "@/lib/area-filter";
 import {
   getLocationCity,
-  loadLocationCities,
   selectedPlzCentroids,
 } from "@/lib/location-areas";
+import { loadLocationCities } from "@/lib/location-areas-load";
 
 export default async function ProjectPage({
   params,

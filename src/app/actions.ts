@@ -177,7 +177,8 @@ export async function updateProjectAreaFilterAction(
     redirect(`${base}&areas_error=city`);
   }
 
-  const { getLocationCity, loadLocationCities } = await import("@/lib/location-areas");
+  const { getLocationCity } = await import("@/lib/location-areas");
+  const { loadLocationCities } = await import("@/lib/location-areas-load");
   const catalog = loadLocationCities();
   if (cityId && !getLocationCity(catalog, cityId)) {
     redirect(`${base}&areas_error=city`);

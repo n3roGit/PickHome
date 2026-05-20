@@ -5,9 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   clearLocationAreasCache,
   loadLocationCities,
-  parseLocationCityFile,
-  selectedPlzCentroids,
-} from "@/lib/location-areas";
+} from "@/lib/location-areas-load";
+import { parseLocationCityFile, selectedPlzCentroids } from "@/lib/location-areas";
 
 describe("location-areas", () => {
   let dataDir: string;

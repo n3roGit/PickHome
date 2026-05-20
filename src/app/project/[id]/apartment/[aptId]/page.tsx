@@ -39,7 +39,7 @@ import {
   matchApartmentToAreaFilter,
   parseAreaFilterConfig,
 } from "@/lib/area-filter";
-import { loadLocationCities } from "@/lib/location-areas";
+import { loadLocationCities } from "@/lib/location-areas-load";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
