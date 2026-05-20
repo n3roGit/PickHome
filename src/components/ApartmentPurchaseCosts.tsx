@@ -1,4 +1,5 @@
 import { updateApartmentBrokerAction } from "@/app/actions";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import {
   estimateAffordability,
   estimateFinancing,
@@ -202,12 +203,10 @@ export function ApartmentPurchaseCosts({
   const missingFinancingConfig = equityAmount == null || loanTermYears == null;
 
   return (
-    <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6">
-      <h2 className="font-semibold mb-1">Kaufnebenkosten & Finanzierung</h2>
-      <p className="text-sm text-pn-text-secondary mb-4">
-        Grobe Schätzung — keine verbindliche Berechnung.
-      </p>
-
+    <CollapsibleSection
+      title="Kaufnebenkosten & Finanzierung"
+      subtitle="Grobe Schätzung — keine verbindliche Berechnung."
+    >
       {price == null && (
         <p className="text-sm text-pn-text-tertiary">Kaufpreis fehlt — Schätzung nicht möglich.</p>
       )}
@@ -263,6 +262,6 @@ export function ApartmentPurchaseCosts({
           )}
         </>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }

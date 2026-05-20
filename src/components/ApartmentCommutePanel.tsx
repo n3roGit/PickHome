@@ -1,3 +1,4 @@
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import {
   commuteUnavailableMessage,
   type CommuteLeg,
@@ -37,8 +38,7 @@ export function ApartmentCommutePanel({
 }) {
   if (people.length === 1 && people[0].legs.length === 0) {
     return (
-      <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6">
-        <h2 className="font-semibold mb-1">Anfahrt</h2>
+      <CollapsibleSection title="Anfahrt">
         <p className="text-sm text-pn-text-tertiary">
           Noch keine Anfahrtszeiten — in den{" "}
           <a href={settingsHref} className="text-pn-accent hover:underline">
@@ -46,16 +46,15 @@ export function ApartmentCommutePanel({
           </a>{" "}
           z. B. Arbeit oder andere Ziele anlegen.
         </p>
-      </section>
+      </CollapsibleSection>
     );
   }
 
   return (
-    <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6">
-      <h2 className="font-semibold mb-1">Anfahrt</h2>
-      <p className="text-sm text-pn-text-secondary mb-4">
-        Geschätzte Anfahrt pro Person — Verkehrsmittel und Ziele aus den jeweiligen Kontoeinstellungen.
-      </p>
+    <CollapsibleSection
+      title="Anfahrt"
+      subtitle="Geschätzte Anfahrt pro Person — Verkehrsmittel und Ziele aus den jeweiligen Kontoeinstellungen."
+    >
       <div className="space-y-6">
         {people.map((person) => (
           <div key={person.userId}>
@@ -85,6 +84,6 @@ export function ApartmentCommutePanel({
           </div>
         ))}
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }
