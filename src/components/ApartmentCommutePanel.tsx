@@ -9,6 +9,58 @@ import {
 import { companyCarCommuteMethodLabel, formatCommuteBenefitEur } from "@/lib/company-car";
 import { travelModeLabel } from "@/lib/travel-mode";
 
+function CommuteCompanyCarBenefit({ leg }: { leg: CommuteLeg }) {
+  if (leg.monthlyCompanyCarTotalBenefitEur == null || leg.distanceKmOneWay == null) {
+    return null;
+  }
+
+  return (
+    <p className="text-sm mt-2 text-pn-text-secondary">
+      Firmenwagen: Brutto ca.{" "}
+      <span className="font-medium text-pn-text-primary">
+        {formatCommuteBenefitEur(leg.monthlyCompanyCarTotalBenefitEur)}
+      </span>
+      /Monat
+      {leg.monthlyCompanyCarTotalNetBenefitEur != null &&
+        leg.companyCarMarginalTaxRatePercent != null && (
+          <>
+            {" · "}
+            Netto ca.{" "}
+            <span className="font-medium text-pn-text-primary">
+              {formatCommuteBenefitEur(leg.monthlyCompanyCarTotalNetBenefitEur)}
+            </span>
+            /Monat
+            <span className="text-pn-text-tertiary">
+              {" "}
+              ({leg.companyCarMarginalTaxRatePercent} % Grenzsteuersatz)
+            </span>
+          </>
+        )}
+      {leg.monthlyCompanyCarBaseBenefitEur != null && leg.monthlyCompanyCarCommuteBenefitEur != null && (
+        <span className="block text-xs text-pn-text-tertiary mt-1">
+          Brutto: Grundanteil {formatCommuteBenefitEur(leg.monthlyCompanyCarBaseBenefitEur)} · Arbeitsweg
+          {leg.companyCarCommuteMethod === "trips" && leg.companyCarOfficeTripsPerMonth != null
+            ? ` (${leg.distanceKmOneWay} km × ${leg.companyCarOfficeTripsPerMonth} Fahrten)`
+            : ` (${leg.distanceKmOneWay} km einfach)`}{" "}
+          {formatCommuteBenefitEur(leg.monthlyCompanyCarCommuteBenefitEur)}
+          {leg.companyCarCommuteMethod && (
+            <> · {companyCarCommuteMethodLabel(leg.companyCarCommuteMethod)}</>
+          )}
+          {leg.monthlyCompanyCarDeductionsEur != null && leg.monthlyCompanyCarDeductionsEur > 0 && (
+            <>
+              {" · "}
+              Abzüge {formatCommuteBenefitEur(leg.monthlyCompanyCarDeductionsEur)}
+            </>
+          )}
+          {leg.companyCarEmployerFuelCard && (
+            <> · Tank-/Ladekarte Arbeitgeber (in 1‑%-Regelung enthalten)</>
+          )}
+        </span>
+      )}
+    </p>
+  );
+}
+
 function CommuteLegList({
   legs,
   travelMode,
@@ -53,65 +105,15 @@ function CommuteLegList({
               {leg.routingNote && (
                 <p className="text-xs text-pn-text-tertiary mt-1">{leg.routingNote}</p>
               )}
-              {leg.monthlyCompanyCarTotalBenefitEur != null && leg.distanceKmOneWay != null && (
-                <p className="text-sm mt-2 text-pn-text-secondary">
-                  Firmenwagen: Brutto ca.{" "}
-                  <span className="font-medium text-pn-text-primary">
-                    {formatCommuteBenefitEur(leg.monthlyCompanyCarTotalBenefitEur)}
-                  </span>
-                  /Monat
-                  {leg.monthlyCompanyCarTotalNetBenefitEur != null &&
-                    leg.companyCarMarginalTaxRatePercent != null && (
-                      <>
-                        {" · "}
-                        Netto ca.{" "}
-                        <span className="font-medium text-pn-text-primary">
-                          {formatCommuteBenefitEur(leg.monthlyCompanyCarTotalNetBenefitEur)}
-                        </span>
-                        /Monat
-                        <span className="text-pn-text-tertiary">
-                          {" "}
-                          ({leg.companyCarMarginalTaxRatePercent} % Grenzsteuersatz)
-                        </span>
-                      </>
-                    )}
-                  {leg.monthlyCompanyCarBaseBenefitEur != null &&
-                    leg.monthlyCompanyCarCommuteBenefitEur != null && (
-                      <span className="block text-xs text-pn-text-tertiary mt-1">
-                        Brutto: Grundanteil {formatCommuteBenefitEur(leg.monthlyCompanyCarBaseBenefitEur)} ·
-                        Arbeitsweg
-                        {leg.companyCarCommuteMethod === "trips" &&
-                        leg.companyCarOfficeTripsPerMonth != null
-                          ? ` (${leg.distanceKmOneWay} km × ${leg.companyCarOfficeTripsPerMonth} Fahrten)`
-                          : ` (${leg.distanceKmOneWay} km einfach)`}{" "}
-                        {formatCommuteBenefitEur(leg.monthlyCompanyCarCommuteBenefitEur)}
-                        {leg.companyCarCommuteMethod && (
-                          <> · {companyCarCommuteMethodLabel(leg.companyCarCommuteMethod)}</>
-                        )}
-                        {leg.monthlyCompanyCarDeductionsEur != null &&
-                          leg.monthlyCompanyCarDeductionsEur > 0 && (
-                            <>
-                              {" · "}
-                              Abzüge {formatCommuteBenefitEur(leg.monthlyCompanyCarDeductionsEur)}
-                            </>
-                          )}
-                        {leg.companyCarEmployerFuelCard && (
-                          <> · Tank-/Ladekarte Arbeitgeber (in 1‑%-Regelung enthalten)</>
-                        )}
-                      </span>
-                    )}
-                </p>
-              )}
-              {leg.commuteCostHint && (
-                <p className="text-xs text-pn-text-tertiary mt-1">{leg.commuteCostHint}</p>
-              )}
             </>
           ) : leg.routingNote ? (
             <div className="text-sm mt-2">
               {leg.distanceText && (
                 <p>
                   <span className="font-medium">{leg.distanceText}</span>
-                  <span className="text-pn-text-tertiary"> (Auto)</span>
+                  {travelMode === "transit" && (
+                    <span className="text-pn-text-tertiary"> (Auto)</span>
+                  )}
                 </p>
               )}
               <p className="text-pn-text-tertiary mt-1">({leg.routingNote})</p>
@@ -120,6 +122,10 @@ function CommuteLegList({
             <p className="text-sm text-pn-text-tertiary mt-2">
               {commuteUnavailableMessage(leg.unavailableReason)}
             </p>
+          )}
+          <CommuteCompanyCarBenefit leg={leg} />
+          {leg.commuteCostHint && (
+            <p className="text-xs text-pn-text-tertiary mt-1">{leg.commuteCostHint}</p>
           )}
         </li>
       ))}

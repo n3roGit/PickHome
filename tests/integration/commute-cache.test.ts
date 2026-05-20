@@ -467,7 +467,7 @@ describe("commute cache integration", () => {
     await prisma.$disconnect();
   });
 
-  it("cacheOnly driving pending shows distance while route is backfilled", async () => {
+  it("cacheOnly driving shows duration after OSRM hint populates cache", async () => {
     const fetchRoute = vi.spyOn(routing, "fetchRoute").mockResolvedValue({
       distanceMeters: 29_400,
       durationSeconds: 23 * 60,
@@ -523,14 +523,84 @@ describe("commute cache integration", () => {
     });
 
     expect(legs[0]?.distanceText).toBe("29,4 km");
-    expect(legs[0]?.routingNote).toBe("Daten werden berechnet");
-    expect(legs[0]?.durationText).toBeNull();
+    expect(legs[0]?.durationText).toBe("23 Min.");
+    expect(legs[0]?.routingNote).toBeNull();
     expect(fetchRoute).toHaveBeenCalledWith(
       { latitude: apartment.latitude, longitude: apartment.longitude },
       { latitude: userAddress.latitude, longitude: userAddress.longitude },
       "driving",
       undefined
     );
+    await prisma.$disconnect();
+  });
+
+  it("cacheOnly driving with company car shows workplace benefit", async () => {
+    vi.spyOn(routing, "fetchRoute").mockResolvedValue({
+      distanceMeters: 4300,
+      durationSeconds: 12 * 60,
+    });
+
+    const prisma = createTestPrisma();
+    const user = await prisma.user.update({
+      where: { username: "testuser" },
+      data: {
+        travelMode: "driving",
+        companyCar: true,
+        companyCarRate: "standard",
+        listPrice: 40_750,
+        marginalTaxRatePercent: 42,
+      },
+    });
+    const project = await createTestProject(prisma, user.id);
+    const apartment = await prisma.apartment.create({
+      data: {
+        projectId: project.id,
+        title: "Test apt",
+        latitude: 52.8,
+        longitude: 8.75,
+      },
+    });
+    const userAddress = await prisma.userAddress.create({
+      data: {
+        userId: user.id,
+        label: "Arbeit",
+        address: "Bremen",
+        latitude: 53.1,
+        longitude: 8.85,
+        isWorkplace: true,
+      },
+    });
+
+    const legs = await computeCommuteLegs({
+      apartmentId: apartment.id,
+      apartment: { latitude: apartment.latitude!, longitude: apartment.longitude! },
+      apartmentAddress: apartment.address,
+      addresses: [
+        {
+          id: userAddress.id,
+          label: userAddress.label,
+          address: userAddress.address,
+          latitude: userAddress.latitude,
+          longitude: userAddress.longitude,
+          isWorkplace: true,
+        },
+      ],
+      travelMode: "driving",
+      transitSettings: null,
+      companyCar: true,
+      companyCarRate: "standard",
+      listPrice: 40_750,
+      marginalTaxRatePercent: 42,
+      companyCarCommuteMethod: null,
+      companyCarOfficeTripsPerMonth: null,
+      companyCarContributionEur: null,
+      companyCarSelfPaidCostsEur: null,
+      companyCarEmployerFuelCard: true,
+      cacheOnly: true,
+    });
+
+    expect(legs[0]?.monthlyCompanyCarTotalBenefitEur).not.toBeNull();
+    expect(legs[0]?.distanceKmOneWay).toBe(5);
     await prisma.$disconnect();
   });
 

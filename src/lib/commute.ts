@@ -126,6 +126,25 @@ type ResolvedCommuteRoute = {
   routingNote: string | null;
 };
 
+type DrivingDistanceHint = {
+  text: string;
+  meters: number;
+};
+
+type CommuteCompanyCarMember = Pick<
+  CommuteMemberInput,
+  | "travelMode"
+  | "companyCar"
+  | "companyCarRate"
+  | "listPrice"
+  | "marginalTaxRatePercent"
+  | "companyCarCommuteMethod"
+  | "companyCarOfficeTripsPerMonth"
+  | "companyCarContributionEur"
+  | "companyCarSelfPaidCostsEur"
+  | "companyCarEmployerFuelCard"
+>;
+
 export async function computeCommuteForMembers(input: {
   apartmentId: string;
   apartment: RoutePoint | null;
@@ -211,6 +230,20 @@ export async function computeCommuteLegs(input: {
       })
     : null;
 
+  // ensureDrivingDistanceHints may upsert driving rows after cacheByAddressId was loaded.
+  if (input.cacheOnly && input.travelMode === "driving") {
+    const refreshed = await prisma.commuteCache.findMany({
+      where: {
+        apartmentId: input.apartmentId,
+        travelMode: "driving",
+        userAddressId: { in: input.addresses.map((a) => a.id) },
+      },
+    });
+    for (const row of refreshed) {
+      cacheByAddressId.set(row.userAddressId, row);
+    }
+  }
+
   const computeOne = async (addr: CommuteAddress): Promise<CommuteLeg> => {
     if (addr.latitude == null || addr.longitude == null) {
       return legUnavailable(addr, "missing_address_coords");
@@ -242,11 +275,16 @@ export async function computeCommuteLegs(input: {
     }
 
     if (input.cacheOnly) {
-      const distanceHint = drivingDistanceHints?.get(addr.id) ?? null;
+      const hint = drivingDistanceHints?.get(addr.id);
+      const cachedRow = cacheByAddressId.get(addr.id);
+      const distanceMeters = cachedRow?.distanceMeters ?? hint?.meters ?? null;
+      const distanceText =
+        hint?.text ??
+        (cachedRow != null ? formatRouteDistance(cachedRow.distanceMeters) : null);
       if (input.travelMode === "transit") {
-        return legTransitPending(addr, distanceHint);
+        return legTransitPending(addr, distanceText);
       }
-      return legReindexPending(addr, distanceHint);
+      return legReindexPending(addr, distanceText, distanceMeters, input);
     }
 
     const resolved = await resolveCommuteRoute(
@@ -318,8 +356,8 @@ async function ensureDrivingDistanceHints(input: {
   apartment: RoutePoint;
   addresses: CommuteAddress[];
   fetchOptions?: FetchExternalOptions;
-}): Promise<Map<string, string>> {
-  const hints = new Map<string, string>();
+}): Promise<Map<string, DrivingDistanceHint>> {
+  const hints = new Map<string, DrivingDistanceHint>();
   const routableAddresses = input.addresses.filter(
     (addr) => addr.latitude != null && addr.longitude != null
   );
@@ -333,7 +371,10 @@ async function ensureDrivingDistanceHints(input: {
     },
   });
   for (const row of cachedDriving) {
-    hints.set(row.userAddressId, formatRouteDistance(row.distanceMeters));
+    hints.set(row.userAddressId, {
+      text: formatRouteDistance(row.distanceMeters),
+      meters: row.distanceMeters,
+    });
   }
 
   const missing = routableAddresses.filter((addr) => !hints.has(addr.id));
@@ -347,7 +388,8 @@ async function ensureDrivingDistanceHints(input: {
       );
       if (!route) return;
 
-      hints.set(addr.id, formatRouteDistance(route.distanceMeters));
+      const meters = Math.round(route.distanceMeters);
+      hints.set(addr.id, { text: formatRouteDistance(meters), meters });
       await prisma.commuteCache.upsert({
         where: {
           apartmentId_userAddressId_travelMode: {
@@ -608,8 +650,13 @@ function legTransitPending(addr: CommuteAddress, drivingDistanceText: string | n
   };
 }
 
-function legReindexPending(addr: CommuteAddress, distanceText: string | null = null): CommuteLeg {
-  return {
+function legReindexPending(
+  addr: CommuteAddress,
+  distanceText: string | null,
+  distanceMeters: number | null,
+  member: CommuteCompanyCarMember
+): CommuteLeg {
+  const base: CommuteLeg = {
     addressId: addr.id,
     label: addr.label,
     address: addr.address,
@@ -631,6 +678,8 @@ function legReindexPending(addr: CommuteAddress, distanceText: string | null = n
     companyCarEmployerFuelCard: null,
     commuteCostHint: null,
   };
+  if (distanceMeters == null || distanceMeters <= 0) return base;
+  return applyCompanyCarCommuteCost(base, addr, distanceMeters, member);
 }
 
 function legUnavailable(
