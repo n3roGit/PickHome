@@ -354,18 +354,31 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
     : { address: null, latitude: null, longitude: null };
   const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
   const sizeSqmRaw = String(formData.get("sizeSqm") ?? "").trim();
-  const sizeSqm = sizeSqmRaw ? parseInt(sizeSqmRaw.replace(/\D/g, ""), 10) : null;
+  const energyClassRaw = String(formData.get("energyClass") ?? "").trim();
+  const data: {
+    price: number | null;
+    address: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    sizeSqm?: number | null;
+    energyClass?: string | null;
+  } = {
+    price: Number.isFinite(price) ? price : null,
+    address: geocoded.address,
+    latitude: geocoded.latitude,
+    longitude: geocoded.longitude,
+  };
+  if (sizeSqmRaw) {
+    const sizeSqm = parseInt(sizeSqmRaw.replace(/\D/g, ""), 10);
+    if (Number.isFinite(sizeSqm)) data.sizeSqm = sizeSqm;
+  }
+  if (energyClassRaw) {
+    data.energyClass = parseEnergyClassInput(energyClassRaw);
+  }
 
   await prisma.apartment.update({
     where: { id: apartmentId },
-    data: {
-      price: Number.isFinite(price) ? price : null,
-      address: geocoded.address,
-      latitude: geocoded.latitude,
-      longitude: geocoded.longitude,
-      sizeSqm: Number.isFinite(sizeSqm) ? sizeSqm : null,
-      energyClass: parseEnergyClassInput(String(formData.get("energyClass") ?? "")),
-    },
+    data,
   });
   await invalidateCommuteCacheForApartment(apartmentId);
   revalidateApartment(apt.projectId, apartmentId);

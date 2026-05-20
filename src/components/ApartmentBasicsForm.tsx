@@ -1,4 +1,5 @@
 import { updateApartmentBasicsAction } from "@/app/actions";
+import { apartmentBasicsFormId } from "@/lib/listing-import-form";
 import { formatBudgetHint, formatPrice } from "@/lib/scoring";
 
 export function ApartmentBasicsForm({
@@ -29,7 +30,11 @@ export function ApartmentBasicsForm({
           Preis und Adresse gespeichert.
         </p>
       )}
-      <form action={updateApartmentBasicsAction.bind(null, apartmentId)} className="space-y-3 max-w-lg">
+      <form
+        id={apartmentBasicsFormId(apartmentId)}
+        action={updateApartmentBasicsAction.bind(null, apartmentId)}
+        className="space-y-3 max-w-lg"
+      >
         <label className="block">
           <span className="text-sm font-medium text-pn-text-secondary">Adresse</span>
           <input

@@ -31,6 +31,13 @@ export function parseEnergyClassInput(raw: string): string | null {
   return value ?? null;
 }
 
+export function parseSqmFromText(text: string): number | undefined {
+  const sqmMatch = text.match(/(\d{1,3}(?:[.,]\d+)?)\s*m[²2]/i);
+  if (!sqmMatch) return undefined;
+  const n = parseFloat(sqmMatch[1].replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : undefined;
+}
+
 function extractJsonLdObjects(html: string): unknown[] {
   const objects: unknown[] = [];
   const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -112,11 +119,8 @@ export function parseListingHtml(html: string): ListingPreviewFields {
   }
 
   if (!fields.sizeSqm) {
-    const sqmMatch = textBlob.match(/(\d{1,3}(?:[.,]\d+)?)\s*m[²2]/i);
-    if (sqmMatch) {
-      const n = parseFloat(sqmMatch[1].replace(",", "."));
-      if (Number.isFinite(n)) fields.sizeSqm = Math.round(n);
-    }
+    const parsed = parseSqmFromText(textBlob);
+    if (parsed != null) fields.sizeSqm = parsed;
   }
 
   if (!fields.energyClass) {

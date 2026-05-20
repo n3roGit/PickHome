@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { createApartmentAction } from "@/app/actions";
+import { applyListingPreviewFields } from "@/lib/listing-import-form";
 import type { ListingPreviewFields } from "@/lib/listing-import";
 
 export function ListingImportAssist({ projectId }: { projectId: string }) {
@@ -42,18 +43,8 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
         return;
       }
 
-      const set = (name: string, value: string | number | undefined) => {
-        if (value == null || value === "") return;
-        const el = form.elements.namedItem(name) as HTMLInputElement | null;
-        if (el) el.value = String(value);
-      };
-
-      set("title", data.fields.title);
-      set("price", data.fields.price);
-      set("address", data.fields.address);
-      set("sizeSqm", data.fields.sizeSqm);
-      set("energyClass", data.fields.energyClass);
-      setMessage("Vorschau übernommen — bitte prüfen und dann speichern.");
+      applyListingPreviewFields(form, data.fields, { onlyEmpty: true });
+      setMessage("Leere Felder übernommen — bitte prüfen und dann speichern.");
       setWarnings(data.warnings ?? []);
     } catch {
       setMessage("Netzwerkfehler beim Laden der Inserat-Seite.");

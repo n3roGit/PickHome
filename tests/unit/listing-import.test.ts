@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseListingHtml, parseEnergyClassInput } from "@/lib/listing-import";
+import { parseListingHtml, parseEnergyClassInput, parseSqmFromText } from "@/lib/listing-import";
 
 describe("listing-import", () => {
   it("parses JSON-LD listing fields", () => {
@@ -27,6 +27,11 @@ describe("listing-import", () => {
     expect(fields.price).toBe(450000);
     expect(fields.sizeSqm).toBe(95);
     expect(fields.energyClass).toBe("B");
+  });
+
+  it("parses sqm from free text", () => {
+    expect(parseSqmFromText("Wohnfläche 95 m²")).toBe(95);
+    expect(parseSqmFromText("no area here")).toBeUndefined();
   });
 
   it("validates energy class input", () => {
