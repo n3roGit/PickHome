@@ -1,6 +1,10 @@
-import { fetchExternal, type FetchExternalOptions } from "@/lib/external-fetch";
+import {
+  fetchExternal,
+  recordExternalServiceFailure,
+  type FetchExternalOptions,
+} from "@/lib/external-fetch";
 import { formatRouteDistance, formatRouteDuration } from "@/lib/routing";
-import { resolveTransitApiBases } from "@/lib/transit-providers";
+import { resolveTransitApiBases, resolveTransitGtfsApiBase } from "@/lib/transit-providers";
 import {
   formatTransitArrivalForApi,
   nextTransitArrivalDate,
@@ -8,8 +12,160 @@ import {
 } from "@/lib/transit-settings";
 import type { RoutePoint } from "@/lib/routing";
 
+const PICKHOME_TRANSIT_USER_AGENT = "PickHome/1.0 (self-hosted)";
+
 function isRetriableTransitStatus(status: number): boolean {
   return status === 429 || status >= 500;
+}
+
+type MotisPlace = {
+  name?: string;
+  departure?: string;
+  scheduledDeparture?: string;
+  arrival?: string;
+  scheduledArrival?: string;
+  track?: string;
+  scheduledTrack?: string;
+};
+
+type MotisPlanLeg = {
+  mode?: string;
+  from?: MotisPlace;
+  to?: MotisPlace;
+  distance?: number;
+  displayName?: string;
+  routeShortName?: string;
+  headsign?: string;
+};
+
+type MotisPlanItinerary = {
+  duration?: number;
+  legs?: MotisPlanLeg[];
+};
+
+function motisLineName(leg: MotisPlanLeg): string | null {
+  return (
+    leg.displayName?.trim() ||
+    leg.routeShortName?.trim() ||
+    leg.headsign?.trim() ||
+    null
+  );
+}
+
+export function motisLegsToTransitJourneyLegs(legs: MotisPlanLeg[]): TransitJourneyLeg[] {
+  return legs.map((leg) => {
+    const walking = leg.mode === "WALK";
+    const lineName = walking ? null : motisLineName(leg);
+    return {
+      walking,
+      line: lineName ? { name: lineName } : null,
+      origin: { name: leg.from?.name },
+      destination: { name: leg.to?.name },
+      departure: leg.from?.departure,
+      plannedDeparture: leg.from?.scheduledDeparture ?? leg.from?.departure,
+      arrival: leg.to?.arrival,
+      plannedArrival: leg.to?.scheduledArrival ?? leg.to?.arrival,
+      departurePlatform: leg.from?.scheduledTrack ?? leg.from?.track ?? null,
+      arrivalPlatform: leg.to?.scheduledTrack ?? leg.to?.track ?? null,
+      distance: walking ? leg.distance ?? undefined : undefined,
+    };
+  });
+}
+
+function buildTransitJourneyResult(
+  legs: TransitJourneyLeg[],
+  settings: TransitSettings,
+  durationOverride?: number
+): TransitJourneyResult | null {
+  const durationSeconds =
+    journeyDurationSeconds(legs) ??
+    (durationOverride != null && durationOverride > 0 ? Math.round(durationOverride) : null);
+  if (durationSeconds == null) return null;
+
+  const legDetails = buildTransitLegDetails(legs);
+  return {
+    durationSeconds,
+    distanceMeters: journeyDistanceMeters(legs),
+    connectionSummary: formatConnectionSummary(legs),
+    arrivalTargetLabel: buildArrivalTargetLabel(settings),
+    legDetails,
+    detailTooltip: formatTransitDetailTooltip(legDetails),
+  };
+}
+
+async function parseMotisPlanResponse(
+  res: Response,
+  settings: TransitSettings
+): Promise<TransitJourneyResult | null> {
+  try {
+    const data = (await res.json()) as {
+      error?: string;
+      itineraries?: MotisPlanItinerary[];
+    };
+    if (data.error) return null;
+
+    const itinerary = data.itineraries?.[0];
+    const rawLegs = itinerary?.legs;
+    if (!rawLegs?.length) return null;
+
+    return buildTransitJourneyResult(
+      motisLegsToTransitJourneyLegs(rawLegs),
+      settings,
+      itinerary.duration
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTransitJourneyMotis(
+  input: {
+    from: RoutePoint;
+    to: RoutePoint;
+    settings: TransitSettings;
+  },
+  options?: FetchExternalOptions
+): Promise<TransitJourneyResult | null> {
+  const base = resolveTransitGtfsApiBase();
+  if (!base) return null;
+
+  const arrivalDate = nextTransitArrivalDate(
+    input.settings.arrivalWeekday,
+    input.settings.arrivalHour,
+    input.settings.arrivalMinute
+  );
+  const time = formatTransitArrivalForApi(arrivalDate);
+
+  const params = new URLSearchParams({
+    fromPlace: `${input.from.latitude},${input.from.longitude}`,
+    toPlace: `${input.to.latitude},${input.to.longitude}`,
+    time,
+    arriveBy: "true",
+    numItineraries: "1",
+  });
+
+  const url = `${base}/api/v5/plan?${params.toString()}`;
+  const res = await fetchExternal(
+    "transit",
+    url,
+    {
+      headers: {
+        "User-Agent": `${PICKHOME_TRANSIT_USER_AGENT}; https://github.com/n3roGit/PickHome`,
+      },
+      next: { revalidate: 3600 },
+    },
+    { ...options, maxAttempts: options?.maxAttempts ?? 0 }
+  );
+
+  if (res?.ok) {
+    return parseMotisPlanResponse(res, input.settings);
+  }
+
+  if (res && !isRetriableTransitStatus(res.status)) {
+    return null;
+  }
+
+  return null;
 }
 
 export type TransitJourneyLeg = {
@@ -182,20 +338,7 @@ async function parseTransitJourneyResponse(
     };
     const legs = data.journeys?.[0]?.legs;
     if (!legs?.length) return null;
-
-    const durationSeconds = journeyDurationSeconds(legs);
-    if (durationSeconds == null) return null;
-
-    const legDetails = buildTransitLegDetails(legs);
-
-    return {
-      durationSeconds,
-      distanceMeters: journeyDistanceMeters(legs),
-      connectionSummary: formatConnectionSummary(legs),
-      arrivalTargetLabel: buildArrivalTargetLabel(settings),
-      legDetails,
-      detailTooltip: formatTransitDetailTooltip(legDetails),
-    };
+    return buildTransitJourneyResult(legs, settings);
   } catch {
     return null;
   }
@@ -232,21 +375,23 @@ export async function fetchTransitJourney(
   });
 
   const bases = resolveTransitApiBases();
+  const gtfsBase = resolveTransitGtfsApiBase();
   const fetchInit: RequestInit = {
-    headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
+    headers: { "User-Agent": PICKHOME_TRANSIT_USER_AGENT },
     next: { revalidate: 3600 },
   };
   const attemptsPerProvider =
     options?.maxAttempts ?? (bases.length > 1 ? 0 : undefined);
+  const activateCooldownOnFinalFailure = options?.background
+    ? (options.activateCooldownOnFailure ?? true)
+    : false;
 
   for (let i = 0; i < bases.length; i++) {
-    const isLastProvider = i === bases.length - 1;
     const url = `${bases[i]}/journeys?${params.toString()}`;
     const res = await fetchExternal("transit", url, fetchInit, {
       ...options,
       maxAttempts: attemptsPerProvider,
-      activateCooldownOnFailure:
-        options?.background && isLastProvider ? options.activateCooldownOnFailure : false,
+      activateCooldownOnFailure: false,
     });
 
     if (res?.ok) {
@@ -256,6 +401,21 @@ export async function fetchTransitJourney(
     if (res && !isRetriableTransitStatus(res.status)) {
       return null;
     }
+  }
+
+  if (gtfsBase) {
+    const motisResult = await fetchTransitJourneyMotis(
+      { from: input.from, to: input.to, settings: input.settings },
+      {
+        ...options,
+        activateCooldownOnFailure: activateCooldownOnFinalFailure,
+      }
+    );
+    if (motisResult) return motisResult;
+  }
+
+  if (activateCooldownOnFinalFailure) {
+    recordExternalServiceFailure("transit");
   }
 
   return null;

@@ -102,6 +102,11 @@ export function consumeExternalServiceUnavailable(service: ExternalService): boo
   return true;
 }
 
+/** Mark a service unavailable for background cooldown (no HTTP request). */
+export function recordExternalServiceFailure(service: ExternalService): void {
+  activateServiceCooldown(service);
+}
+
 function activateServiceCooldown(service: ExternalService): void {
   serviceCooldownUntil.set(service, Date.now() + BACKGROUND_SERVICE_COOLDOWN_MS[service]);
   pendingUnavailable.add(service);

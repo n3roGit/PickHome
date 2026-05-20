@@ -30,7 +30,7 @@ I would greatly appreciate support for my project. Every $ contributes to enhanc
 - **Viewing appointments** (past/upcoming) on the apartment page and project calendar
 - **Purchase costs** (rough estimate): land transfer tax by Bundesland — from apartment address when detectable, else project default — plus notary/registry and buyer broker
 - **Financing** (rough estimate): equity, loan term, interest rate, monthly payment and lifetime cost from project settings
-- **Commute** times and distances to each team member’s saved addresses (driving / cycling / walking via OSRM; **public transit** via [transport.rest](https://v6.db.transport.rest) with automatic fallback to [v5.db.api.bahn.guru](https://v5.db.api.bahn.guru); optional `TRANSIT_API_BASES` and self-hosted `OSRM_BASE_URL`)
+- **Commute** times and distances to each team member’s saved addresses (driving / cycling / walking via OSRM; **public transit** via [transport.rest](https://v6.db.transport.rest) with fallbacks to [v5.db.api.bahn.guru](https://v5.db.api.bahn.guru) and GTFS/MOTIS ([GTFS Deutschland](https://gtfs.de) via `TRANSIT_GTFS_API_BASE`); optional `TRANSIT_API_BASES` and self-hosted `OSRM_BASE_URL`)
 - **Company car** benefit estimates on commute legs when configured in account settings
 - **Desired area** badge when the address matches the project’s Wunschgebiet filter
 
@@ -182,14 +182,21 @@ OSRM_BASE_URL=https://your-osrm.example/route/v1
 1. Cache (SQLite commute cache)
 2. `https://v6.db.transport.rest`
 3. `https://v5.db.api.bahn.guru`
+4. GTFS timetable routing (MOTIS) — default `https://api.transitous.org` ([GTFS Deutschland](https://gtfs.de) feeds; no public `/journeys` API on gtfs.de itself)
 
-Override the list (comma-separated base URLs, no trailing slash):
+Override REST providers (comma-separated base URLs, no trailing slash):
 
 ```bash
 TRANSIT_API_BASES=https://v6.db.transport.rest,https://v5.db.api.bahn.guru
 ```
 
-Background backfill stops hammering after all providers fail (120s cooldown). For bulk timetable data, GTFS/GTFS-RT local import is a possible future improvement — not required for single journey lookups.
+GTFS/MOTIS fallback base (`off` to disable; self-host MOTIS with [gtfs.de](https://gtfs.de) downloads):
+
+```bash
+TRANSIT_GTFS_API_BASE=https://api.transitous.org
+```
+
+Background backfill stops hammering after all providers fail (120s cooldown).
 
 ## Local development (without Docker)
 
