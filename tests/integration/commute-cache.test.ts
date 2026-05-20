@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import * as routing from "@/lib/routing";
 import * as transitRouting from "@/lib/transit-routing";
 import { computeCommuteLegs, invalidateCommuteCacheForApartment } from "@/lib/commute";
+import { findMissingCommuteLegs, runCommuteBackfillTick } from "@/lib/commute-backfill";
 import { reindexProjectCommute } from "@/lib/commute-reindex";
 import {
   clearProjectData,
@@ -371,6 +372,84 @@ describe("commute cache integration", () => {
     expect(cached?.routeKind).toBe("transit");
     expect(cached?.connectionSummary).toContain("S 1 → U2");
     expect(cached?.transitDetailJson).toContain("Bornholmer");
+    await prisma.$disconnect();
+  });
+
+  it("findMissingCommuteLegs lists legs without cache", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apartment = await prisma.apartment.create({
+      data: {
+        projectId: project.id,
+        title: "Test apt",
+        latitude: 53.08,
+        longitude: 8.8,
+      },
+    });
+    const userAddress = await prisma.userAddress.create({
+      data: {
+        userId: user.id,
+        label: "Arbeit",
+        address: "Bremen",
+        latitude: 53.1,
+        longitude: 8.85,
+      },
+    });
+
+    const missing = await findMissingCommuteLegs(10);
+    expect(missing).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          apartmentId: apartment.id,
+          userAddressId: userAddress.id,
+          travelMode: "driving",
+        }),
+      ])
+    );
+    await prisma.$disconnect();
+  });
+
+  it("runCommuteBackfillTick fills missing commute cache in background", async () => {
+    vi.spyOn(routing, "fetchRoute").mockResolvedValue({
+      distanceMeters: 7500,
+      durationSeconds: 14 * 60,
+    });
+
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apartment = await prisma.apartment.create({
+      data: {
+        projectId: project.id,
+        title: "Test apt",
+        latitude: 53.08,
+        longitude: 8.8,
+      },
+    });
+    const userAddress = await prisma.userAddress.create({
+      data: {
+        userId: user.id,
+        label: "Arbeit",
+        address: "Bremen",
+        latitude: 53.1,
+        longitude: 8.85,
+      },
+    });
+
+    const result = await runCommuteBackfillTick(10);
+    expect(result.computed).toBeGreaterThanOrEqual(1);
+
+    const cached = await prisma.commuteCache.findUnique({
+      where: {
+        apartmentId_userAddressId_travelMode: {
+          apartmentId: apartment.id,
+          userAddressId: userAddress.id,
+          travelMode: "driving",
+        },
+      },
+    });
+    expect(cached?.distanceMeters).toBe(7500);
     await prisma.$disconnect();
   });
 });

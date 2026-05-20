@@ -93,7 +93,7 @@ const UNAVAILABLE_MESSAGES: Record<NonNullable<CommuteLeg["unavailableReason"]>,
   missing_address_coords: "Adresse konnte nicht geocodiert werden.",
   routing_failed: "Route konnte nicht berechnet werden.",
   api_unavailable:
-    "Routing-API vorübergehend nicht erreichbar — bitte später erneut indizieren oder Seite neu laden.",
+    "Routing-API vorübergehend nicht erreichbar — wird im Hintergrund erneut versucht.",
 };
 
 export const COMMUTE_REINDEX_PENDING_NOTE =
