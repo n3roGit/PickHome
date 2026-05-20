@@ -5,6 +5,7 @@ import {
   updateUserAddressAction,
 } from "@/app/actions";
 import { TravelModeForm } from "@/components/TravelModeForm";
+import type { TransitFallbackMode } from "@/lib/transit-settings";
 import { travelModeLabel, type TravelMode } from "@/lib/travel-mode";
 import type { CompanyCarCommuteMethod, CompanyCarRate } from "@/lib/company-car";
 
@@ -19,6 +20,11 @@ type AddressRow = {
 
 export function UserCommuteSettings({
   travelMode,
+  transitArrivalHour,
+  transitArrivalMinute,
+  transitArrivalWeekday,
+  transitFallbackMaxKm,
+  transitFallbackMode,
   companyCar,
   companyCarRate,
   listPrice,
@@ -35,6 +41,11 @@ export function UserCommuteSettings({
   error,
 }: {
   travelMode: TravelMode;
+  transitArrivalHour: number;
+  transitArrivalMinute: number;
+  transitArrivalWeekday: number;
+  transitFallbackMaxKm: number | null;
+  transitFallbackMode: TransitFallbackMode | null;
   companyCar: boolean;
   companyCarRate: CompanyCarRate;
   listPrice: number | null;
@@ -85,6 +96,11 @@ export function UserCommuteSettings({
         </p>
         <TravelModeForm
           travelMode={travelMode}
+          transitArrivalHour={transitArrivalHour}
+          transitArrivalMinute={transitArrivalMinute}
+          transitArrivalWeekday={transitArrivalWeekday}
+          transitFallbackMaxKm={transitFallbackMaxKm}
+          transitFallbackMode={transitFallbackMode}
           companyCar={companyCar}
           companyCarRate={companyCarRate}
           listPrice={listPrice}
@@ -201,6 +217,6 @@ export function UserCommuteSettings({
   );
 }
 
-const TRAVEL_MODE_SUMMARY = (["foot", "bike", "driving"] as const)
+const TRAVEL_MODE_SUMMARY = (["foot", "bike", "driving", "transit"] as const)
   .map((m) => travelModeLabel(m))
   .join(", ");

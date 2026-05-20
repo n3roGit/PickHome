@@ -11,10 +11,11 @@ describe("parseTravelMode", () => {
     expect(parseTravelMode("foot")).toBe("foot");
     expect(parseTravelMode("BIKE")).toBe("bike");
     expect(parseTravelMode(" driving ")).toBe("driving");
+    expect(parseTravelMode("transit")).toBe("transit");
   });
 
   it("falls back to default", () => {
-    expect(parseTravelMode("transit")).toBe(DEFAULT_TRAVEL_MODE);
+    expect(parseTravelMode("invalid")).toBe(DEFAULT_TRAVEL_MODE);
     expect(parseTravelMode(null)).toBe(DEFAULT_TRAVEL_MODE);
   });
 });

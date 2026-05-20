@@ -8,6 +8,19 @@ import type { CompanyCarCommuteMethod, CompanyCarRate } from "@/lib/company-car"
 import { distanceKmOneWay, monthlyCompanyCarBenefitEur } from "@/lib/company-car";
 import { prisma } from "@/lib/prisma";
 import { fetchRoute, formatRouteDistance, formatRouteDuration, type RoutePoint } from "@/lib/routing";
+import {
+  fetchTransitJourney,
+  formatTransitDetailTooltip,
+  parseTransitLegDetails,
+  serializeTransitLegDetails,
+} from "@/lib/transit-routing";
+import {
+  parseCommuteRouteKind,
+  shouldUseTransitOsrmFallback,
+  transitRoutingNote,
+  type CommuteRouteKind,
+  type TransitSettings,
+} from "@/lib/transit-settings";
 import type { TravelMode } from "@/lib/travel-mode";
 
 export type CommuteAddress = {
@@ -25,6 +38,9 @@ export type CommuteLeg = {
   address: string;
   distanceText: string | null;
   durationText: string | null;
+  connectionSummary: string | null;
+  transitDetailTooltip: string | null;
+  routingNote: string | null;
   unavailableReason: "missing_apartment_coords" | "missing_address_coords" | "routing_failed" | null;
   distanceKmOneWay: number | null;
   monthlyCompanyCarBaseBenefitEur: number | null;
@@ -33,7 +49,7 @@ export type CommuteLeg = {
   monthlyCompanyCarTotalNetBenefitEur: number | null;
   monthlyCompanyCarDeductionsEur: number | null;
   companyCarMarginalTaxRatePercent: number | null;
-  companyCarCommuteMethod: import("@/lib/company-car").CompanyCarCommuteMethod | null;
+  companyCarCommuteMethod: CompanyCarCommuteMethod | null;
   companyCarOfficeTripsPerMonth: number | null;
   companyCarEmployerFuelCard: boolean | null;
   commuteCostHint: string | null;
@@ -43,6 +59,7 @@ export type CommuteMemberInput = {
   userId: string;
   name: string;
   travelMode: TravelMode;
+  transitSettings: TransitSettings | null;
   addresses: CommuteAddress[];
   companyCar: boolean;
   companyCarRate: CompanyCarRate | null;
@@ -81,9 +98,20 @@ export {
   invalidateCommuteCacheForUserAddress,
 };
 
+type ResolvedCommuteRoute = {
+  distanceMeters: number;
+  durationSeconds: number;
+  routeKind: CommuteRouteKind;
+  connectionSummary: string | null;
+  transitDetailJson: string | null;
+  effectiveMode: string | null;
+  routingNote: string | null;
+};
+
 export async function computeCommuteForMembers(input: {
   apartmentId: string;
   apartment: RoutePoint | null;
+  apartmentAddress?: string | null;
   currentUserId: string;
   members: CommuteMemberInput[];
 }): Promise<CommutePersonEstimate[]> {
@@ -96,8 +124,10 @@ export async function computeCommuteForMembers(input: {
       legs: await computeCommuteLegs({
         apartmentId: input.apartmentId,
         apartment: input.apartment,
+        apartmentAddress: input.apartmentAddress,
         addresses: member.addresses,
         travelMode: member.travelMode,
+        transitSettings: member.transitSettings,
         companyCar: member.companyCar,
         companyCarRate: member.companyCarRate,
         listPrice: member.listPrice,
@@ -121,8 +151,10 @@ export async function computeCommuteForMembers(input: {
 export async function computeCommuteLegs(input: {
   apartmentId: string;
   apartment: RoutePoint | null;
+  apartmentAddress?: string | null;
   addresses: CommuteAddress[];
   travelMode: TravelMode;
+  transitSettings: TransitSettings | null;
   companyCar: boolean;
   companyCarRate: CompanyCarRate | null;
   listPrice: number | null;
@@ -156,15 +188,34 @@ export async function computeCommuteLegs(input: {
 
       const cached = cacheByAddressId.get(addr.id);
       if (cached) {
-        return legFromRoute(addr, cached.distanceMeters, cached.durationSeconds, input);
+        return legFromResolved(addr, {
+          distanceMeters: cached.distanceMeters,
+          durationSeconds: cached.durationSeconds,
+          routeKind: parseCommuteRouteKind(cached.routeKind) ?? "osrm",
+          connectionSummary: cached.connectionSummary,
+          transitDetailJson: cached.transitDetailJson,
+          effectiveMode: cached.effectiveMode,
+          routingNote:
+            cached.routeKind === "transit_fallback" &&
+            cached.effectiveMode &&
+            input.transitSettings?.fallbackMaxKm
+              ? transitRoutingNote(
+                  cached.effectiveMode as "foot" | "bike",
+                  input.transitSettings.fallbackMaxKm
+                )
+              : null,
+        }, input);
       }
 
-      const route = await fetchRoute(
-        input.apartment!,
-        { latitude: addr.latitude, longitude: addr.longitude },
-        input.travelMode
-      );
-      if (!route) {
+      const resolved = await resolveCommuteRoute({
+        apartment: input.apartment!,
+        apartmentAddress: input.apartmentAddress,
+        destination: { latitude: addr.latitude, longitude: addr.longitude },
+        destinationAddress: addr.address,
+        travelMode: input.travelMode,
+        transitSettings: input.transitSettings,
+      });
+      if (!resolved) {
         return legUnavailable(addr, "routing_failed");
       }
 
@@ -180,36 +231,138 @@ export async function computeCommuteLegs(input: {
           apartmentId: input.apartmentId,
           userAddressId: addr.id,
           travelMode: input.travelMode,
-          distanceMeters: Math.round(route.distanceMeters),
-          durationSeconds: Math.round(route.durationSeconds),
+          distanceMeters: Math.round(resolved.distanceMeters),
+          durationSeconds: Math.round(resolved.durationSeconds),
+          routeKind: resolved.routeKind,
+          connectionSummary: resolved.connectionSummary,
+          transitDetailJson: resolved.transitDetailJson,
+          effectiveMode: resolved.effectiveMode,
         },
         update: {
-          distanceMeters: Math.round(route.distanceMeters),
-          durationSeconds: Math.round(route.durationSeconds),
+          distanceMeters: Math.round(resolved.distanceMeters),
+          durationSeconds: Math.round(resolved.durationSeconds),
+          routeKind: resolved.routeKind,
+          connectionSummary: resolved.connectionSummary,
+          transitDetailJson: resolved.transitDetailJson,
+          effectiveMode: resolved.effectiveMode,
           computedAt: new Date(),
         },
       });
 
-      return legFromRoute(addr, route.distanceMeters, route.durationSeconds, input);
+      return legFromResolved(addr, resolved, input);
     })
   );
 }
 
-function legFromRoute(
+async function resolveCommuteRoute(input: {
+  apartment: RoutePoint;
+  apartmentAddress?: string | null;
+  destination: RoutePoint;
+  destinationAddress: string;
+  travelMode: TravelMode;
+  transitSettings: TransitSettings | null;
+}): Promise<ResolvedCommuteRoute | null> {
+  if (input.travelMode !== "transit") {
+    const route = await fetchRoute(input.apartment, input.destination, input.travelMode);
+    if (!route) return null;
+    return {
+      distanceMeters: route.distanceMeters,
+      durationSeconds: route.durationSeconds,
+      routeKind: "osrm",
+      connectionSummary: null,
+      transitDetailJson: null,
+      effectiveMode: null,
+      routingNote: null,
+    };
+  }
+
+  const settings = input.transitSettings;
+  if (!settings) return null;
+
+  if (settings.fallbackMaxKm != null && settings.fallbackMaxKm > 0 && settings.fallbackMode) {
+    const fallbackRoute = await fetchRoute(
+      input.apartment,
+      input.destination,
+      settings.fallbackMode
+    );
+    if (
+      fallbackRoute &&
+      shouldUseTransitOsrmFallback(fallbackRoute.distanceMeters, settings)
+    ) {
+      return {
+        distanceMeters: fallbackRoute.distanceMeters,
+        durationSeconds: fallbackRoute.durationSeconds,
+        routeKind: "transit_fallback",
+        connectionSummary: null,
+        transitDetailJson: null,
+        effectiveMode: settings.fallbackMode,
+        routingNote: transitRoutingNote(settings.fallbackMode, settings.fallbackMaxKm),
+      };
+    }
+  }
+
+  const fromAddress = input.apartmentAddress?.trim() || "Wohnung";
+  const journey = await fetchTransitJourney({
+    from: input.apartment,
+    fromAddress,
+    to: input.destination,
+    toAddress: input.destinationAddress,
+    settings,
+  });
+  if (!journey) return null;
+
+  const connectionSummary = `${journey.connectionSummary} (${journey.arrivalTargetLabel})`;
+
+  return {
+    distanceMeters: journey.distanceMeters,
+    durationSeconds: journey.durationSeconds,
+    routeKind: "transit",
+    connectionSummary,
+    transitDetailJson: serializeTransitLegDetails(journey.legDetails),
+    effectiveMode: null,
+    routingNote: null,
+  };
+}
+
+function transitDetailTooltipFromJson(transitDetailJson: string | null): string | null {
+  const legs = parseTransitLegDetails(transitDetailJson);
+  if (!legs?.length) return null;
+  return formatTransitDetailTooltip(legs);
+}
+
+function transitDetailTooltipFromResolved(resolved: ResolvedCommuteRoute): string | null {
+  return transitDetailTooltipFromJson(resolved.transitDetailJson);
+}
+
+function legFromResolved(
   addr: CommuteAddress,
-  distanceMeters: number,
-  durationSeconds: number,
+  resolved: ResolvedCommuteRoute,
   member: Pick<
     CommuteMemberInput,
-    "travelMode" | "companyCar" | "companyCarRate" | "listPrice" | "marginalTaxRatePercent" | "companyCarCommuteMethod" | "companyCarOfficeTripsPerMonth" | "companyCarContributionEur" | "companyCarSelfPaidCostsEur" | "companyCarEmployerFuelCard"
+    | "travelMode"
+    | "companyCar"
+    | "companyCarRate"
+    | "listPrice"
+    | "marginalTaxRatePercent"
+    | "companyCarCommuteMethod"
+    | "companyCarOfficeTripsPerMonth"
+    | "companyCarContributionEur"
+    | "companyCarSelfPaidCostsEur"
+    | "companyCarEmployerFuelCard"
   >
 ): CommuteLeg {
+  const showDistance =
+    resolved.routeKind !== "transit" || resolved.distanceMeters > 0;
+
   const base: CommuteLeg = {
     addressId: addr.id,
     label: addr.label,
     address: addr.address,
-    distanceText: formatRouteDistance(distanceMeters),
-    durationText: formatRouteDuration(durationSeconds),
+    distanceText: showDistance ? formatRouteDistance(resolved.distanceMeters) : null,
+    durationText: formatRouteDuration(resolved.durationSeconds),
+    connectionSummary: resolved.connectionSummary,
+    transitDetailTooltip: transitDetailTooltipFromResolved(resolved),
+    routingNote: resolved.routingNote,
     unavailableReason: null,
     distanceKmOneWay: null,
     monthlyCompanyCarBaseBenefitEur: null,
@@ -223,7 +376,7 @@ function legFromRoute(
     companyCarEmployerFuelCard: null,
     commuteCostHint: null,
   };
-  return applyCompanyCarCommuteCost(base, addr, distanceMeters, member);
+  return applyCompanyCarCommuteCost(base, addr, resolved.distanceMeters, member);
 }
 
 function applyCompanyCarCommuteCost(
@@ -232,7 +385,16 @@ function applyCompanyCarCommuteCost(
   distanceMeters: number,
   member: Pick<
     CommuteMemberInput,
-    "travelMode" | "companyCar" | "companyCarRate" | "listPrice" | "marginalTaxRatePercent" | "companyCarCommuteMethod" | "companyCarOfficeTripsPerMonth" | "companyCarContributionEur" | "companyCarSelfPaidCostsEur" | "companyCarEmployerFuelCard"
+    | "travelMode"
+    | "companyCar"
+    | "companyCarRate"
+    | "listPrice"
+    | "marginalTaxRatePercent"
+    | "companyCarCommuteMethod"
+    | "companyCarOfficeTripsPerMonth"
+    | "companyCarContributionEur"
+    | "companyCarSelfPaidCostsEur"
+    | "companyCarEmployerFuelCard"
   >
 ): CommuteLeg {
   if (member.travelMode !== "driving" || !member.companyCar || !addr.isWorkplace) {
@@ -295,6 +457,9 @@ function legUnavailable(
     address: addr.address,
     distanceText: null,
     durationText: null,
+    connectionSummary: null,
+    transitDetailTooltip: null,
+    routingNote: null,
     unavailableReason: reason,
     distanceKmOneWay: null,
     monthlyCompanyCarBaseBenefitEur: null,

@@ -25,6 +25,11 @@ model User {
   companyCarContributionEur Int?
   companyCarSelfPaidCostsEur Int?
   companyCarEmployerFuelCard Boolean @default(true)
+  transitArrivalHour         Int?
+  transitArrivalMinute       Int?
+  transitArrivalWeekday      Int?
+  transitFallbackMaxKm       Int?
+  transitFallbackMode        String?
   createdAt      DateTime         @default(now())
   projects      ProjectMember[]
   ratings       Rating[]
@@ -158,6 +163,10 @@ model CommuteCache {
   travelMode        String
   distanceMeters    Int
   durationSeconds   Int
+  routeKind         String?
+  connectionSummary String?
+  transitDetailJson String?
+  effectiveMode     String?
   computedAt        DateTime    @default(now())
   apartment         Apartment   @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
   userAddress       UserAddress @relation(fields: [userAddressId], references: [id], onDelete: Cascade)

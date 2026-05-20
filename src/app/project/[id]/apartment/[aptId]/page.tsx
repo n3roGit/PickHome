@@ -21,6 +21,7 @@ import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
 import { computeCommuteForMembers } from "@/lib/commute";
 import { prisma } from "@/lib/prisma";
 import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
+import { resolveTransitSettings } from "@/lib/transit-settings";
 import { parseTravelMode } from "@/lib/travel-mode";
 import {
   apartmentScore,
@@ -125,6 +126,11 @@ export default async function ApartmentPage({
       id: true,
       name: true,
       travelMode: true,
+      transitArrivalHour: true,
+      transitArrivalMinute: true,
+      transitArrivalWeekday: true,
+      transitFallbackMaxKm: true,
+      transitFallbackMode: true,
       companyCar: true,
       companyCarRate: true,
       listPrice: true,
@@ -144,11 +150,16 @@ export default async function ApartmentPage({
   const commutePeople = await computeCommuteForMembers({
     apartmentId: apartment.id,
     apartment: apartmentCoords,
+    apartmentAddress: apartment.address ?? apartment.title,
     currentUserId: user.id,
     members: memberUsers.map((member) => ({
       userId: member.id,
       name: member.name,
       travelMode: parseTravelMode(member.travelMode),
+      transitSettings:
+        parseTravelMode(member.travelMode) === "transit"
+          ? resolveTransitSettings(member)
+          : null,
       companyCar: member.companyCar,
       companyCarRate: member.companyCar ? parseCompanyCarRate(member.companyCarRate) : null,
       listPrice: member.listPrice,

@@ -2,6 +2,7 @@ import { computeCommuteLegs, type CommuteLeg } from "@/lib/commute";
 import { invalidateCommuteCacheForProject } from "@/lib/commute-cache";
 import { prisma } from "@/lib/prisma";
 import type { RoutePoint } from "@/lib/routing";
+import { resolveTransitSettings } from "@/lib/transit-settings";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
 
@@ -25,7 +26,7 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
   const [apartments, members] = await Promise.all([
     prisma.apartment.findMany({
       where: { projectId, archivedAt: null },
-      select: { id: true, latitude: true, longitude: true },
+      select: { id: true, latitude: true, longitude: true, address: true, title: true },
     }),
     prisma.projectMember.findMany({
       where: { projectId },
@@ -33,6 +34,11 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
         user: {
           select: {
             travelMode: true,
+            transitArrivalHour: true,
+            transitArrivalMinute: true,
+            transitArrivalWeekday: true,
+            transitFallbackMaxKm: true,
+            transitFallbackMode: true,
             companyCar: true,
             companyCarRate: true,
             listPrice: true,
@@ -49,8 +55,11 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
     }),
   ]);
 
-  const memberInputs = members.map((m) => ({
-    travelMode: parseTravelMode(m.user.travelMode),
+  const memberInputs = members.map((m) => {
+    const travelMode = parseTravelMode(m.user.travelMode);
+    return {
+    travelMode,
+    transitSettings: travelMode === "transit" ? resolveTransitSettings(m.user) : null,
     companyCar: m.user.companyCar,
     companyCarRate: m.user.companyCar ? parseCompanyCarRate(m.user.companyCarRate) : null,
     listPrice: m.user.listPrice,
@@ -70,7 +79,8 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
       longitude: a.longitude,
       isWorkplace: a.isWorkplace,
     })),
-  }));
+  };
+  });
 
   let routesComputed = 0;
   let routesSkipped = 0;
@@ -100,8 +110,10 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
       const legs = await computeCommuteLegs({
         apartmentId: apt.id,
         apartment,
+        apartmentAddress: apt.address ?? apt.title,
         addresses: member.addresses,
         travelMode: member.travelMode,
+        transitSettings: member.transitSettings,
         companyCar: member.companyCar,
         companyCarRate: member.companyCarRate,
         listPrice: member.listPrice,

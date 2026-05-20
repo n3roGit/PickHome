@@ -53,6 +53,13 @@ import {
   parseOptionalEuroAmount,
 } from "@/lib/company-car";
 import { parseTravelMode } from "@/lib/travel-mode";
+import {
+  parseTransitArrivalHour,
+  parseTransitArrivalMinute,
+  parseTransitArrivalWeekday,
+  parseTransitFallbackMaxKm,
+  parseTransitFallbackMode,
+} from "@/lib/transit-settings";
 import { isApartmentUploadError } from "@/lib/upload-limits";
 import type { UploadApartmentFileResult } from "@/app/apartment-photo-actions";
 
@@ -897,6 +904,20 @@ export async function deleteUserAction(userId: string) {
   revalidatePath("/admin");
 }
 
+function parseTransitArrivalTimeField(raw: string): { hour: number; minute: number } {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(raw.trim());
+  if (!match) {
+    return {
+      hour: parseTransitArrivalHour(null),
+      minute: parseTransitArrivalMinute(null),
+    };
+  }
+  return {
+    hour: parseTransitArrivalHour(match[1]),
+    minute: parseTransitArrivalMinute(match[2]),
+  };
+}
+
 export async function updateTravelModeAction(formData: FormData) {
   const user = await requireUser();
   const travelMode = parseTravelMode(String(formData.get("travelMode") ?? ""));
@@ -919,12 +940,36 @@ export async function updateTravelModeAction(formData: FormData) {
     String(formData.get("companyCarSelfPaidCostsEur") ?? "")
   );
   const companyCarEmployerFuelCard = formData.get("companyCarEmployerFuelCard") === "on";
+  const transitArrival = parseTransitArrivalTimeField(String(formData.get("transitArrivalTime") ?? ""));
+  const transitArrivalWeekday = parseTransitArrivalWeekday(
+    String(formData.get("transitArrivalWeekday") ?? "")
+  );
+  const transitFallbackMaxKm = parseTransitFallbackMaxKm(
+    String(formData.get("transitFallbackMaxKm") ?? "")
+  );
+  const transitFallbackMode = parseTransitFallbackMode(
+    String(formData.get("transitFallbackMode") ?? "")
+  );
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      travelMode,
-      companyCar: travelMode === "driving" ? companyCar : false,
+  const updateData: {
+    travelMode: string;
+    transitArrivalHour?: number;
+    transitArrivalMinute?: number;
+    transitArrivalWeekday?: number;
+    transitFallbackMaxKm?: number | null;
+    transitFallbackMode?: string | null;
+    companyCar: boolean;
+    companyCarRate: string | null;
+    listPrice: number | null;
+    marginalTaxRatePercent: number | null;
+    companyCarCommuteMethod: string | null;
+    companyCarOfficeTripsPerMonth: number | null;
+    companyCarContributionEur: number | null;
+    companyCarSelfPaidCostsEur: number | null;
+    companyCarEmployerFuelCard: boolean;
+  } = {
+    travelMode,
+    companyCar: travelMode === "driving" ? companyCar : false,
       companyCarRate: travelMode === "driving" && companyCar ? companyCarRate : null,
       listPrice: travelMode === "driving" && companyCar ? listPrice : null,
       marginalTaxRatePercent:
@@ -940,7 +985,19 @@ export async function updateTravelModeAction(formData: FormData) {
       companyCarSelfPaidCostsEur:
         travelMode === "driving" && companyCar ? Math.round(companyCarSelfPaidCostsEur) : null,
       companyCarEmployerFuelCard: travelMode === "driving" && companyCar ? companyCarEmployerFuelCard : true,
-    },
+  };
+
+  if (travelMode === "transit") {
+    updateData.transitArrivalHour = transitArrival.hour;
+    updateData.transitArrivalMinute = transitArrival.minute;
+    updateData.transitArrivalWeekday = transitArrivalWeekday;
+    updateData.transitFallbackMaxKm = transitFallbackMaxKm;
+    updateData.transitFallbackMode = transitFallbackMode;
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: updateData,
   });
   await invalidateCommuteCacheForUser(user.id);
   revalidatePath("/account/settings");

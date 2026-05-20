@@ -14,10 +14,26 @@ import {
   type CompanyCarCommuteMethod,
   type CompanyCarRate,
 } from "@/lib/company-car";
+import {
+  DEFAULT_TRANSIT_ARRIVAL_HOUR,
+  DEFAULT_TRANSIT_ARRIVAL_MINUTE,
+  DEFAULT_TRANSIT_ARRIVAL_WEEKDAY,
+  DEFAULT_TRANSIT_FALLBACK_MAX_KM,
+  formatTransitArrivalTime,
+  TRANSIT_FALLBACK_MODES,
+  TRANSIT_WEEKDAYS,
+  transitFallbackModeLabel,
+  type TransitFallbackMode,
+} from "@/lib/transit-settings";
 import { TRAVEL_MODES, travelModeLabel, type TravelMode } from "@/lib/travel-mode";
 
 export function TravelModeForm({
   travelMode,
+  transitArrivalHour,
+  transitArrivalMinute,
+  transitArrivalWeekday,
+  transitFallbackMaxKm,
+  transitFallbackMode,
   companyCar,
   companyCarRate,
   listPrice,
@@ -30,6 +46,11 @@ export function TravelModeForm({
   action,
 }: {
   travelMode: TravelMode;
+  transitArrivalHour: number;
+  transitArrivalMinute: number;
+  transitArrivalWeekday: number;
+  transitFallbackMaxKm: number | null;
+  transitFallbackMode: TransitFallbackMode | null;
   companyCar: boolean;
   companyCarRate: CompanyCarRate;
   listPrice: number | null;
@@ -46,6 +67,11 @@ export function TravelModeForm({
   const [commuteMethod, setCommuteMethod] = useState(companyCarCommuteMethod);
   const [employerFuelCard, setEmployerFuelCard] = useState(companyCarEmployerFuelCard);
   const showCompanyCar = mode === "driving";
+  const showTransit = mode === "transit";
+  const arrivalTimeValue = formatTransitArrivalTime(
+    transitArrivalHour ?? DEFAULT_TRANSIT_ARRIVAL_HOUR,
+    transitArrivalMinute ?? DEFAULT_TRANSIT_ARRIVAL_MINUTE
+  );
 
   return (
     <form action={action} className="space-y-4">
@@ -72,6 +98,73 @@ export function TravelModeForm({
           Speichern
         </button>
       </div>
+
+      {showTransit && (
+        <div className="border border-pn-border rounded-lg p-4 space-y-3 bg-pn-bg-subtle/50">
+          <p className="text-sm font-medium">ÖPNV-Einstellungen</p>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">Ziel-Ankunft</span>
+            <input
+              name="transitArrivalTime"
+              type="time"
+              defaultValue={arrivalTimeValue}
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+            <span className="block text-xs text-pn-text-tertiary mt-1">
+              Es wird die beste Verbindung mit Ankunft zu dieser Uhrzeit berechnet (Referenztag unten).
+            </span>
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">Referenz-Wochentag</span>
+            <select
+              name="transitArrivalWeekday"
+              defaultValue={transitArrivalWeekday ?? DEFAULT_TRANSIT_ARRIVAL_WEEKDAY}
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+            >
+              {TRANSIT_WEEKDAYS.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-sm font-medium text-pn-text-secondary">
+                Kurzstrecke bis (km)
+              </span>
+              <input
+                name="transitFallbackMaxKm"
+                type="number"
+                min={0}
+                max={50}
+                step={1}
+                defaultValue={transitFallbackMaxKm ?? DEFAULT_TRANSIT_FALLBACK_MAX_KM}
+                placeholder="z. B. 5"
+                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+              />
+              <span className="block text-xs text-pn-text-tertiary mt-1">
+                0 = kein Fallback. Darunter wird Rad/Fuß statt ÖPNV genutzt.
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-pn-text-secondary">Fallback-Verkehrsmittel</span>
+              <select
+                name="transitFallbackMode"
+                defaultValue={transitFallbackMode ?? "bike"}
+                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+              >
+                <option value="none">Kein Fallback</option>
+                {TRANSIT_FALLBACK_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {transitFallbackModeLabel(m)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+      )}
 
       {showCompanyCar && (
         <div className="border border-pn-border rounded-lg p-4 space-y-3 bg-pn-bg-subtle/50">

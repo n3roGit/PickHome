@@ -1,4 +1,5 @@
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { CommuteTransitConnection } from "@/components/CommuteTransitConnection";
 import {
   commuteUnavailableMessage,
   type CommuteLeg,
@@ -19,12 +20,32 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
             )}
           </p>
           <p className="text-sm text-pn-text-secondary">{leg.address}</p>
-          {leg.distanceText && leg.durationText ? (
+          {leg.durationText ? (
             <>
               <p className="text-sm mt-2">
-                <span className="font-medium">{leg.distanceText}</span>
-                <span className="text-pn-text-tertiary"> · ca. {leg.durationText}</span>
+                {leg.distanceText && (
+                  <>
+                    <span className="font-medium">{leg.distanceText}</span>
+                    <span className="text-pn-text-tertiary"> · </span>
+                  </>
+                )}
+                <span className={leg.distanceText ? "text-pn-text-tertiary" : "font-medium"}>
+                  ca. {leg.durationText}
+                </span>
               </p>
+              {leg.connectionSummary ? (
+                <CommuteTransitConnection
+                  summary={leg.connectionSummary}
+                  detailLines={
+                    leg.transitDetailTooltip
+                      ? leg.transitDetailTooltip.split("\n").filter(Boolean)
+                      : []
+                  }
+                />
+              ) : null}
+              {leg.routingNote && (
+                <p className="text-xs text-pn-text-tertiary mt-1">{leg.routingNote}</p>
+              )}
               {leg.monthlyCompanyCarTotalBenefitEur != null && leg.distanceKmOneWay != null && (
                 <p className="text-sm mt-2 text-pn-text-secondary">
                   Firmenwagen: Brutto ca.{" "}

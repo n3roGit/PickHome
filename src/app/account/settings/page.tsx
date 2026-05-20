@@ -13,6 +13,7 @@ import { Nav } from "@/components/Nav";
 import { UserCommuteSettings } from "@/components/UserCommuteSettings";
 import { isAdmin, requireUser } from "@/lib/auth";
 import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
+import { resolveTransitSettings } from "@/lib/transit-settings";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { isTotpEnabled } from "@/lib/totp";
@@ -97,6 +98,11 @@ export default async function SettingsPage({
 
         <UserCommuteSettings
           travelMode={parseTravelMode(fresh.travelMode)}
+          transitArrivalHour={resolveTransitSettings(fresh).arrivalHour}
+          transitArrivalMinute={resolveTransitSettings(fresh).arrivalMinute}
+          transitArrivalWeekday={resolveTransitSettings(fresh).arrivalWeekday}
+          transitFallbackMaxKm={resolveTransitSettings(fresh).fallbackMaxKm}
+          transitFallbackMode={resolveTransitSettings(fresh).fallbackMode}
           companyCar={fresh.companyCar}
           companyCarRate={parseCompanyCarRate(fresh.companyCarRate)}
           listPrice={fresh.listPrice}

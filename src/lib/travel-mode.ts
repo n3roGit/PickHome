@@ -1,4 +1,4 @@
-export const TRAVEL_MODES = ["foot", "bike", "driving"] as const;
+export const TRAVEL_MODES = ["foot", "bike", "driving", "transit"] as const;
 
 export type TravelMode = (typeof TRAVEL_MODES)[number];
 
@@ -17,5 +17,7 @@ export function travelModeLabel(mode: TravelMode): string {
       return "Rad";
     case "driving":
       return "Auto";
+    case "transit":
+      return "ÖPNV";
   }
 }
