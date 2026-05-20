@@ -4,6 +4,7 @@ import {
   type CommuteLeg,
   type CommutePersonEstimate,
 } from "@/lib/commute";
+import { formatCommuteBenefitEur } from "@/lib/company-car";
 import { travelModeLabel } from "@/lib/travel-mode";
 
 function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
@@ -11,13 +12,36 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
     <ul className="space-y-3">
       {legs.map((leg) => (
         <li key={leg.addressId} className="border border-pn-border rounded-lg px-4 py-3">
-          <p className="font-medium">{leg.label}</p>
+          <p className="font-medium">
+            {leg.label}
+            {leg.monthlyCommuteBenefitEur != null && (
+              <span className="ml-2 text-xs font-normal text-pn-text-tertiary">(Arbeitsstätte)</span>
+            )}
+          </p>
           <p className="text-sm text-pn-text-secondary">{leg.address}</p>
           {leg.distanceText && leg.durationText ? (
-            <p className="text-sm mt-2">
-              <span className="font-medium">{leg.distanceText}</span>
-              <span className="text-pn-text-tertiary"> · ca. {leg.durationText}</span>
-            </p>
+            <>
+              <p className="text-sm mt-2">
+                <span className="font-medium">{leg.distanceText}</span>
+                <span className="text-pn-text-tertiary"> · ca. {leg.durationText}</span>
+              </p>
+              {leg.monthlyCommuteBenefitEur != null && leg.distanceKmOneWay != null && (
+                <p className="text-sm mt-2 text-pn-text-secondary">
+                  Firmenwagen Arbeitsweg: ca.{" "}
+                  <span className="font-medium text-pn-text-primary">
+                    {formatCommuteBenefitEur(leg.monthlyCommuteBenefitEur)}
+                  </span>
+                  /Monat
+                  <span className="text-pn-text-tertiary">
+                    {" "}
+                    (geldw. Vorteil, {leg.distanceKmOneWay} km einfach)
+                  </span>
+                </p>
+              )}
+              {leg.commuteCostHint && (
+                <p className="text-xs text-pn-text-tertiary mt-1">{leg.commuteCostHint}</p>
+              )}
+            </>
           ) : (
             <p className="text-sm text-pn-text-tertiary mt-2">
               {commuteUnavailableMessage(leg.unavailableReason)}

@@ -44,6 +44,7 @@ import { parseBrokerBuyerRatePercent, parseFederalStateCode, parseInterestRatePe
 import { parseArchiveNote, parseArchiveReason } from "@/lib/archive-reasons";
 import { parseDealbreakerThreshold } from "@/lib/scoring";
 import { syncApartmentViewedAt } from "@/lib/viewings";
+import { parseCompanyCarRate, parseListPriceEuros } from "@/lib/company-car";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { isApartmentUploadError } from "@/lib/upload-limits";
 import type { UploadApartmentFileResult } from "@/app/apartment-photo-actions";
@@ -892,10 +893,18 @@ export async function deleteUserAction(userId: string) {
 export async function updateTravelModeAction(formData: FormData) {
   const user = await requireUser();
   const travelMode = parseTravelMode(String(formData.get("travelMode") ?? ""));
+  const companyCar = formData.get("companyCar") === "on";
+  const companyCarRate = parseCompanyCarRate(String(formData.get("companyCarRate") ?? ""));
+  const listPrice = parseListPriceEuros(String(formData.get("listPrice") ?? ""));
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { travelMode },
+    data: {
+      travelMode,
+      companyCar: travelMode === "driving" ? companyCar : false,
+      companyCarRate: travelMode === "driving" && companyCar ? companyCarRate : null,
+      listPrice: travelMode === "driving" && companyCar ? listPrice : null,
+    },
   });
   await invalidateCommuteCacheForUser(user.id);
   revalidatePath("/account/settings");
@@ -921,6 +930,7 @@ export async function createUserAddressAction(formData: FormData) {
   if (!rawAddress) redirect("/account/settings?error=address");
 
   const geocoded = await geocodeUserAddressFields(rawAddress);
+  const isWorkplace = formData.get("isWorkplace") === "on";
   const maxOrder = await prisma.userAddress.aggregate({
     where: { userId: user.id },
     _max: { sortOrder: true },
@@ -933,6 +943,7 @@ export async function createUserAddressAction(formData: FormData) {
       address: geocoded.address,
       latitude: geocoded.latitude,
       longitude: geocoded.longitude,
+      isWorkplace,
       sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
     },
   });
@@ -953,6 +964,7 @@ export async function updateUserAddressAction(addressId: string, formData: FormD
   if (!rawAddress) redirect("/account/settings?error=address");
 
   const geocoded = await geocodeUserAddressFields(rawAddress);
+  const isWorkplace = formData.get("isWorkplace") === "on";
 
   await prisma.userAddress.update({
     where: { id: addressId },
@@ -961,6 +973,7 @@ export async function updateUserAddressAction(addressId: string, formData: FormD
       address: geocoded.address,
       latitude: geocoded.latitude,
       longitude: geocoded.longitude,
+      isWorkplace,
     },
   });
   await invalidateCommuteCacheForUserAddress(addressId);

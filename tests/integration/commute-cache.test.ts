@@ -63,9 +63,13 @@ describe("commute cache integration", () => {
           address: userAddress.address,
           latitude: userAddress.latitude,
           longitude: userAddress.longitude,
+          isWorkplace: false,
         },
       ],
       travelMode: "driving" as const,
+      companyCar: false,
+      companyCarRate: null,
+      listPrice: null,
     };
 
     const first = await computeCommuteLegs(input);

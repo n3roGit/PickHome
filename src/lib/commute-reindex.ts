@@ -3,6 +3,7 @@ import { invalidateCommuteCacheForProject } from "@/lib/commute-cache";
 import { prisma } from "@/lib/prisma";
 import type { RoutePoint } from "@/lib/routing";
 import { parseTravelMode } from "@/lib/travel-mode";
+import { parseCompanyCarRate } from "@/lib/company-car";
 
 export type ReindexProjectCommuteResult = {
   apartmentsTotal: number;
@@ -32,6 +33,9 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
         user: {
           select: {
             travelMode: true,
+            companyCar: true,
+            companyCarRate: true,
+            listPrice: true,
             addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
           },
         },
@@ -41,12 +45,16 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
 
   const memberInputs = members.map((m) => ({
     travelMode: parseTravelMode(m.user.travelMode),
+    companyCar: m.user.companyCar,
+    companyCarRate: m.user.companyCar ? parseCompanyCarRate(m.user.companyCarRate) : null,
+    listPrice: m.user.listPrice,
     addresses: m.user.addresses.map((a) => ({
       id: a.id,
       label: a.label,
       address: a.address,
       latitude: a.latitude,
       longitude: a.longitude,
+      isWorkplace: a.isWorkplace,
     })),
   }));
 
@@ -80,6 +88,9 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
         apartment,
         addresses: member.addresses,
         travelMode: member.travelMode,
+        companyCar: member.companyCar,
+        companyCarRate: member.companyCarRate,
+        listPrice: member.listPrice,
       });
 
       for (const leg of legs) {

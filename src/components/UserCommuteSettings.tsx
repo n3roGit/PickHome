@@ -4,7 +4,9 @@ import {
   updateTravelModeAction,
   updateUserAddressAction,
 } from "@/app/actions";
-import { TRAVEL_MODES, travelModeLabel, type TravelMode } from "@/lib/travel-mode";
+import { TravelModeForm } from "@/components/TravelModeForm";
+import { travelModeLabel, type TravelMode } from "@/lib/travel-mode";
+import type { CompanyCarRate } from "@/lib/company-car";
 
 type AddressRow = {
   id: string;
@@ -12,10 +14,14 @@ type AddressRow = {
   address: string;
   latitude: number | null;
   longitude: number | null;
+  isWorkplace: boolean;
 };
 
 export function UserCommuteSettings({
   travelMode,
+  companyCar,
+  companyCarRate,
+  listPrice,
   addresses,
   saved,
   addressSaved,
@@ -23,6 +29,9 @@ export function UserCommuteSettings({
   error,
 }: {
   travelMode: TravelMode;
+  companyCar: boolean;
+  companyCarRate: CompanyCarRate;
+  listPrice: number | null;
   addresses: AddressRow[];
   saved?: boolean;
   addressSaved?: boolean;
@@ -60,37 +69,23 @@ export function UserCommuteSettings({
       <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5">
         <h2 className="font-semibold mb-1">Standard-Verkehrsmittel</h2>
         <p className="text-sm text-pn-text-secondary mb-4">
-          Für Entfernung und Fahrzeit zu deinen Adressen (Fuß, Rad, Auto).
+          Für Entfernung und Fahrzeit zu deinen Adressen ({TRAVEL_MODE_SUMMARY}).
         </p>
-        <form action={updateTravelModeAction} className="flex flex-wrap gap-2 items-end">
-          <label className="block flex-1 min-w-[180px]">
-            <span className="text-sm font-medium text-pn-text-secondary">Verkehrsmittel</span>
-            <select
-              name="travelMode"
-              defaultValue={travelMode}
-              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
-            >
-              {TRAVEL_MODES.map((mode) => (
-                <option key={mode} value={mode}>
-                  {travelModeLabel(mode)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="submit"
-            className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm"
-          >
-            Speichern
-          </button>
-        </form>
+        <TravelModeForm
+          travelMode={travelMode}
+          companyCar={companyCar}
+          companyCarRate={companyCarRate}
+          listPrice={listPrice}
+          action={updateTravelModeAction}
+        />
       </section>
 
       <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
         <div>
           <h2 className="font-semibold mb-1">Meine Adressen</h2>
           <p className="text-sm text-pn-text-secondary">
-            z. B. Arbeit, Kita — werden bei jeder Immobilie für Anfahrtsschätzungen genutzt.
+            z. B. Arbeit, Kita — werden bei jeder Immobilie für Anfahrtsschätzungen genutzt. Firmenwagen-Kosten
+            nur bei als Arbeitsstätte markierten Adressen.
           </p>
         </div>
 
@@ -114,6 +109,20 @@ export function UserCommuteSettings({
                   required
                   className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
                 />
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="isWorkplace"
+                  defaultChecked={addr.isWorkplace}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="text-sm font-medium">Arbeitsstätte</span>
+                  <span className="block text-xs text-pn-text-tertiary mt-0.5">
+                    Firmenwagen-Arbeitsweg-Kosten nur für diese Adresse berechnen.
+                  </span>
+                </span>
               </label>
               {addr.latitude == null && (
                 <p className="text-xs text-pn-score-low">Koordinaten fehlen — Adresse speichern zum Geocoding.</p>
@@ -153,6 +162,15 @@ export function UserCommuteSettings({
               className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
           </label>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" name="isWorkplace" className="mt-1" />
+            <span>
+              <span className="text-sm font-medium">Arbeitsstätte</span>
+              <span className="block text-xs text-pn-text-tertiary mt-0.5">
+                Firmenwagen-Arbeitsweg-Kosten nur für diese Adresse berechnen.
+              </span>
+            </span>
+          </label>
           <button
             type="submit"
             className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm"
@@ -164,3 +182,7 @@ export function UserCommuteSettings({
     </div>
   );
 }
+
+const TRAVEL_MODE_SUMMARY = (["foot", "bike", "driving"] as const)
+  .map((m) => travelModeLabel(m))
+  .join(", ");

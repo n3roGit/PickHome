@@ -20,6 +20,7 @@ import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
 import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
 import { computeCommuteForMembers } from "@/lib/commute";
 import { prisma } from "@/lib/prisma";
+import { parseCompanyCarRate } from "@/lib/company-car";
 import { parseTravelMode } from "@/lib/travel-mode";
 import {
   apartmentScore,
@@ -124,6 +125,9 @@ export default async function ApartmentPage({
       id: true,
       name: true,
       travelMode: true,
+      companyCar: true,
+      companyCarRate: true,
+      listPrice: true,
       addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
     },
   });
@@ -139,12 +143,16 @@ export default async function ApartmentPage({
       userId: member.id,
       name: member.name,
       travelMode: parseTravelMode(member.travelMode),
+      companyCar: member.companyCar,
+      companyCarRate: member.companyCar ? parseCompanyCarRate(member.companyCarRate) : null,
+      listPrice: member.listPrice,
       addresses: member.addresses.map((a) => ({
         id: a.id,
         label: a.label,
         address: a.address,
         latitude: a.latitude,
         longitude: a.longitude,
+        isWorkplace: a.isWorkplace,
       })),
     })),
   });

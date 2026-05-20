@@ -12,6 +12,7 @@ import { Footer } from "@/components/Footer";
 import { Nav } from "@/components/Nav";
 import { UserCommuteSettings } from "@/components/UserCommuteSettings";
 import { isAdmin, requireUser } from "@/lib/auth";
+import { parseCompanyCarRate } from "@/lib/company-car";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { isTotpEnabled } from "@/lib/totp";
@@ -96,12 +97,16 @@ export default async function SettingsPage({
 
         <UserCommuteSettings
           travelMode={parseTravelMode(fresh.travelMode)}
+          companyCar={fresh.companyCar}
+          companyCarRate={parseCompanyCarRate(fresh.companyCarRate)}
+          listPrice={fresh.listPrice}
           addresses={fresh.addresses.map((a) => ({
             id: a.id,
             label: a.label,
             address: a.address,
             latitude: a.latitude,
             longitude: a.longitude,
+            isWorkplace: a.isWorkplace,
           }))}
           saved={resolvedSearchParams.commute_saved === "1"}
           addressSaved={resolvedSearchParams.address_saved === "1"}

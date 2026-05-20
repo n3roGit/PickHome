@@ -4,6 +4,8 @@ import {
   invalidateCommuteCacheForUser,
   invalidateCommuteCacheForUserAddress,
 } from "@/lib/commute-cache";
+import type { CompanyCarRate } from "@/lib/company-car";
+import { distanceKmOneWay, monthlyCommuteBenefitEur } from "@/lib/company-car";
 import { prisma } from "@/lib/prisma";
 import { fetchRoute, formatRouteDistance, formatRouteDuration, type RoutePoint } from "@/lib/routing";
 import type { TravelMode } from "@/lib/travel-mode";
@@ -14,6 +16,7 @@ export type CommuteAddress = {
   address: string;
   latitude: number | null;
   longitude: number | null;
+  isWorkplace: boolean;
 };
 
 export type CommuteLeg = {
@@ -23,6 +26,9 @@ export type CommuteLeg = {
   distanceText: string | null;
   durationText: string | null;
   unavailableReason: "missing_apartment_coords" | "missing_address_coords" | "routing_failed" | null;
+  distanceKmOneWay: number | null;
+  monthlyCommuteBenefitEur: number | null;
+  commuteCostHint: string | null;
 };
 
 export type CommuteMemberInput = {
@@ -30,6 +36,9 @@ export type CommuteMemberInput = {
   name: string;
   travelMode: TravelMode;
   addresses: CommuteAddress[];
+  companyCar: boolean;
+  companyCarRate: CompanyCarRate | null;
+  listPrice: number | null;
 };
 
 export type CommutePersonEstimate = {
@@ -75,6 +84,9 @@ export async function computeCommuteForMembers(input: {
         apartment: input.apartment,
         addresses: member.addresses,
         travelMode: member.travelMode,
+        companyCar: member.companyCar,
+        companyCarRate: member.companyCarRate,
+        listPrice: member.listPrice,
       }),
     }))
   );
@@ -91,6 +103,9 @@ export async function computeCommuteLegs(input: {
   apartment: RoutePoint | null;
   addresses: CommuteAddress[];
   travelMode: TravelMode;
+  companyCar: boolean;
+  companyCarRate: CompanyCarRate | null;
+  listPrice: number | null;
 }): Promise<CommuteLeg[]> {
   if (input.addresses.length === 0) return [];
 
@@ -115,7 +130,7 @@ export async function computeCommuteLegs(input: {
 
       const cached = cacheByAddressId.get(addr.id);
       if (cached) {
-        return legFromRoute(addr, cached.distanceMeters, cached.durationSeconds);
+        return legFromRoute(addr, cached.distanceMeters, cached.durationSeconds, input);
       }
 
       const route = await fetchRoute(
@@ -149,7 +164,7 @@ export async function computeCommuteLegs(input: {
         },
       });
 
-      return legFromRoute(addr, route.distanceMeters, route.durationSeconds);
+      return legFromRoute(addr, route.distanceMeters, route.durationSeconds, input);
     })
   );
 }
@@ -157,15 +172,53 @@ export async function computeCommuteLegs(input: {
 function legFromRoute(
   addr: CommuteAddress,
   distanceMeters: number,
-  durationSeconds: number
+  durationSeconds: number,
+  member: Pick<CommuteMemberInput, "travelMode" | "companyCar" | "companyCarRate" | "listPrice">
 ): CommuteLeg {
-  return {
+  const base: CommuteLeg = {
     addressId: addr.id,
     label: addr.label,
     address: addr.address,
     distanceText: formatRouteDistance(distanceMeters),
     durationText: formatRouteDuration(durationSeconds),
     unavailableReason: null,
+    distanceKmOneWay: null,
+    monthlyCommuteBenefitEur: null,
+    commuteCostHint: null,
+  };
+  return applyCompanyCarCommuteCost(base, addr, distanceMeters, member);
+}
+
+function applyCompanyCarCommuteCost(
+  leg: CommuteLeg,
+  addr: CommuteAddress,
+  distanceMeters: number,
+  member: Pick<CommuteMemberInput, "travelMode" | "companyCar" | "companyCarRate" | "listPrice">
+): CommuteLeg {
+  if (member.travelMode !== "driving" || !member.companyCar || !addr.isWorkplace) {
+    return leg;
+  }
+
+  const km = distanceKmOneWay(distanceMeters);
+  if (!member.listPrice || !member.companyCarRate) {
+    return {
+      ...leg,
+      distanceKmOneWay: km,
+      commuteCostHint: "Bruttolistenpreis oder Antriebsart fehlt — in den Kontoeinstellungen hinterlegen.",
+    };
+  }
+
+  const monthly = monthlyCommuteBenefitEur({
+    listPriceEuros: member.listPrice,
+    rate: member.companyCarRate,
+    distanceMeters,
+  });
+
+  return {
+    ...leg,
+    distanceKmOneWay: km,
+    monthlyCommuteBenefitEur: monthly,
+    commuteCostHint: monthly == null ? "Arbeitsweg-Kosten konnten nicht berechnet werden." : null,
   };
 }
 
@@ -180,5 +233,8 @@ function legUnavailable(
     distanceText: null,
     durationText: null,
     unavailableReason: reason,
+    distanceKmOneWay: null,
+    monthlyCommuteBenefitEur: null,
+    commuteCostHint: null,
   };
 }
