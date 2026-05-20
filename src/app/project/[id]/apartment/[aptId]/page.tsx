@@ -17,7 +17,7 @@ import { ApartmentListingUrlForm } from "@/components/ApartmentListingUrlForm";
 import { ApartmentNotesForm } from "@/components/ApartmentNotesForm";
 import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
 import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
-import { computeCommuteLegs } from "@/lib/commute";
+import { computeCommuteForMembers } from "@/lib/commute";
 import { prisma } from "@/lib/prisma";
 import { parseTravelMode } from "@/lib/travel-mode";
 import {
@@ -70,27 +70,35 @@ export default async function ApartmentPage({
     })),
   }));
 
-  const profile = await prisma.user.findUniqueOrThrow({
-    where: { id: user.id },
-    include: {
+  const memberUsers = await prisma.user.findMany({
+    where: { id: { in: project.members.map((m) => m.userId) } },
+    select: {
+      id: true,
+      name: true,
+      travelMode: true,
       addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
     },
   });
-  const travelMode = parseTravelMode(profile.travelMode);
-  const commuteLegs = await computeCommuteLegs({
+  const apartmentCoords =
+    apartment.latitude != null && apartment.longitude != null
+      ? { latitude: apartment.latitude, longitude: apartment.longitude }
+      : null;
+  const commutePeople = await computeCommuteForMembers({
     apartmentId: apartment.id,
-    apartment:
-      apartment.latitude != null && apartment.longitude != null
-        ? { latitude: apartment.latitude, longitude: apartment.longitude }
-        : null,
-    addresses: profile.addresses.map((a) => ({
-      id: a.id,
-      label: a.label,
-      address: a.address,
-      latitude: a.latitude,
-      longitude: a.longitude,
+    apartment: apartmentCoords,
+    currentUserId: user.id,
+    members: memberUsers.map((member) => ({
+      userId: member.id,
+      name: member.name,
+      travelMode: parseTravelMode(member.travelMode),
+      addresses: member.addresses.map((a) => ({
+        id: a.id,
+        label: a.label,
+        address: a.address,
+        latitude: a.latitude,
+        longitude: a.longitude,
+      })),
     })),
-    travelMode,
   });
 
   const partners = project.members
@@ -159,11 +167,7 @@ export default async function ApartmentPage({
           budget={project.budget}
           saved={resolvedSearchParams.basics_saved === "1"}
         />
-        <ApartmentCommutePanel
-          legs={commuteLegs}
-          travelMode={travelMode}
-          settingsHref="/account/settings"
-        />
+        <ApartmentCommutePanel people={commutePeople} settingsHref="/account/settings" />
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
           price={apartment.price}

@@ -5,7 +5,7 @@ import { getApartmentUploadsRoot, publicPhotoPath } from "@/lib/pickhome-data";
 import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES } from "@/lib/upload-limits";
 
 export { publicPhotoPath };
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 const DOCUMENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -20,6 +20,7 @@ function apartmentDir(apartmentId: string) {
 function extForMime(type: string, fileName: string) {
   if (type === "image/png") return ".png";
   if (type === "image/webp") return ".webp";
+  if (type === "image/heic" || type === "image/heif") return ".heic";
   if (type === "application/pdf") return ".pdf";
   if (type === "image/jpeg") return ".jpg";
   const lower = fileName.toLowerCase();
@@ -29,14 +30,23 @@ function extForMime(type: string, fileName: string) {
   return ".jpg";
 }
 
+function isAllowedImageFile(file: File): boolean {
+  if (IMAGE_TYPES.has(file.type) || file.type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
+}
+
 async function saveFile(
   apartmentId: string,
   file: File,
   subdir: "" | "documents"
 ): Promise<{ url: string; mimeType: string; fileName: string }> {
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-  const allowed = subdir === "documents" ? DOCUMENT_TYPES : IMAGE_TYPES;
-  if (!allowed.has(file.type) && !(subdir === "documents" && isPdf)) {
+  const allowedImage = isAllowedImageFile(file);
+  if (subdir === "documents") {
+    if (!DOCUMENT_TYPES.has(file.type) && !isPdf && !allowedImage) {
+      throw new Error("invalid_type");
+    }
+  } else if (!allowedImage) {
     throw new Error("invalid_type");
   }
   const max = subdir === "documents" && isPdf ? MAX_DOCUMENT_BYTES : MAX_IMAGE_BYTES;

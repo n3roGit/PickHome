@@ -1,35 +1,46 @@
 import {
-  computeCommuteLegs,
+  commuteUnavailableMessage,
   type CommuteLeg,
+  type CommutePersonEstimate,
 } from "@/lib/commute";
-import { travelModeLabel, type TravelMode } from "@/lib/travel-mode";
+import { travelModeLabel } from "@/lib/travel-mode";
 
-const UNAVAILABLE_MESSAGES: Record<NonNullable<CommuteLeg["unavailableReason"]>, string> = {
-  missing_apartment_coords: "Immobilie hat keine Koordinaten (Adresse fehlt oder nicht geocodiert).",
-  missing_address_coords: "Adresse konnte nicht geocodiert werden — bitte in den Einstellungen prüfen.",
-  routing_failed: "Route konnte nicht berechnet werden.",
-};
-
-export function commuteUnavailableMessage(reason: CommuteLeg["unavailableReason"]): string | null {
-  if (!reason) return null;
-  return UNAVAILABLE_MESSAGES[reason];
+function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
+  return (
+    <ul className="space-y-3">
+      {legs.map((leg) => (
+        <li key={leg.addressId} className="border border-pn-border rounded-lg px-4 py-3">
+          <p className="font-medium">{leg.label}</p>
+          <p className="text-sm text-pn-text-secondary">{leg.address}</p>
+          {leg.distanceText && leg.durationText ? (
+            <p className="text-sm mt-2">
+              <span className="font-medium">{leg.distanceText}</span>
+              <span className="text-pn-text-tertiary"> · ca. {leg.durationText}</span>
+            </p>
+          ) : (
+            <p className="text-sm text-pn-text-tertiary mt-2">
+              {commuteUnavailableMessage(leg.unavailableReason)}
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function ApartmentCommutePanel({
-  legs,
-  travelMode,
+  people,
   settingsHref,
 }: {
-  legs: CommuteLeg[];
-  travelMode: TravelMode;
+  people: CommutePersonEstimate[];
   settingsHref: string;
 }) {
-  if (legs.length === 0) {
+  if (people.length === 1 && people[0].legs.length === 0) {
     return (
       <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6">
         <h2 className="font-semibold mb-1">Anfahrt</h2>
         <p className="text-sm text-pn-text-tertiary">
-          Keine Adressen hinterlegt. In den{" "}
+          Noch keine Anfahrtszeiten — in den{" "}
           <a href={settingsHref} className="text-pn-accent hover:underline">
             Kontoeinstellungen
           </a>{" "}
@@ -43,26 +54,37 @@ export function ApartmentCommutePanel({
     <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6">
       <h2 className="font-semibold mb-1">Anfahrt</h2>
       <p className="text-sm text-pn-text-secondary mb-4">
-        Geschätzte Anfahrt ({travelModeLabel(travelMode)}).
+        Geschätzte Anfahrt pro Person — Verkehrsmittel und Ziele aus den jeweiligen Kontoeinstellungen.
       </p>
-      <ul className="space-y-3">
-        {legs.map((leg) => (
-          <li key={leg.addressId} className="border border-pn-border rounded-lg px-4 py-3">
-            <p className="font-medium">{leg.label}</p>
-            <p className="text-sm text-pn-text-secondary">{leg.address}</p>
-            {leg.distanceText && leg.durationText ? (
-              <p className="text-sm mt-2">
-                <span className="font-medium">{leg.distanceText}</span>
-                <span className="text-pn-text-tertiary"> · ca. {leg.durationText}</span>
+      <div className="space-y-6">
+        {people.map((person) => (
+          <div key={person.userId}>
+            <h3 className="text-sm font-semibold mb-0.5">
+              {person.isCurrentUser ? "Du" : person.name}
+            </h3>
+            <p className="text-xs text-pn-text-tertiary mb-3">
+              {travelModeLabel(person.travelMode)}
+            </p>
+            {person.legs.length === 0 ? (
+              <p className="text-sm text-pn-text-tertiary">
+                {person.isCurrentUser ? (
+                  <>
+                    Keine Adressen hinterlegt — in den{" "}
+                    <a href={settingsHref} className="text-pn-accent hover:underline">
+                      Kontoeinstellungen
+                    </a>{" "}
+                    anlegen.
+                  </>
+                ) : (
+                  <>Keine Adressen hinterlegt.</>
+                )}
               </p>
             ) : (
-              <p className="text-sm text-pn-text-tertiary mt-2">
-                {commuteUnavailableMessage(leg.unavailableReason)}
-              </p>
+              <CommuteLegList legs={person.legs} />
             )}
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }

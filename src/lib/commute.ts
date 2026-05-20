@@ -24,11 +24,65 @@ export type CommuteLeg = {
   unavailableReason: "missing_apartment_coords" | "missing_address_coords" | "routing_failed" | null;
 };
 
+export type CommuteMemberInput = {
+  userId: string;
+  name: string;
+  travelMode: TravelMode;
+  addresses: CommuteAddress[];
+};
+
+export type CommutePersonEstimate = {
+  userId: string;
+  name: string;
+  isCurrentUser: boolean;
+  travelMode: TravelMode;
+  legs: CommuteLeg[];
+};
+
+const UNAVAILABLE_MESSAGES: Record<NonNullable<CommuteLeg["unavailableReason"]>, string> = {
+  missing_apartment_coords: "Immobilie hat keine Koordinaten (Adresse fehlt oder nicht geocodiert).",
+  missing_address_coords: "Adresse konnte nicht geocodiert werden.",
+  routing_failed: "Route konnte nicht berechnet werden.",
+};
+
+export function commuteUnavailableMessage(reason: CommuteLeg["unavailableReason"]): string | null {
+  if (!reason) return null;
+  return UNAVAILABLE_MESSAGES[reason];
+}
+
 export {
   invalidateCommuteCacheForApartment,
   invalidateCommuteCacheForUser,
   invalidateCommuteCacheForUserAddress,
 };
+
+export async function computeCommuteForMembers(input: {
+  apartmentId: string;
+  apartment: RoutePoint | null;
+  currentUserId: string;
+  members: CommuteMemberInput[];
+}): Promise<CommutePersonEstimate[]> {
+  const estimates = await Promise.all(
+    input.members.map(async (member) => ({
+      userId: member.userId,
+      name: member.name,
+      isCurrentUser: member.userId === input.currentUserId,
+      travelMode: member.travelMode,
+      legs: await computeCommuteLegs({
+        apartmentId: input.apartmentId,
+        apartment: input.apartment,
+        addresses: member.addresses,
+        travelMode: member.travelMode,
+      }),
+    }))
+  );
+
+  return estimates.sort((a, b) => {
+    if (a.isCurrentUser) return -1;
+    if (b.isCurrentUser) return 1;
+    return a.name.localeCompare(b.name, "de");
+  });
+}
 
 export async function computeCommuteLegs(input: {
   apartmentId: string;
