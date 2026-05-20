@@ -26,6 +26,7 @@ type Partner = {
   name: string;
   ratings: PartnerRating[];
   score: number;
+  displayScore: number;
   dealbreaker: boolean;
   rated: number;
 };
@@ -114,7 +115,11 @@ export function RatingSliders({
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
         <div className="bg-pn-bg-surface border border-pn-border rounded-xl p-4">
           <p className="text-xs font-semibold text-pn-text-tertiary uppercase mb-2">Meine Bewertung</p>
-          <ScoreBadge score={myScore.score} dealbreaker={myScore.dealbreaker} />
+          <ScoreBadge
+            score={myScore.score}
+            displayScore={myScore.displayScore}
+            dealbreaker={myScore.dealbreaker}
+          />
           <p className="text-xs text-pn-text-tertiary mt-2">
             {myScore.rated}/{myScore.total} Kriterien
           </p>
@@ -127,7 +132,11 @@ export function RatingSliders({
             <p className="text-xs font-semibold text-pn-text-tertiary uppercase mb-2">
               {p.name}
             </p>
-            <ScoreBadge score={p.score} dealbreaker={p.dealbreaker} />
+            <ScoreBadge
+              score={p.score}
+              displayScore={p.displayScore}
+              dealbreaker={p.dealbreaker}
+            />
             <p className="text-xs text-pn-text-tertiary mt-2">
               {p.rated}/{criteriaFlat.length} Kriterien
             </p>

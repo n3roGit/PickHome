@@ -44,7 +44,7 @@ export function computeScore(
   criteria: CriterionInput[],
   ratings: RatingInput[],
   dealbreakerThreshold: number = DEFAULT_DEALBREAKER_THRESHOLD
-): { score: number; dealbreaker: boolean; rated: number; total: number } {
+): { score: number; displayScore: number; dealbreaker: boolean; rated: number; total: number } {
   const threshold = parseDealbreakerThreshold(dealbreakerThreshold);
   const ratingMap = new Map(ratings.map((r) => [r.criterionId, r.score]));
   let weightedSum = 0;
@@ -65,13 +65,13 @@ export function computeScore(
 
   const total = criteria.length;
   if (weightTotal === 0) {
-    return { score: 0, dealbreaker, rated, total };
+    return { score: 0, displayScore: 0, dealbreaker, rated, total };
   }
+  const displayScore = Math.round((weightedSum / weightTotal) * 100);
   if (dealbreaker) {
-    return { score: 0, dealbreaker: true, rated, total };
+    return { score: 0, displayScore, dealbreaker: true, rated, total };
   }
-  const score = Math.round((weightedSum / weightTotal) * 100);
-  return { score, dealbreaker: false, rated, total };
+  return { score: displayScore, displayScore, dealbreaker: false, rated, total };
 }
 
 export function scoreColor(score: number, dealbreaker: boolean): "high" | "mid" | "low" {

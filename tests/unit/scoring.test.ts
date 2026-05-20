@@ -22,6 +22,7 @@ describe("computeScore", () => {
   it("returns zero when no ratings", () => {
     expect(computeScore(criteria, [])).toEqual({
       score: 0,
+      displayScore: 0,
       dealbreaker: false,
       rated: 0,
       total: 2,
@@ -46,6 +47,7 @@ describe("computeScore", () => {
     ]);
     expect(result.dealbreaker).toBe(true);
     expect(result.score).toBe(0);
+    expect(result.displayScore).toBeGreaterThan(0);
   });
 
   it("ignores unrated criteria in weight total", () => {
@@ -68,6 +70,7 @@ describe("computeScore", () => {
     const result = computeScore(criteria, [{ criterionId: "a", score: 3 }]);
     expect(result.dealbreaker).toBe(true);
     expect(result.score).toBe(0);
+    expect(result.displayScore).toBe(30);
   });
 
   it("respects custom dealbreaker threshold", () => {

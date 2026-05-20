@@ -106,6 +106,7 @@ export default async function ApartmentPage({
           note: r.note,
         })),
         score: result.score,
+        displayScore: result.displayScore,
         dealbreaker: result.dealbreaker,
         rated: result.rated,
       };
@@ -138,7 +139,11 @@ export default async function ApartmentPage({
           <div className="flex items-center gap-3">
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />
             <ApartmentDeleteButton apartmentId={apartment.id} />
-            <ScoreBadge score={myScore.score} dealbreaker={myScore.dealbreaker} />
+            <ScoreBadge
+              score={myScore.score}
+              displayScore={myScore.displayScore}
+              dealbreaker={myScore.dealbreaker}
+            />
           </div>
         </div>
         <p className="text-sm text-pn-text-secondary mb-2">

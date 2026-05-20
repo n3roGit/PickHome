@@ -171,7 +171,7 @@ export function CompareView({
                     const ratings = allRatings.filter(
                       (r) => r.apartmentId === a.id && r.userId === m.user.id
                     );
-                    const { score, dealbreaker } = apartmentScore(
+                    const { score, displayScore, dealbreaker } = apartmentScore(
                       criteria,
                       ratings,
                       m.user.id,
@@ -179,7 +179,11 @@ export function CompareView({
                     );
                     return (
                       <td key={m.user.id} className="p-3 text-center">
-                        <ScoreBadge score={score} dealbreaker={dealbreaker} />
+                        <ScoreBadge
+                          score={score}
+                          displayScore={displayScore}
+                          dealbreaker={dealbreaker}
+                        />
                       </td>
                     );
                   })}

@@ -295,32 +295,18 @@ export default async function ProjectPage({
                       })()}
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 min-w-[140px]">
-                    <div className="flex flex-col items-end gap-2 flex-1">
-                      <ScoreBadge score={a.score} dealbreaker={a.dealbreaker} />
-                      <RatingProgressBar rated={a.rated} total={a.total} />
-                      {pricePerPoint(a.price, a.score) && (
-                        <span className="text-xs text-pn-text-tertiary">
-                          {pricePerPoint(a.price, a.score)}/Pkt
-                        </span>
-                      )}
-                    </div>
-                    <Link
-                      href={`/project/${project.id}/apartment/${a.id}`}
-                      aria-label="Immobilie bearbeiten"
-                      title="Bearbeiten / Bewerten"
-                      className="inline-flex items-center justify-center w-9 h-9 border border-pn-border rounded-lg text-pn-text-secondary hover:bg-pn-bg-subtle hover:text-pn-accent shrink-0 self-center"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-4 h-4"
-                        aria-hidden="true"
-                      >
-                        <path d="m2.695 14.762-1.262 3.34a.75.75 0 0 0 1.018 1.018l3.34-1.262a4.5 4.5 0 0 0 1.897-.923l.337-.337-3.993-3.993-.337.337a4.5 4.5 0 0 0-.923 1.897ZM12.75 4.5l3.993 3.993-7.184 7.184a5.25 5.25 0 0 1-1.32 1.1l-2.065.783.783-2.065a5.25 5.25 0 0 1 1.1-1.32L12.75 4.5Z" />
-                      </svg>
-                    </Link>
+                  <div className="flex flex-col items-end gap-2 min-w-[140px]">
+                    <ScoreBadge
+                      score={a.score}
+                      displayScore={a.displayScore}
+                      dealbreaker={a.dealbreaker}
+                    />
+                    <RatingProgressBar rated={a.rated} total={a.total} />
+                    {pricePerPoint(a.price, a.displayScore) && (
+                      <span className="text-xs text-pn-text-tertiary">
+                        {pricePerPoint(a.price, a.displayScore)}/Pkt
+                      </span>
+                    )}
                     {tab === "archived" && <ApartmentDeleteButton apartmentId={a.id} compact />}
                   </div>
                 </li>
