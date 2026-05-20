@@ -29,6 +29,30 @@ function externalServiceForTravelMode(travelMode: TravelMode): ExternalService {
   return travelMode === "transit" ? "transit" : "osrm";
 }
 
+export async function countMissingCommuteLegsForProject(projectId: string): Promise<number> {
+  const rows = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) AS count
+    FROM Apartment a
+    INNER JOIN Project p ON p.id = a.projectId AND p.archivedAt IS NULL
+    INNER JOIN ProjectMember pm ON pm.projectId = a.projectId
+    INNER JOIN User u ON u.id = pm.userId
+    INNER JOIN UserAddress ua ON ua.userId = u.id
+    LEFT JOIN CommuteCache cc ON
+      cc.apartmentId = a.id AND
+      cc.userAddressId = ua.id AND
+      cc.travelMode = u.travelMode
+    WHERE
+      a.projectId = ${projectId} AND
+      a.archivedAt IS NULL AND
+      a.latitude IS NOT NULL AND
+      a.longitude IS NOT NULL AND
+      ua.latitude IS NOT NULL AND
+      ua.longitude IS NOT NULL AND
+      cc.apartmentId IS NULL
+  `;
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function findMissingCommuteLegs(limit: number): Promise<MissingCommuteLegRow[]> {
   if (limit <= 0) return [];
 

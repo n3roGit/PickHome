@@ -2,7 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import * as routing from "@/lib/routing";
 import * as transitRouting from "@/lib/transit-routing";
 import { computeCommuteLegs, invalidateCommuteCacheForApartment } from "@/lib/commute";
-import { findMissingCommuteLegs, runCommuteBackfillTick } from "@/lib/commute-backfill";
+import {
+  countMissingCommuteLegsForProject,
+  findMissingCommuteLegs,
+  runCommuteBackfillTick,
+} from "@/lib/commute-backfill";
 import { reindexProjectCommute } from "@/lib/commute-reindex";
 import {
   clearProjectData,
@@ -459,6 +463,32 @@ describe("commute cache integration", () => {
       },
     });
     expect(drivingCache?.distanceMeters).toBe(15200);
+    await prisma.$disconnect();
+  });
+
+  it("countMissingCommuteLegsForProject counts only the given project", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    await prisma.apartment.create({
+      data: {
+        projectId: project.id,
+        title: "Test apt",
+        latitude: 53.08,
+        longitude: 8.8,
+      },
+    });
+    await prisma.userAddress.create({
+      data: {
+        userId: user.id,
+        label: "Arbeit",
+        address: "Bremen",
+        latitude: 53.1,
+        longitude: 8.85,
+      },
+    });
+
+    expect(await countMissingCommuteLegsForProject(project.id)).toBe(1);
     await prisma.$disconnect();
   });
 

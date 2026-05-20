@@ -6,15 +6,12 @@ import {
   reindexProjectDocumentsAction,
 } from "@/app/actions";
 import type { ProjectReindexJobView } from "@/lib/project-reindex-jobs";
-import {
-  commuteReindexHadApiUnavailable,
-  formatCommuteReindexMessage,
-  formatDocumentsReindexMessage,
-} from "@/lib/project-reindex-messages";
+import { formatDocumentsReindexMessage } from "@/lib/project-reindex-messages";
 
 type ReindexJobsResponse = {
   documents: ProjectReindexJobView | null;
   commute: ProjectReindexJobView | null;
+  commutePendingLegs: number;
 };
 
 const reindexErrors: Record<string, string> = {
@@ -34,9 +31,6 @@ function jobMessage(job: ProjectReindexJobView | null): string | null {
   if (job.kind === "documents" && job.documentsResult) {
     return formatDocumentsReindexMessage(job.documentsResult);
   }
-  if (job.kind === "commute" && job.commuteResult) {
-    return formatCommuteReindexMessage(job.commuteResult);
-  }
   return null;
 }
 
@@ -47,14 +41,21 @@ function messageClassName(job: ProjectReindexJobView | null): string {
   if (job?.status === "running") {
     return "text-sm text-pn-text-secondary bg-pn-bg-subtle px-3 py-2 rounded-lg";
   }
-  if (
-    job?.kind === "commute" &&
-    job.commuteResult &&
-    commuteReindexHadApiUnavailable(job.commuteResult)
-  ) {
-    return "text-sm text-amber-800 bg-amber-500/15 px-3 py-2 rounded-lg";
-  }
   return "text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg";
+}
+
+function commutePendingStatusText(
+  pending: number,
+  running: boolean
+): string {
+  if (running) {
+    return pending > 0
+      ? `Berechnung läuft — ${pending} Route(n) noch offen`
+      : "Berechnung läuft…";
+  }
+  if (pending === 1) return "1 Route noch offen";
+  if (pending > 1) return `${pending} Routen noch offen`;
+  return "Alle Routen berechnet";
 }
 
 export function ProjectReindexPanel({
@@ -77,7 +78,10 @@ export function ProjectReindexPanel({
         return;
       }
       const data = (await res.json()) as ReindexJobsResponse;
-      setJobs(data);
+      setJobs({
+        ...data,
+        commutePendingLegs: data.commutePendingLegs ?? 0,
+      });
       setLoadError(null);
     } catch {
       setLoadError("Status konnte nicht geladen werden.");
@@ -89,9 +93,10 @@ export function ProjectReindexPanel({
   }, [loadJobs, startedKind]);
 
   useEffect(() => {
-    const running =
-      jobs?.documents?.status === "running" || jobs?.commute?.status === "running";
-    if (!running) return;
+    const documentsRunning = jobs?.documents?.status === "running";
+    const commuteRunning = jobs?.commute?.status === "running";
+    const pending = jobs?.commutePendingLegs ?? 0;
+    if (!documentsRunning && !commuteRunning && pending === 0) return;
 
     const timer = window.setInterval(() => {
       void loadJobs();
@@ -102,8 +107,8 @@ export function ProjectReindexPanel({
 
   const documentsRunning = jobs?.documents?.status === "running";
   const commuteRunning = jobs?.commute?.status === "running";
+  const commutePendingLegs = jobs?.commutePendingLegs ?? 0;
   const documentsMessage = jobMessage(jobs?.documents ?? null);
-  const commuteMessage = jobMessage(jobs?.commute ?? null);
 
   return (
     <>
@@ -148,8 +153,17 @@ export function ProjectReindexPanel({
             werden verworfen.
           </p>
         </div>
-        {commuteMessage && (
-          <p className={messageClassName(jobs?.commute ?? null)}>{commuteMessage}</p>
+        <p
+          className={`text-sm tabular-nums ${
+            commutePendingLegs > 0 || commuteRunning
+              ? "text-pn-text-primary font-medium"
+              : "text-pn-text-secondary"
+          }`}
+        >
+          {commutePendingStatusText(commutePendingLegs, commuteRunning)}
+        </p>
+        {jobs?.commute?.status === "failed" && (
+          <p className={messageClassName(jobs.commute)}>Indizierung fehlgeschlagen.</p>
         )}
         <form action={reindexProjectCommuteAction.bind(null, projectId)}>
           <button
