@@ -1,6 +1,6 @@
 {
   "name": "pickhome",
-  "version": "1.2.41",
+  "version": "1.2.42",
   "private": true,
   "scripts": {
     "predev": "node scripts/ensure-data-dirs.mjs",
