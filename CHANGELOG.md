@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.0](https://github.com/n3roGit/PickHome/releases/tag/v1.2.0) (2026-05-20)
+
+### Features
+
+- Purchase cost estimates use the apartment address Bundesland when detectable (PLZ or name), overriding the project default.
+- README demo screenshots.
+
+### Bug Fixes
+
+- Apartment list sort order is applied on the project page.
+
 ## [1.1.0](https://github.com/n3roGit/PickHome/releases/tag/v1.1.0) (2026-05-19)
 
 ### Features
