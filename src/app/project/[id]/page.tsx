@@ -168,7 +168,9 @@ export default async function ProjectPage({
       : undefined;
   const areaFilterPlzOverlays =
     tab === "map" && areaFilterEnabled && areaFilterConfig && activeProject
-      ? await resolvePlzMapOverlays(areaFilterConfig.selectedPlz, activeProject.apartments)
+      ? await resolvePlzMapOverlays(areaFilterConfig.selectedPlz, activeProject.apartments, {
+          geocode: false,
+        })
       : [];
 
   const apartments = project.apartments.map((a) => {
@@ -527,6 +529,7 @@ export default async function ProjectPage({
             <ProjectMap
               key="project-map"
               projectId={project.id}
+              areaFilterEnabled={areaFilterEnabled}
               areaFilterPlzOverlays={areaFilterPlzOverlays}
               apartments={activeProject.apartments.map((a) => {
                 const scored = apartmentScore(

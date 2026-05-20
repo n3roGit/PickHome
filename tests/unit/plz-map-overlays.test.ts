@@ -58,4 +58,11 @@ describe("plz-map-overlays", () => {
     expect(merged).toHaveLength(2);
     expect(merged.every((entry) => entry.radiusM === DEFAULT_PLZ_OVERLAY_RADIUS_M)).toBe(true);
   });
+
+  it("skips geocoding when geocode option is false", async () => {
+    const { geocodeAddress } = await import("@/lib/geocode");
+    const overlays = await resolvePlzMapOverlays(["28203"], [], { geocode: false });
+    expect(overlays).toHaveLength(0);
+    expect(geocodeAddress).not.toHaveBeenCalled();
+  });
 });

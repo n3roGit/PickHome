@@ -50,10 +50,6 @@ function averageApartmentCentroids(
   return result;
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function haversineMeters(
   lat1: number,
   lng1: number,
@@ -141,10 +137,17 @@ export function mergeOverlappingPlzOverlays(
   });
 }
 
+export type ResolvePlzMapOverlaysOptions = {
+  /** When false, skip Nominatim lookups (fast path for SSR). */
+  geocode?: boolean;
+};
+
 export async function resolvePlzMapOverlays(
   selectedPlz: string[],
-  apartments: ApartmentCoords[]
+  apartments: ApartmentCoords[],
+  options: ResolvePlzMapOverlaysOptions = {}
 ): Promise<PlzMapOverlay[]> {
+  const geocode = options.geocode ?? true;
   if (selectedPlz.length === 0) return [];
 
   const fromApartments = averageApartmentCentroids(selectedPlz, apartments);
@@ -165,13 +168,12 @@ export async function resolvePlzMapOverlays(
     needsGeocode.push(plz);
   }
 
-  for (const plz of needsGeocode) {
-    const coords = await geocodeAddress(`${plz}, Deutschland`);
-    if (coords) {
-      overlays.push({ plz, lat: coords.latitude, lng: coords.longitude });
-    }
-    if (needsGeocode.length > 1) {
-      await sleep(1100);
+  if (geocode) {
+    for (const plz of needsGeocode) {
+      const coords = await geocodeAddress(`${plz}, Deutschland`);
+      if (coords) {
+        overlays.push({ plz, lat: coords.latitude, lng: coords.longitude });
+      }
     }
   }
 

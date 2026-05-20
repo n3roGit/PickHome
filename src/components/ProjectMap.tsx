@@ -29,13 +29,17 @@ export function ProjectMap({
   projectId,
   apartments,
   areaFilterPlzOverlays = [],
+  areaFilterEnabled = false,
 }: {
   projectId: string;
   apartments: MapApartment[];
   areaFilterPlzOverlays?: PlzMapOverlay[];
+  areaFilterEnabled?: boolean;
 }) {
   const [points, setPoints] = useState(apartments);
   const [loading, setLoading] = useState(false);
+  const [plzOverlays, setPlzOverlays] = useState(areaFilterPlzOverlays);
+  const [plzOverlaysLoading, setPlzOverlaysLoading] = useState(false);
   const [colorMode, setColorMode] = useState<"score" | "dealbreaker">("score");
   const [mapReady, setMapReady] = useState(false);
   const [mapMountKey] = useState(() => crypto.randomUUID());
@@ -57,6 +61,36 @@ export function ProjectMap({
   useEffect(() => {
     setPoints(apartments);
   }, [apartments]);
+
+  useEffect(() => {
+    setPlzOverlays(areaFilterPlzOverlays);
+  }, [areaFilterPlzOverlays]);
+
+  useEffect(() => {
+    if (!areaFilterEnabled) return;
+
+    let cancelled = false;
+    setPlzOverlaysLoading(true);
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/plz-overlays`);
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { overlays: PlzMapOverlay[] };
+        if (!cancelled) {
+          setPlzOverlays(data.overlays);
+        }
+      } finally {
+        if (!cancelled) {
+          setPlzOverlaysLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [areaFilterEnabled, projectId]);
 
   async function geocodeMissing() {
     setLoading(true);
@@ -108,9 +142,11 @@ export function ProjectMap({
           {mapped.length} von {withAddress.length} mit Koordinaten
         </span>
       </div>
-      {mapped.length > 0 && areaFilterPlzOverlays.length > 0 && (
+      {mapped.length > 0 && (plzOverlays.length > 0 || plzOverlaysLoading) && (
         <p className="text-xs text-pn-text-secondary">
-          Grüne Kreise markieren die gewählten PLZ-Bereiche des Wunschgebiets.
+          {plzOverlaysLoading
+            ? "Wunschgebiet-Kreise werden geladen…"
+            : "Grüne Kreise markieren die gewählten PLZ-Bereiche des Wunschgebiets."}
         </p>
       )}
       {mapped.length > 0 && (
@@ -154,7 +190,7 @@ export function ProjectMap({
             projectId={projectId}
             apartments={mapped}
             colorMode={colorMode}
-            areaFilterPlzOverlays={areaFilterPlzOverlays}
+            areaFilterPlzOverlays={plzOverlays}
           />
           <div className="flex flex-wrap items-center gap-4 text-xs text-pn-text-secondary">
             <ScoreLegend />
