@@ -1,14 +1,58 @@
 # PickHome
 
-Self-hosted apartment scoring for house hunting: weighted criteria, dealbreakers, comparison, photos, and viewing appointments. German UI, no payment integration.
+Self-hosted apartment scoring for house hunting: weighted criteria, dealbreakers, team ratings, comparison, map, calendar, purchase-cost estimates, commute times, and viewing appointments. German UI, no payment integration.
 
 Repository: [github.com/n3roGit/PickHome](https://github.com/n3roGit/PickHome)
 
 ## Features
 
-- **Admin** (`/admin`): create users, reset passwords, delete users
-- **Users**: projects, apartments, criteria (weight & dealbreaker), ratings 0–10, leaderboard, archive
-- **Per apartment**: photos, viewing appointments (past/upcoming), notes on ratings
+### Scoring and collaboration
+
+- **Projects** with budget, shared **team** (multiple users per search)
+- **Criteria** in groups: weight 1–5, optional **dealbreaker**, ratings 0–10 per person
+- **Leaderboard** with live scores, dealbreaker highlighting, configurable dealbreaker threshold
+- **Partner divergence**: side-by-side ratings when team members disagree notably
+- **Archive** with reasons, notes, and rejection-pattern stats on the archived tab
+- **Duplicate detection** for similar titles/addresses within a project
+
+### Per apartment
+
+- **Basics**: price, size (m²), floor, year built, energy class, broker involvement, listing URL
+- **Listing import**: paste an expose URL to pre-fill empty fields when creating an apartment
+- **Photos** (up to 10 MB) and **PDF documents** / exposé (up to 30 MB); full-text search includes document text
+- **Ratings** with optional notes; live score summary while editing
+- **Viewing appointments** (past/upcoming) on the apartment page and project calendar
+- **Purchase costs** (rough estimate): land transfer tax by Bundesland — from apartment address when detectable, else project default — plus notary/registry and buyer broker
+- **Financing** (rough estimate): equity, loan term, interest rate, monthly payment and lifetime cost from project settings
+- **Commute** times and distances to each team member’s saved addresses (driving / cycling / walking via OSRM; optional self-hosted `OSRM_BASE_URL`)
+- **Company car** benefit estimates on commute legs when configured in account settings
+- **Desired area** badge when the address matches the project’s Wunschgebiet filter
+
+### Project tabs
+
+| Tab | Highlights |
+|-----|------------|
+| **Immobilien** | Sortable list, **full-text search** across fields/ratings/viewings/media, score legend, listing import |
+| **Archiv** | Archived apartments, archive-reason breakdown |
+| **Team** | Invite/remove project members |
+| **Einstellungen** | Name, budget, Bundesland, broker rate, financing defaults, dealbreaker threshold, **Wunschgebiet** (Ort + PLZ/districts), reindex PDF text / commute routes |
+| **Kriterien** | Edit criterion groups, weights, dealbreakers |
+| **Vergleich** | Compare up to 5 apartments: scores, criteria, purchase/finance metrics, partner divergence |
+| **Karte** | Pins colored by score; **Wunschgebiet** PLZ circles (toggle); dealbreaker styling |
+| **Kalender** | All viewings; **iCal feed** URL for Google Calendar, Outlook, Apple Calendar |
+
+### Account (`/account/settings`)
+
+- Change password
+- **TOTP two-factor authentication** with recovery codes
+- **Commute addresses** (home, workplace, …) and travel mode
+- **Company car** settings for commute benefit estimates
+
+### Admin (`/admin`)
+
+- Create users, reset passwords, delete users (cannot delete last admin)
+- **Backup**: download/upload full ZIP (database + uploads)
+- **Scheduled backups**: daily job, retention, restore from stored ZIPs in `data/`
 
 ## Screenshots
 
@@ -81,6 +125,8 @@ Change the admin password after first login (Admin → user → new password).
 
 Optional **two-factor authentication (TOTP)** with recovery codes and password change: **Einstellungen** in the navigation (or `/account/settings`).
 
+The production image applies **database schema updates automatically** on every container start (`scripts/db-autoupdate.mjs`).
+
 ### Data persistence
 
 All runtime data lives in **`./data/`** (gitignored). Docker bind-mounts the same folder:
@@ -89,6 +135,7 @@ All runtime data lives in **`./data/`** (gitignored). Docker bind-mounts the sam
 |------|---------|
 | `data/pickhome.db` | SQLite database |
 | `data/uploads/` | Apartment photos and documents |
+| `data/backups/` | Manual and scheduled backup ZIPs |
 
 Stop / start:
 
@@ -113,6 +160,15 @@ image: n3ro88/pickhome:1.2.3
 
 Releases: push to `main` — CI bumps the patch version in `package.json` (e.g. `1.2.0` → `1.2.1`), tags `v*`, and creates a GitHub Release. For minor/major bumps, set the first two digits in `package.json` before pushing. Update `CHANGELOG.md` manually.
 
+### Optional: self-hosted OSRM (commute routing)
+
+By default, commute routing uses the public OSRM demo (driving only). For reliable cycling/walking routes or higher limits, point to your own OSRM instance:
+
+```bash
+OSRM_BASE_URL=https://your-osrm.example/route/v1
+# optional profile overrides: OSRM_PROFILE_FOOT, OSRM_PROFILE_BIKE, OSRM_PROFILE_DRIVING
+```
+
 ## Local development (without Docker)
 
 ```bash
@@ -128,7 +184,7 @@ npm run dev
 
 Move all persistent data (SQLite DB + uploads) between installations.
 
-**Admin UI:** `/admin` → *Backup herunterladen* or upload a ZIP (then restart the container).
+**Admin UI:** `/admin` → *Backup herunterladen* or upload a ZIP (then restart the container). Scheduled backups can also be restored from the admin panel.
 
 **CLI** (with app stopped or on a copy of `data/`):
 
@@ -152,23 +208,26 @@ Optional: `npm run data:import -- backup.zip --keep` keeps `*.pre-import-*` copi
 | `npm run test:watch` | Tests in watch mode |
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
-| `npm run start` | Run production server |
+| `npm run start` | Run production server (runs `db-autoupdate` first) |
 | `npm run db:reset` | Reset DB + seed admin |
 | `npm run db:push` | Apply Prisma schema |
 | `npm run db:seed` | Seed admin user only |
 
 ## Stack
 
-- Next.js 14 (App Router)
+- Next.js 15 (App Router)
+- React 18, TypeScript
 - SQLite + Prisma
 - Tailwind CSS
-- bcrypt session cookies
+- Leaflet (map)
+- bcrypt session cookies, TOTP (`otpauth`)
 
 ## Security notes
 
 - Intended for **private / LAN** use. Put a reverse proxy with TLS in front if exposed to the internet.
 - Default admin credentials are for first setup only — change them immediately.
-- Uploaded images are stored under `data/uploads/` (served at `/uploads/...`).
+- Set a strong `SESSION_SECRET` in production.
+- Uploaded files are stored under `data/uploads/` (served at `/uploads/...`).
 
 ## License
 
