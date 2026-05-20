@@ -75,6 +75,9 @@ async function main() {
 
   await pushSchemaWithRetry();
 
+  console.log("[pickhome] Backfilling sizeSqm from descriptions (if needed)...");
+  run("npx", ["tsx", "scripts/backfill-size-sqm.mjs"]);
+
   if (isNewDatabase) {
     console.log("[pickhome] Seeding initial admin user...");
     run("npx", ["tsx", "prisma/seed.ts"]);
