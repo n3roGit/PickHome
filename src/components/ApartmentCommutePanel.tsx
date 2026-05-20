@@ -4,7 +4,7 @@ import {
   type CommuteLeg,
   type CommutePersonEstimate,
 } from "@/lib/commute";
-import { formatCommuteBenefitEur } from "@/lib/company-car";
+import { companyCarCommuteMethodLabel, formatCommuteBenefitEur } from "@/lib/company-car";
 import { travelModeLabel } from "@/lib/travel-mode";
 
 function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
@@ -51,8 +51,25 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
                     leg.monthlyCompanyCarCommuteBenefitEur != null && (
                       <span className="block text-xs text-pn-text-tertiary mt-1">
                         Brutto: Grundanteil {formatCommuteBenefitEur(leg.monthlyCompanyCarBaseBenefitEur)} ·
-                        Arbeitsweg ({leg.distanceKmOneWay} km einfach){" "}
+                        Arbeitsweg
+                        {leg.companyCarCommuteMethod === "trips" &&
+                        leg.companyCarOfficeTripsPerMonth != null
+                          ? ` (${leg.distanceKmOneWay} km × ${leg.companyCarOfficeTripsPerMonth} Fahrten)`
+                          : ` (${leg.distanceKmOneWay} km einfach)`}{" "}
                         {formatCommuteBenefitEur(leg.monthlyCompanyCarCommuteBenefitEur)}
+                        {leg.companyCarCommuteMethod && (
+                          <> · {companyCarCommuteMethodLabel(leg.companyCarCommuteMethod)}</>
+                        )}
+                        {leg.monthlyCompanyCarDeductionsEur != null &&
+                          leg.monthlyCompanyCarDeductionsEur > 0 && (
+                            <>
+                              {" · "}
+                              Abzüge {formatCommuteBenefitEur(leg.monthlyCompanyCarDeductionsEur)}
+                            </>
+                          )}
+                        {leg.companyCarEmployerFuelCard && (
+                          <> · Tank-/Ladekarte Arbeitgeber (in 1‑%-Regelung enthalten)</>
+                        )}
                       </span>
                     )}
                 </p>

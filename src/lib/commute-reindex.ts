@@ -3,7 +3,7 @@ import { invalidateCommuteCacheForProject } from "@/lib/commute-cache";
 import { prisma } from "@/lib/prisma";
 import type { RoutePoint } from "@/lib/routing";
 import { parseTravelMode } from "@/lib/travel-mode";
-import { parseCompanyCarRate } from "@/lib/company-car";
+import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
 
 export type ReindexProjectCommuteResult = {
   apartmentsTotal: number;
@@ -37,6 +37,11 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
             companyCarRate: true,
             listPrice: true,
             marginalTaxRatePercent: true,
+            companyCarCommuteMethod: true,
+            companyCarOfficeTripsPerMonth: true,
+            companyCarContributionEur: true,
+            companyCarSelfPaidCostsEur: true,
+            companyCarEmployerFuelCard: true,
             addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
           },
         },
@@ -50,6 +55,13 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
     companyCarRate: m.user.companyCar ? parseCompanyCarRate(m.user.companyCarRate) : null,
     listPrice: m.user.listPrice,
     marginalTaxRatePercent: m.user.marginalTaxRatePercent,
+    companyCarCommuteMethod: m.user.companyCar
+      ? parseCompanyCarCommuteMethod(m.user.companyCarCommuteMethod)
+      : null,
+    companyCarOfficeTripsPerMonth: m.user.companyCar ? m.user.companyCarOfficeTripsPerMonth : null,
+    companyCarContributionEur: m.user.companyCar ? m.user.companyCarContributionEur : null,
+    companyCarSelfPaidCostsEur: m.user.companyCar ? m.user.companyCarSelfPaidCostsEur : null,
+    companyCarEmployerFuelCard: m.user.companyCar ? m.user.companyCarEmployerFuelCard : true,
     addresses: m.user.addresses.map((a) => ({
       id: a.id,
       label: a.label,
@@ -94,6 +106,11 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
         companyCarRate: member.companyCarRate,
         listPrice: member.listPrice,
         marginalTaxRatePercent: member.marginalTaxRatePercent,
+        companyCarCommuteMethod: member.companyCarCommuteMethod,
+        companyCarOfficeTripsPerMonth: member.companyCarOfficeTripsPerMonth,
+        companyCarContributionEur: member.companyCarContributionEur,
+        companyCarSelfPaidCostsEur: member.companyCarSelfPaidCostsEur,
+        companyCarEmployerFuelCard: member.companyCarEmployerFuelCard,
       });
 
       for (const leg of legs) {

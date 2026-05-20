@@ -20,6 +20,11 @@ model User {
   companyCarRate String?
   listPrice      Int?
   marginalTaxRatePercent Int?
+  companyCarCommuteMethod String?
+  companyCarOfficeTripsPerMonth Int?
+  companyCarContributionEur Int?
+  companyCarSelfPaidCostsEur Int?
+  companyCarEmployerFuelCard Boolean @default(true)
   createdAt      DateTime         @default(now())
   projects      ProjectMember[]
   ratings       Rating[]

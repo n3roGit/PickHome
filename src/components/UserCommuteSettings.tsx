@@ -6,7 +6,7 @@ import {
 } from "@/app/actions";
 import { TravelModeForm } from "@/components/TravelModeForm";
 import { travelModeLabel, type TravelMode } from "@/lib/travel-mode";
-import type { CompanyCarRate } from "@/lib/company-car";
+import type { CompanyCarCommuteMethod, CompanyCarRate } from "@/lib/company-car";
 
 type AddressRow = {
   id: string;
@@ -23,6 +23,11 @@ export function UserCommuteSettings({
   companyCarRate,
   listPrice,
   marginalTaxRatePercent,
+  companyCarCommuteMethod,
+  companyCarOfficeTripsPerMonth,
+  companyCarContributionEur,
+  companyCarSelfPaidCostsEur,
+  companyCarEmployerFuelCard,
   addresses,
   saved,
   addressSaved,
@@ -34,6 +39,11 @@ export function UserCommuteSettings({
   companyCarRate: CompanyCarRate;
   listPrice: number | null;
   marginalTaxRatePercent: number | null;
+  companyCarCommuteMethod: CompanyCarCommuteMethod;
+  companyCarOfficeTripsPerMonth: number | null;
+  companyCarContributionEur: number | null;
+  companyCarSelfPaidCostsEur: number | null;
+  companyCarEmployerFuelCard: boolean;
   addresses: AddressRow[];
   saved?: boolean;
   addressSaved?: boolean;
@@ -79,6 +89,11 @@ export function UserCommuteSettings({
           companyCarRate={companyCarRate}
           listPrice={listPrice}
           marginalTaxRatePercent={marginalTaxRatePercent}
+          companyCarCommuteMethod={companyCarCommuteMethod}
+          companyCarOfficeTripsPerMonth={companyCarOfficeTripsPerMonth}
+          companyCarContributionEur={companyCarContributionEur}
+          companyCarSelfPaidCostsEur={companyCarSelfPaidCostsEur}
+          companyCarEmployerFuelCard={companyCarEmployerFuelCard}
           action={updateTravelModeAction}
         />
       </section>

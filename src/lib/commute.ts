@@ -4,7 +4,7 @@ import {
   invalidateCommuteCacheForUser,
   invalidateCommuteCacheForUserAddress,
 } from "@/lib/commute-cache";
-import type { CompanyCarRate } from "@/lib/company-car";
+import type { CompanyCarCommuteMethod, CompanyCarRate } from "@/lib/company-car";
 import { distanceKmOneWay, monthlyCompanyCarBenefitEur } from "@/lib/company-car";
 import { prisma } from "@/lib/prisma";
 import { fetchRoute, formatRouteDistance, formatRouteDuration, type RoutePoint } from "@/lib/routing";
@@ -31,7 +31,11 @@ export type CommuteLeg = {
   monthlyCompanyCarCommuteBenefitEur: number | null;
   monthlyCompanyCarTotalBenefitEur: number | null;
   monthlyCompanyCarTotalNetBenefitEur: number | null;
+  monthlyCompanyCarDeductionsEur: number | null;
   companyCarMarginalTaxRatePercent: number | null;
+  companyCarCommuteMethod: import("@/lib/company-car").CompanyCarCommuteMethod | null;
+  companyCarOfficeTripsPerMonth: number | null;
+  companyCarEmployerFuelCard: boolean | null;
   commuteCostHint: string | null;
 };
 
@@ -44,6 +48,11 @@ export type CommuteMemberInput = {
   companyCarRate: CompanyCarRate | null;
   listPrice: number | null;
   marginalTaxRatePercent: number | null;
+  companyCarCommuteMethod: CompanyCarCommuteMethod | null;
+  companyCarOfficeTripsPerMonth: number | null;
+  companyCarContributionEur: number | null;
+  companyCarSelfPaidCostsEur: number | null;
+  companyCarEmployerFuelCard: boolean;
 };
 
 export type CommutePersonEstimate = {
@@ -93,6 +102,11 @@ export async function computeCommuteForMembers(input: {
         companyCarRate: member.companyCarRate,
         listPrice: member.listPrice,
         marginalTaxRatePercent: member.marginalTaxRatePercent,
+        companyCarCommuteMethod: member.companyCarCommuteMethod,
+        companyCarOfficeTripsPerMonth: member.companyCarOfficeTripsPerMonth,
+        companyCarContributionEur: member.companyCarContributionEur,
+        companyCarSelfPaidCostsEur: member.companyCarSelfPaidCostsEur,
+        companyCarEmployerFuelCard: member.companyCarEmployerFuelCard,
       }),
     }))
   );
@@ -113,6 +127,11 @@ export async function computeCommuteLegs(input: {
   companyCarRate: CompanyCarRate | null;
   listPrice: number | null;
   marginalTaxRatePercent: number | null;
+  companyCarCommuteMethod: CompanyCarCommuteMethod | null;
+  companyCarOfficeTripsPerMonth: number | null;
+  companyCarContributionEur: number | null;
+  companyCarSelfPaidCostsEur: number | null;
+  companyCarEmployerFuelCard: boolean;
 }): Promise<CommuteLeg[]> {
   if (input.addresses.length === 0) return [];
 
@@ -182,7 +201,7 @@ function legFromRoute(
   durationSeconds: number,
   member: Pick<
     CommuteMemberInput,
-    "travelMode" | "companyCar" | "companyCarRate" | "listPrice" | "marginalTaxRatePercent"
+    "travelMode" | "companyCar" | "companyCarRate" | "listPrice" | "marginalTaxRatePercent" | "companyCarCommuteMethod" | "companyCarOfficeTripsPerMonth" | "companyCarContributionEur" | "companyCarSelfPaidCostsEur" | "companyCarEmployerFuelCard"
   >
 ): CommuteLeg {
   const base: CommuteLeg = {
@@ -197,7 +216,11 @@ function legFromRoute(
     monthlyCompanyCarCommuteBenefitEur: null,
     monthlyCompanyCarTotalBenefitEur: null,
     monthlyCompanyCarTotalNetBenefitEur: null,
+    monthlyCompanyCarDeductionsEur: null,
     companyCarMarginalTaxRatePercent: null,
+    companyCarCommuteMethod: null,
+    companyCarOfficeTripsPerMonth: null,
+    companyCarEmployerFuelCard: null,
     commuteCostHint: null,
   };
   return applyCompanyCarCommuteCost(base, addr, distanceMeters, member);
@@ -209,7 +232,7 @@ function applyCompanyCarCommuteCost(
   distanceMeters: number,
   member: Pick<
     CommuteMemberInput,
-    "travelMode" | "companyCar" | "companyCarRate" | "listPrice" | "marginalTaxRatePercent"
+    "travelMode" | "companyCar" | "companyCarRate" | "listPrice" | "marginalTaxRatePercent" | "companyCarCommuteMethod" | "companyCarOfficeTripsPerMonth" | "companyCarContributionEur" | "companyCarSelfPaidCostsEur" | "companyCarEmployerFuelCard"
   >
 ): CommuteLeg {
   if (member.travelMode !== "driving" || !member.companyCar || !addr.isWorkplace) {
@@ -225,10 +248,24 @@ function applyCompanyCarCommuteCost(
     };
   }
 
+  const commuteMethod = member.companyCarCommuteMethod ?? "distance";
+  if (commuteMethod === "trips" && !member.companyCarOfficeTripsPerMonth) {
+    return {
+      ...leg,
+      distanceKmOneWay: km,
+      commuteCostHint: "Bürofahrten pro Monat fehlt — in den Kontoeinstellungen hinterlegen.",
+    };
+  }
+
   const benefit = monthlyCompanyCarBenefitEur({
     listPriceEuros: member.listPrice,
     rate: member.companyCarRate,
     distanceMeters,
+    commuteMethod,
+    officeTripsPerMonth: member.companyCarOfficeTripsPerMonth,
+    contributionEur: member.companyCarContributionEur,
+    selfPaidCostsEur: member.companyCarSelfPaidCostsEur,
+    employerFuelCard: member.companyCarEmployerFuelCard,
     marginalTaxRatePercent: member.marginalTaxRatePercent,
   });
 
@@ -239,7 +276,11 @@ function applyCompanyCarCommuteCost(
     monthlyCompanyCarCommuteBenefitEur: benefit?.commuteGrossEur ?? null,
     monthlyCompanyCarTotalBenefitEur: benefit?.totalGrossEur ?? null,
     monthlyCompanyCarTotalNetBenefitEur: benefit?.totalNetEur ?? null,
+    monthlyCompanyCarDeductionsEur: benefit?.deductionsEur ?? null,
     companyCarMarginalTaxRatePercent: benefit?.marginalTaxRatePercent ?? null,
+    companyCarCommuteMethod: benefit?.commuteMethod ?? null,
+    companyCarOfficeTripsPerMonth: benefit?.officeTripsPerMonth ?? null,
+    companyCarEmployerFuelCard: benefit?.employerFuelCard ?? null,
     commuteCostHint: benefit == null ? "Firmenwagen-Kosten konnten nicht berechnet werden." : null,
   };
 }
@@ -260,7 +301,11 @@ function legUnavailable(
     monthlyCompanyCarCommuteBenefitEur: null,
     monthlyCompanyCarTotalBenefitEur: null,
     monthlyCompanyCarTotalNetBenefitEur: null,
+    monthlyCompanyCarDeductionsEur: null,
     companyCarMarginalTaxRatePercent: null,
+    companyCarCommuteMethod: null,
+    companyCarOfficeTripsPerMonth: null,
+    companyCarEmployerFuelCard: null,
     commuteCostHint: null,
   };
 }

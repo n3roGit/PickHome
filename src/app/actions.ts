@@ -44,7 +44,14 @@ import { parseBrokerBuyerRatePercent, parseFederalStateCode, parseInterestRatePe
 import { parseArchiveNote, parseArchiveReason } from "@/lib/archive-reasons";
 import { parseDealbreakerThreshold } from "@/lib/scoring";
 import { syncApartmentViewedAt } from "@/lib/viewings";
-import { parseCompanyCarRate, parseListPriceEuros, parseMarginalTaxRatePercent } from "@/lib/company-car";
+import {
+  parseCompanyCarRate,
+  parseCompanyCarCommuteMethod,
+  parseListPriceEuros,
+  parseMarginalTaxRatePercent,
+  parseOfficeTripsPerMonth,
+  parseOptionalEuroAmount,
+} from "@/lib/company-car";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { isApartmentUploadError } from "@/lib/upload-limits";
 import type { UploadApartmentFileResult } from "@/app/apartment-photo-actions";
@@ -899,6 +906,19 @@ export async function updateTravelModeAction(formData: FormData) {
   const marginalTaxRatePercent = parseMarginalTaxRatePercent(
     String(formData.get("marginalTaxRatePercent") ?? "")
   );
+  const companyCarCommuteMethod = parseCompanyCarCommuteMethod(
+    String(formData.get("companyCarCommuteMethod") ?? "")
+  );
+  const companyCarOfficeTripsPerMonth = parseOfficeTripsPerMonth(
+    String(formData.get("companyCarOfficeTripsPerMonth") ?? "")
+  );
+  const companyCarContributionEur = parseOptionalEuroAmount(
+    String(formData.get("companyCarContributionEur") ?? "")
+  );
+  const companyCarSelfPaidCostsEur = parseOptionalEuroAmount(
+    String(formData.get("companyCarSelfPaidCostsEur") ?? "")
+  );
+  const companyCarEmployerFuelCard = formData.get("companyCarEmployerFuelCard") === "on";
 
   await prisma.user.update({
     where: { id: user.id },
@@ -909,6 +929,17 @@ export async function updateTravelModeAction(formData: FormData) {
       listPrice: travelMode === "driving" && companyCar ? listPrice : null,
       marginalTaxRatePercent:
         travelMode === "driving" && companyCar ? marginalTaxRatePercent : null,
+      companyCarCommuteMethod:
+        travelMode === "driving" && companyCar ? companyCarCommuteMethod : null,
+      companyCarOfficeTripsPerMonth:
+        travelMode === "driving" && companyCar && companyCarCommuteMethod === "trips"
+          ? companyCarOfficeTripsPerMonth
+          : null,
+      companyCarContributionEur:
+        travelMode === "driving" && companyCar ? Math.round(companyCarContributionEur) : null,
+      companyCarSelfPaidCostsEur:
+        travelMode === "driving" && companyCar ? Math.round(companyCarSelfPaidCostsEur) : null,
+      companyCarEmployerFuelCard: travelMode === "driving" && companyCar ? companyCarEmployerFuelCard : true,
     },
   });
   await invalidateCommuteCacheForUser(user.id);

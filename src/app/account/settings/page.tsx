@@ -12,7 +12,7 @@ import { Footer } from "@/components/Footer";
 import { Nav } from "@/components/Nav";
 import { UserCommuteSettings } from "@/components/UserCommuteSettings";
 import { isAdmin, requireUser } from "@/lib/auth";
-import { parseCompanyCarRate } from "@/lib/company-car";
+import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { isTotpEnabled } from "@/lib/totp";
@@ -101,6 +101,11 @@ export default async function SettingsPage({
           companyCarRate={parseCompanyCarRate(fresh.companyCarRate)}
           listPrice={fresh.listPrice}
           marginalTaxRatePercent={fresh.marginalTaxRatePercent}
+          companyCarCommuteMethod={parseCompanyCarCommuteMethod(fresh.companyCarCommuteMethod)}
+          companyCarOfficeTripsPerMonth={fresh.companyCarOfficeTripsPerMonth}
+          companyCarContributionEur={fresh.companyCarContributionEur}
+          companyCarSelfPaidCostsEur={fresh.companyCarSelfPaidCostsEur}
+          companyCarEmployerFuelCard={fresh.companyCarEmployerFuelCard}
           addresses={fresh.addresses.map((a) => ({
             id: a.id,
             label: a.label,

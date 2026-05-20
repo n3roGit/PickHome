@@ -20,7 +20,7 @@ import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
 import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
 import { computeCommuteForMembers } from "@/lib/commute";
 import { prisma } from "@/lib/prisma";
-import { parseCompanyCarRate } from "@/lib/company-car";
+import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
 import { parseTravelMode } from "@/lib/travel-mode";
 import {
   apartmentScore,
@@ -129,6 +129,11 @@ export default async function ApartmentPage({
       companyCarRate: true,
       listPrice: true,
       marginalTaxRatePercent: true,
+      companyCarCommuteMethod: true,
+      companyCarOfficeTripsPerMonth: true,
+      companyCarContributionEur: true,
+      companyCarSelfPaidCostsEur: true,
+      companyCarEmployerFuelCard: true,
       addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
     },
   });
@@ -148,6 +153,13 @@ export default async function ApartmentPage({
       companyCarRate: member.companyCar ? parseCompanyCarRate(member.companyCarRate) : null,
       listPrice: member.listPrice,
       marginalTaxRatePercent: member.marginalTaxRatePercent,
+      companyCarCommuteMethod: member.companyCar
+        ? parseCompanyCarCommuteMethod(member.companyCarCommuteMethod)
+        : null,
+      companyCarOfficeTripsPerMonth: member.companyCar ? member.companyCarOfficeTripsPerMonth : null,
+      companyCarContributionEur: member.companyCar ? member.companyCarContributionEur : null,
+      companyCarSelfPaidCostsEur: member.companyCar ? member.companyCarSelfPaidCostsEur : null,
+      companyCarEmployerFuelCard: member.companyCar ? member.companyCarEmployerFuelCard : true,
       addresses: member.addresses.map((a) => ({
         id: a.id,
         label: a.label,

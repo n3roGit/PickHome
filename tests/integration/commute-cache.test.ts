@@ -70,6 +70,12 @@ describe("commute cache integration", () => {
       companyCar: false,
       companyCarRate: null,
       listPrice: null,
+      marginalTaxRatePercent: null,
+      companyCarCommuteMethod: null,
+      companyCarOfficeTripsPerMonth: null,
+      companyCarContributionEur: null,
+      companyCarSelfPaidCostsEur: null,
+      companyCarEmployerFuelCard: true,
     };
 
     const first = await computeCommuteLegs(input);
