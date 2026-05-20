@@ -173,6 +173,28 @@ export async function reindexProjectDocumentsAction(projectId: string) {
   redirect(`${base}&${params.toString()}`);
 }
 
+export async function reindexProjectCommuteAction(projectId: string) {
+  const user = await requireUser();
+  if (isAdmin(user)) redirect("/admin");
+
+  const project = await assertProjectAccess(projectId, user.id);
+  if (!project) redirect("/dashboard");
+
+  const { reindexProjectCommute } = await import("@/lib/commute-reindex");
+  const result = await reindexProjectCommute(projectId);
+
+  revalidatePath(`/project/${projectId}`);
+  const base = `/project/${projectId}?tab=settings`;
+  const params = new URLSearchParams({
+    commute_apartments: String(result.apartmentsTotal),
+    commute_with_coords: String(result.apartmentsWithCoords),
+    commute_routes: String(result.routesComputed),
+    commute_skipped: String(result.routesSkipped),
+    commute_failed: String(result.routesFailed),
+  });
+  redirect(`${base}&${params.toString()}`);
+}
+
 export async function archiveApartmentAction(apartmentId: string) {
   const user = await requireUser();
   const apt = await prisma.apartment.findFirst({

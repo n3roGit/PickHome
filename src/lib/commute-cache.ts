@@ -4,6 +4,12 @@ export async function invalidateCommuteCacheForApartment(apartmentId: string): P
   await prisma.commuteCache.deleteMany({ where: { apartmentId } });
 }
 
+export async function invalidateCommuteCacheForProject(projectId: string): Promise<void> {
+  await prisma.commuteCache.deleteMany({
+    where: { apartment: { projectId } },
+  });
+}
+
 export async function invalidateCommuteCacheForUserAddress(userAddressId: string): Promise<void> {
   await prisma.commuteCache.deleteMany({ where: { userAddressId } });
 }

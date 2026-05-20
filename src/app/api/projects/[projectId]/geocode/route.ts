@@ -44,7 +44,6 @@ export async function POST(
     await invalidateCommuteCacheForApartment(apt.id);
     apt.latitude = coords.latitude;
     apt.longitude = coords.longitude;
-    await new Promise((r) => setTimeout(r, 1100));
   }
 
   const updated = await prisma.apartment.findMany({

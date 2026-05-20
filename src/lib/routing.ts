@@ -1,3 +1,4 @@
+import { fetchExternal } from "@/lib/external-fetch";
 import type { TravelMode } from "@/lib/travel-mode";
 
 export type RoutePoint = {
@@ -42,13 +43,13 @@ export async function fetchRoute(
   const coords = `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`;
   const url = `${osrmBaseUrl()}/route/v1/${profile}/${coords}?overview=false`;
 
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
+  const res = await fetchExternal("osrm", url, {
+    headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },
+    next: { revalidate: 3600 },
+  });
+  if (!res?.ok) return null;
 
+  try {
     const data = (await res.json()) as {
       routes?: { distance?: number; duration?: number }[];
     };

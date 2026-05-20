@@ -1,4 +1,8 @@
-import { reindexProjectDocumentsAction, updateProjectAction } from "@/app/actions";
+import {
+  reindexProjectCommuteAction,
+  reindexProjectDocumentsAction,
+  updateProjectAction,
+} from "@/app/actions";
 import {
   FEDERAL_STATES,
   formatBrokerBuyerRateForInput,
@@ -23,6 +27,7 @@ export function ProjectSettingsPanel({
   saved,
   error,
   reindexResult,
+  commuteReindexResult,
 }: {
   projectId: string;
   name: string;
@@ -41,6 +46,13 @@ export function ProjectSettingsPanel({
     withText: number;
     withoutText: number;
     missingFile: number;
+  };
+  commuteReindexResult?: {
+    apartmentsTotal: number;
+    apartmentsWithCoords: number;
+    routesComputed: number;
+    routesSkipped: number;
+    routesFailed: number;
   };
 }) {
   return (
@@ -225,6 +237,32 @@ export function ProjectSettingsPanel({
             className="bg-pn-bg-subtle border border-pn-border text-pn-text-primary font-medium px-4 py-2 rounded-lg text-sm hover:bg-pn-border/40"
           >
             PDFs neu einlesen
+          </button>
+        </form>
+      </section>
+
+      <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 max-w-lg space-y-4">
+        <div>
+          <h2 className="font-semibold mb-1">Anfahrtszeiten</h2>
+          <p className="text-sm text-pn-text-secondary">
+            Entfernungen und Fahrzeiten aus den Koordinaten der Immobilien und der
+            Team-Adressen (Kontoeinstellungen) neu berechnen. Bestehende Routen-Caches
+            werden verworfen.
+          </p>
+        </div>
+        {commuteReindexResult && (
+          <p className="text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
+            {commuteReindexResult.apartmentsTotal === 0
+              ? "Keine aktiven Immobilien in diesem Projekt."
+              : `${commuteReindexResult.routesComputed} Route(n) berechnet (${commuteReindexResult.apartmentsWithCoords} von ${commuteReindexResult.apartmentsTotal} Immobilie(n) mit Koordinaten)${commuteReindexResult.routesSkipped > 0 ? `, ${commuteReindexResult.routesSkipped} übersprungen` : ""}${commuteReindexResult.routesFailed > 0 ? `, ${commuteReindexResult.routesFailed} fehlgeschlagen` : ""}.`}
+          </p>
+        )}
+        <form action={reindexProjectCommuteAction.bind(null, projectId)}>
+          <button
+            type="submit"
+            className="bg-pn-bg-subtle border border-pn-border text-pn-text-primary font-medium px-4 py-2 rounded-lg text-sm hover:bg-pn-border/40"
+          >
+            Koordinaten neu indizieren
           </button>
         </form>
       </section>

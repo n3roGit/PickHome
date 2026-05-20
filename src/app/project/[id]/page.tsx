@@ -54,6 +54,11 @@ export default async function ProjectPage({
     reindex_text?: string;
     reindex_empty?: string;
     reindex_missing?: string;
+    commute_apartments?: string;
+    commute_with_coords?: string;
+    commute_routes?: string;
+    commute_skipped?: string;
+    commute_failed?: string;
     sort?: string;
     order?: string;
     q?: string;
@@ -146,6 +151,19 @@ export default async function ProjectPage({
           withText: parseInt(resolvedSearchParams.reindex_text ?? "0", 10) || 0,
           withoutText: parseInt(resolvedSearchParams.reindex_empty ?? "0", 10) || 0,
           missingFile: parseInt(resolvedSearchParams.reindex_missing ?? "0", 10) || 0,
+        }
+      : undefined;
+
+  const commuteRoutes = resolvedSearchParams.commute_routes;
+  const commuteReindexResult =
+    commuteRoutes != null
+      ? {
+          apartmentsTotal: parseInt(resolvedSearchParams.commute_apartments ?? "0", 10) || 0,
+          apartmentsWithCoords:
+            parseInt(resolvedSearchParams.commute_with_coords ?? "0", 10) || 0,
+          routesComputed: parseInt(commuteRoutes, 10) || 0,
+          routesSkipped: parseInt(resolvedSearchParams.commute_skipped ?? "0", 10) || 0,
+          routesFailed: parseInt(resolvedSearchParams.commute_failed ?? "0", 10) || 0,
         }
       : undefined;
 
@@ -346,6 +364,7 @@ export default async function ProjectPage({
             saved={resolvedSearchParams.settings_saved === "1"}
             error={resolvedSearchParams.settings_error}
             reindexResult={reindexResult}
+            commuteReindexResult={commuteReindexResult}
           />
         )}
 

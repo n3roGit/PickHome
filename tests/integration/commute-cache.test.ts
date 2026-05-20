@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as routing from "@/lib/routing";
 import { computeCommuteLegs, invalidateCommuteCacheForApartment } from "@/lib/commute";
+import { reindexProjectCommute } from "@/lib/commute-reindex";
 import {
   clearProjectData,
   createTestPrisma,
@@ -113,6 +114,59 @@ describe("commute cache integration", () => {
     await invalidateCommuteCacheForApartment(apartment.id);
     const count = await prisma.commuteCache.count({ where: { apartmentId: apartment.id } });
     expect(count).toBe(0);
+    await prisma.$disconnect();
+  });
+
+  it("reindexProjectCommute clears cache and repopulates routes", async () => {
+    vi.spyOn(routing, "fetchRoute").mockResolvedValue({
+      distanceMeters: 4200,
+      durationSeconds: 8 * 60,
+    });
+
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apartment = await prisma.apartment.create({
+      data: {
+        projectId: project.id,
+        title: "Test apt",
+        latitude: 53.08,
+        longitude: 8.8,
+      },
+    });
+    const userAddress = await prisma.userAddress.create({
+      data: {
+        userId: user.id,
+        label: "Arbeit",
+        address: "Bremen",
+        latitude: 53.1,
+        longitude: 8.85,
+      },
+    });
+    await prisma.commuteCache.create({
+      data: {
+        apartmentId: apartment.id,
+        userAddressId: userAddress.id,
+        travelMode: "driving",
+        distanceMeters: 999,
+        durationSeconds: 99,
+      },
+    });
+
+    const result = await reindexProjectCommute(project.id);
+    expect(result.routesComputed).toBeGreaterThanOrEqual(1);
+    expect(result.apartmentsWithCoords).toBe(1);
+
+    const cached = await prisma.commuteCache.findUnique({
+      where: {
+        apartmentId_userAddressId_travelMode: {
+          apartmentId: apartment.id,
+          userAddressId: userAddress.id,
+          travelMode: "driving",
+        },
+      },
+    });
+    expect(cached?.distanceMeters).toBe(4200);
     await prisma.$disconnect();
   });
 });

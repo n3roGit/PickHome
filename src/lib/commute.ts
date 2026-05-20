@@ -1,5 +1,6 @@
 import {
   invalidateCommuteCacheForApartment,
+  invalidateCommuteCacheForProject,
   invalidateCommuteCacheForUser,
   invalidateCommuteCacheForUserAddress,
 } from "@/lib/commute-cache";
@@ -52,6 +53,7 @@ export function commuteUnavailableMessage(reason: CommuteLeg["unavailableReason"
 
 export {
   invalidateCommuteCacheForApartment,
+  invalidateCommuteCacheForProject,
   invalidateCommuteCacheForUser,
   invalidateCommuteCacheForUserAddress,
 };
