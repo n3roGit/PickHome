@@ -5,6 +5,8 @@
   "scripts": {
     "predev": "node scripts/ensure-data-dirs.mjs",
     "dev": "next dev",
+    "build:plz-reference": "node scripts/build-plz-reference.mjs",
+    "build:ortsteile-reference": "node scripts/build-ortsteile-reference.mjs",
     "build": "prisma generate && next build",
     "prestart": "node scripts/db-autoupdate.mjs",
     "start": "next start",

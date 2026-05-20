@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Circle, MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect } from "react";
+import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
@@ -22,6 +22,16 @@ function markerIcon(color: string) {
   });
 }
 
+function MapCleanup() {
+  const map = useMap();
+  useEffect(() => {
+    return () => {
+      map.remove();
+    };
+  }, [map]);
+  return null;
+}
+
 export default function ProjectMapInner({
   projectId,
   apartments,
@@ -34,28 +44,16 @@ export default function ProjectMapInner({
   areaFilterPlzOverlays: PlzMapOverlay[];
 }) {
   const center = apartments[0];
-  const [containerId, setContainerId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setContainerId(`ph-map-${crypto.randomUUID()}`);
-    return () => setContainerId(null);
-  }, []);
-
-  if (!containerId) {
-    return (
-      <div className="h-[min(50vh,480px)] min-h-[280px] sm:h-[480px] w-full rounded-xl border border-pn-border bg-pn-bg-subtle" />
-    );
-  }
 
   return (
     <div className="h-[min(50vh,480px)] min-h-[280px] sm:h-[480px] w-full rounded-xl overflow-hidden border border-pn-border z-0">
       <MapContainer
-        id={containerId}
         center={[center.latitude, center.longitude]}
         zoom={11}
         scrollWheelZoom
         className="h-full w-full"
       >
+        <MapCleanup />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

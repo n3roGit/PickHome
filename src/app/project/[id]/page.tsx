@@ -11,7 +11,6 @@ import { CriteriaEditor } from "@/components/CriteriaEditor";
 import { ProjectMembersPanel } from "@/components/ProjectMembersPanel";
 import { ProjectSettingsPanel } from "@/components/ProjectSettingsPanel";
 import { ProjectAreaFilterPanel } from "@/components/ProjectAreaFilterPanel";
-import { LocationCatalogEditor } from "@/components/LocationCatalogEditor";
 import { DesiredAreaBadge } from "@/components/DesiredAreaBadge";
 import { DeleteProjectButton } from "@/components/DeleteProjectButton";
 import { ApartmentDeleteButton } from "@/components/ApartmentDeleteButton";
@@ -50,11 +49,9 @@ import {
   matchApartmentToAreaFilter,
   parseAreaFilterConfig,
 } from "@/lib/area-filter";
-import {
-  getLocationCity,
-  selectedPlzCentroids,
-} from "@/lib/location-areas";
-import { fetchLocationCities } from "@/lib/location-areas-data";
+import { findOrtByKey, getPlzReferenceData } from "@/lib/plz-reference";
+import { mergeDistrictsByPlz } from "@/lib/ortsteile-reference";
+import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
 
 export default async function ProjectPage({
   params,
@@ -79,8 +76,8 @@ export default async function ProjectPage({
     commute_failed?: string;
     areas_saved?: string;
     areas_error?: string;
-    catalog_saved?: string;
-    catalog_error?: string;
+    districts_saved?: string;
+    districts_error?: string;
     sort?: string;
     order?: string;
     q?: string;
@@ -156,14 +153,12 @@ export default async function ProjectPage({
     project.apartments.map((a) => ({ id: a.id, title: a.title, address: a.address }))
   );
 
-  const locationCatalog = await fetchLocationCities();
+  const plzReference = getPlzReferenceData();
+  const projectAreaDistricts = await fetchProjectAreaDistricts(projectId);
+  const districtsByPlz = mergeDistrictsByPlz(projectAreaDistricts);
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
-  const areaFilterEnabled = isAreaFilterActive(project.areaFilterCityId, areaFilterConfig);
-  const areaFilterCity = getLocationCity(locationCatalog, project.areaFilterCityId);
-  const areaFilterPlzOverlays =
-    areaFilterEnabled && areaFilterCity && areaFilterConfig
-      ? selectedPlzCentroids(areaFilterCity, areaFilterConfig.selectedPlz)
-      : [];
+  const areaFilterEnabled = isAreaFilterActive(project.areaFilterOrtKey, areaFilterConfig);
+  const initialOrt = findOrtByKey(project.areaFilterOrtKey ?? "");
 
   const apartments = project.apartments.map((a) => {
     const result = apartmentScore(criteria, a.ratings, user.id, dealbreakerThreshold);
@@ -182,9 +177,9 @@ export default async function ProjectPage({
         : null;
     const areaMatch = matchApartmentToAreaFilter(
       a.address,
-      project.areaFilterCityId,
+      project.areaFilterOrtKey,
       areaFilterConfig,
-      locationCatalog
+      districtsByPlz
     );
     return {
       ...a,
@@ -521,7 +516,6 @@ export default async function ProjectPage({
             <ProjectMap
               key="project-map"
               projectId={project.id}
-              areaFilterPlzOverlays={areaFilterPlzOverlays}
               apartments={activeProject.apartments.map((a) => {
                 const scored = apartmentScore(
                   criteria,
@@ -531,9 +525,9 @@ export default async function ProjectPage({
                 );
                 const areaMatch = matchApartmentToAreaFilter(
                   a.address,
-                  project.areaFilterCityId,
+                  project.areaFilterOrtKey,
                   areaFilterConfig,
-                  locationCatalog
+                  districtsByPlz
                 );
                 return {
                   id: a.id,
@@ -549,23 +543,19 @@ export default async function ProjectPage({
               })}
             />
             <section className="space-y-4">
-              <h2 className="text-lg font-semibold">Gebietsdaten</h2>
-              <LocationCatalogEditor
-                projectId={project.id}
-                catalog={locationCatalog}
-                saved={resolvedSearchParams.catalog_saved === "1"}
-                error={resolvedSearchParams.catalog_error}
-              />
-            </section>
-            <section className="space-y-4">
               <h2 className="text-lg font-semibold">Wunschgebiet</h2>
               <ProjectAreaFilterPanel
                 projectId={project.id}
                 saved={resolvedSearchParams.areas_saved === "1"}
                 error={resolvedSearchParams.areas_error}
-                catalog={locationCatalog}
+                districtsSaved={resolvedSearchParams.districts_saved === "1"}
+                districtsError={resolvedSearchParams.districts_error}
+                bundeslaender={plzReference.bundeslaender}
+                initialOrt={initialOrt}
+                districtsByPlz={districtsByPlz}
+                projectAreaDistricts={projectAreaDistricts}
                 initial={{
-                  cityId: project.areaFilterCityId,
+                  ortKey: project.areaFilterOrtKey,
                   config: areaFilterConfig,
                 }}
               />

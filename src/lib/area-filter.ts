@@ -1,10 +1,4 @@
 import { extractGermanPlz } from "@/lib/federal-state-from-address";
-import {
-  allDistrictsForPlz,
-  districtsForPlzList,
-  getLocationCity,
-  type LocationCity,
-} from "@/lib/location-areas";
 
 export type AreaFilterConfig = {
   selectedPlz: string[];
@@ -54,10 +48,10 @@ export function serializeAreaFilterConfig(config: AreaFilterConfig): string {
 }
 
 export function isAreaFilterActive(
-  cityId: string | null | undefined,
+  ortKey: string | null | undefined,
   config: AreaFilterConfig | null
 ): boolean {
-  if (!cityId || !config) return false;
+  if (!ortKey || !config) return false;
   return config.selectedPlz.length > 0;
 }
 
@@ -86,12 +80,32 @@ export function extractDistrictFromAddress(
   return null;
 }
 
+export function districtsForPlzList(
+  customDistrictsByPlz: Record<string, string[]>,
+  plzList: string[]
+): string[] {
+  const out = new Set<string>();
+  for (const plz of plzList) {
+    for (const district of customDistrictsByPlz[plz] ?? []) {
+      out.add(district);
+    }
+  }
+  return [...out].sort((a, b) => a.localeCompare(b, "de"));
+}
+
+function allDistrictsForPlz(
+  customDistrictsByPlz: Record<string, string[]>,
+  plz: string
+): string[] {
+  return customDistrictsByPlz[plz] ?? [];
+}
+
 function allDistrictsSelectedForPlz(
-  city: LocationCity,
+  customDistrictsByPlz: Record<string, string[]>,
   plz: string,
   selectedDistricts: string[]
 ): boolean {
-  const all = allDistrictsForPlz(city, plz);
+  const all = allDistrictsForPlz(customDistrictsByPlz, plz);
   if (all.length === 0) return true;
   const selected = new Set(selectedDistricts);
   return all.every((d) => selected.has(d));
@@ -99,16 +113,11 @@ function allDistrictsSelectedForPlz(
 
 export function matchApartmentToAreaFilter(
   address: string | null | undefined,
-  cityId: string | null | undefined,
+  ortKey: string | null | undefined,
   config: AreaFilterConfig | null,
-  catalog: LocationCity[]
+  customDistrictsByPlz: Record<string, string[]>
 ): AreaMatchResult {
-  if (!isAreaFilterActive(cityId, config) || !config) {
-    return { status: "unset", plz: null, district: null };
-  }
-
-  const city = getLocationCity(catalog, cityId);
-  if (!city) {
+  if (!isAreaFilterActive(ortKey, config) || !config) {
     return { status: "unset", plz: null, district: null };
   }
 
@@ -126,15 +135,17 @@ export function matchApartmentToAreaFilter(
     return { status: "outside", plz, district: null };
   }
 
-  const plzDistricts = allDistrictsForPlz(city, plz);
-  const selectedForPlz = config.selectedDistricts.filter((d) => plzDistricts.includes(d));
+  const plzDistricts = allDistrictsForPlz(customDistrictsByPlz, plz);
+  if (plzDistricts.length === 0) {
+    return { status: "inside", plz, district: null };
+  }
 
+  const selectedForPlz = config.selectedDistricts.filter((d) => plzDistricts.includes(d));
   if (selectedForPlz.length === 0) {
     return { status: "outside", plz, district: null };
   }
 
   const district = extractDistrictFromAddress(trimmed, plzDistricts);
-
   if (district) {
     if (selectedForPlz.includes(district)) {
       return { status: "inside", plz, district };
@@ -142,7 +153,7 @@ export function matchApartmentToAreaFilter(
     return { status: "outside", plz, district };
   }
 
-  if (allDistrictsSelectedForPlz(city, plz, config.selectedDistricts)) {
+  if (allDistrictsSelectedForPlz(customDistrictsByPlz, plz, config.selectedDistricts)) {
     return { status: "inside", plz, district: null };
   }
 
@@ -150,10 +161,10 @@ export function matchApartmentToAreaFilter(
 }
 
 export function defaultDistrictsForPlzSelection(
-  city: LocationCity,
+  customDistrictsByPlz: Record<string, string[]>,
   selectedPlz: string[]
 ): string[] {
-  return districtsForPlzList(city, selectedPlz);
+  return districtsForPlzList(customDistrictsByPlz, selectedPlz);
 }
 
 export function areaFilterLabel(status: AreaMatchStatus): string {

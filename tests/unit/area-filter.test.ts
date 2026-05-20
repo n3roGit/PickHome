@@ -6,28 +6,12 @@ import {
   parseAreaFilterConfig,
   serializeAreaFilterConfig,
 } from "@/lib/area-filter";
-import type { LocationCity } from "@/lib/location-areas";
 
-const catalog: LocationCity[] = [
-  {
-    id: "sample-city",
-    name: "Sample City",
-    postalCodes: [
-      {
-        plz: "28203",
-        districts: ["Fesenfeld", "Ostertor", "Östliche Vorstadt", "Steintor"],
-      },
-      {
-        plz: "28207",
-        districts: ["Hastedt"],
-      },
-      {
-        plz: "28209",
-        districts: ["Bürgerweide/Barkhof"],
-      },
-    ],
-  },
-];
+const customDistrictsByPlz: Record<string, string[]> = {
+  "28203": ["Fesenfeld", "Ostertor", "Östliche Vorstadt", "Steintor"],
+  "28207": ["Hastedt"],
+  "28209": ["Bürgerweide/Barkhof"],
+};
 
 const config = {
   selectedPlz: ["28203", "28207"],
@@ -44,31 +28,41 @@ describe("area-filter", () => {
   });
 
   it("detects active filter", () => {
-    expect(isAreaFilterActive("sample-city", config)).toBe(true);
+    expect(isAreaFilterActive("Bremen|Bremen", config)).toBe(true);
     expect(isAreaFilterActive(null, config)).toBe(false);
-    expect(isAreaFilterActive("sample-city", { selectedPlz: [], selectedDistricts: [] })).toBe(
+    expect(isAreaFilterActive("Bremen|Bremen", { selectedPlz: [], selectedDistricts: [] })).toBe(
       false
     );
   });
 
   it("matches inside when PLZ and district match", () => {
     const result = matchApartmentToAreaFilter(
-      "Beispielweg 1, 28203 Sample City Fesenfeld",
-      "sample-city",
+      "Beispielweg 1, 28203 Bremen Fesenfeld",
+      "Bremen|Bremen",
       config,
-      catalog
+      customDistrictsByPlz
     );
     expect(result.status).toBe("inside");
     expect(result.plz).toBe("28203");
     expect(result.district).toBe("Fesenfeld");
   });
 
+  it("matches inside on PLZ only when no districts configured", () => {
+    const result = matchApartmentToAreaFilter(
+      "Weg 1, 12345 Beispielort",
+      "Beispielort|Bayern",
+      { selectedPlz: ["12345"], selectedDistricts: [] },
+      {}
+    );
+    expect(result.status).toBe("inside");
+  });
+
   it("matches outside for wrong PLZ", () => {
     const result = matchApartmentToAreaFilter(
-      "Musterstr. 2, 28199 Sample City",
-      "sample-city",
+      "Musterstr. 2, 28199 Bremen",
+      "Bremen|Bremen",
       config,
-      catalog
+      customDistrictsByPlz
     );
     expect(result.status).toBe("outside");
     expect(result.plz).toBe("28199");
@@ -76,10 +70,10 @@ describe("area-filter", () => {
 
   it("matches outside when district excluded", () => {
     const result = matchApartmentToAreaFilter(
-      "Weg 1, 28203 Sample City Steintor",
-      "sample-city",
+      "Weg 1, 28203 Bremen Steintor",
+      "Bremen|Bremen",
       config,
-      catalog
+      customDistrictsByPlz
     );
     expect(result.status).toBe("outside");
     expect(result.district).toBe("Steintor");
@@ -91,10 +85,10 @@ describe("area-filter", () => {
       selectedDistricts: ["Hastedt"],
     };
     const result = matchApartmentToAreaFilter(
-      "Weg 3, 28207 Sample City",
-      "sample-city",
+      "Weg 3, 28207 Bremen",
+      "Bremen|Bremen",
       fullPlzConfig,
-      catalog
+      customDistrictsByPlz
     );
     expect(result.status).toBe("inside");
   });
@@ -105,24 +99,22 @@ describe("area-filter", () => {
       selectedDistricts: ["Fesenfeld"],
     };
     const result = matchApartmentToAreaFilter(
-      "Weg 4, 28203 Sample City",
-      "sample-city",
+      "Weg 4, 28203 Bremen",
+      "Bremen|Bremen",
       partialConfig,
-      catalog
+      customDistrictsByPlz
     );
     expect(result.status).toBe("unknown");
   });
 
   it("extracts district with slash variant", () => {
-    const district = extractDistrictFromAddress("28209 Sample City Bürgerweide Barkhof", [
+    const district = extractDistrictFromAddress("28209 Bremen Bürgerweide Barkhof", [
       "Bürgerweide/Barkhof",
     ]);
     expect(district).toBe("Bürgerweide/Barkhof");
   });
 
   it("returns unset when filter inactive", () => {
-    expect(matchApartmentToAreaFilter("28203 Sample City", null, null, catalog).status).toBe(
-      "unset"
-    );
+    expect(matchApartmentToAreaFilter("28203 Bremen", null, null, {}).status).toBe("unset");
   });
 });

@@ -9,6 +9,7 @@ prisma/dev.db-journal
 prisma/data/
 prisma/prisma/
 public/uploads/
+src/data/.ortsteile-build-cache.json
 
 # Ad-hoc local dev scripts (may contain listing URLs / IDs from local DB)
 /scripts/api-smoke-test.mjs

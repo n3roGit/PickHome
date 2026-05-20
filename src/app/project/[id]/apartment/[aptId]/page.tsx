@@ -39,7 +39,8 @@ import {
   matchApartmentToAreaFilter,
   parseAreaFilterConfig,
 } from "@/lib/area-filter";
-import { fetchLocationCities } from "@/lib/location-areas-data";
+import { mergeDistrictsByPlz } from "@/lib/ortsteile-reference";
+import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -97,13 +98,14 @@ export default async function ApartmentPage({
   const archived = apartment.archivedAt != null;
 
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
-  const locationCatalog = await fetchLocationCities();
-  const areaFilterEnabled = isAreaFilterActive(project.areaFilterCityId, areaFilterConfig);
+  const projectAreaDistricts = await fetchProjectAreaDistricts(resolvedParams.id);
+  const districtsByPlz = mergeDistrictsByPlz(projectAreaDistricts);
+  const areaFilterEnabled = isAreaFilterActive(project.areaFilterOrtKey, areaFilterConfig);
   const areaMatch = matchApartmentToAreaFilter(
     apartment.address,
-    project.areaFilterCityId,
+    project.areaFilterOrtKey,
     areaFilterConfig,
-    locationCatalog
+    districtsByPlz
   );
 
   const groupsWithRatings = project.groups.map((g) => ({
