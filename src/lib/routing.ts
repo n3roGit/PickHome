@@ -11,8 +11,40 @@ export type RouteResult = {
   durationSeconds: number;
 };
 
+/** OSRM profile segment for a travel mode (depends on server build). */
 export function osrmProfileForMode(mode: TravelMode): string {
-  return mode;
+  return osrmEndpointForMode(mode).profile;
+}
+
+export type OsrmEndpoint = {
+  baseUrl: string;
+  profile: string;
+};
+
+/**
+ * Default routing uses FOSSGIS (openstreetmap.de) with separate graphs per mode.
+ * The public project-osrm.org demo only supports driving and returns car routes for every profile.
+ * Self-hosted OSRM: set OSRM_BASE_URL; optional OSRM_PROFILE_FOOT / _BIKE / _DRIVING overrides.
+ */
+export function osrmEndpointForMode(mode: TravelMode): OsrmEndpoint {
+  const custom = process.env.OSRM_BASE_URL?.replace(/\/$/, "");
+  if (custom) {
+    const profileByMode: Record<TravelMode, string> = {
+      foot: process.env.OSRM_PROFILE_FOOT ?? "foot",
+      bike: process.env.OSRM_PROFILE_BIKE ?? "bike",
+      driving: process.env.OSRM_PROFILE_DRIVING ?? "driving",
+    };
+    return { baseUrl: custom, profile: profileByMode[mode] };
+  }
+
+  switch (mode) {
+    case "foot":
+      return { baseUrl: "https://routing.openstreetmap.de/routed-foot", profile: "foot" };
+    case "bike":
+      return { baseUrl: "https://routing.openstreetmap.de/routed-bike", profile: "bike" };
+    case "driving":
+      return { baseUrl: "https://routing.openstreetmap.de/routed-car", profile: "car" };
+  }
 }
 
 export function formatRouteDistance(meters: number): string {
@@ -31,7 +63,7 @@ export function formatRouteDuration(seconds: number): string {
 }
 
 export function osrmBaseUrl(): string {
-  return (process.env.OSRM_BASE_URL ?? "https://router.project-osrm.org").replace(/\/$/, "");
+  return osrmEndpointForMode("driving").baseUrl;
 }
 
 export async function fetchRoute(
@@ -39,9 +71,9 @@ export async function fetchRoute(
   to: RoutePoint,
   mode: TravelMode
 ): Promise<RouteResult | null> {
-  const profile = osrmProfileForMode(mode);
+  const { baseUrl, profile } = osrmEndpointForMode(mode);
   const coords = `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`;
-  const url = `${osrmBaseUrl()}/route/v1/${profile}/${coords}?overview=false`;
+  const url = `${baseUrl}/route/v1/${profile}/${coords}?overview=false`;
 
   const res = await fetchExternal("osrm", url, {
     headers: { "User-Agent": "PickHome/1.0 (self-hosted)" },

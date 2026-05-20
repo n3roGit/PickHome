@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatRouteDistance,
   formatRouteDuration,
+  osrmEndpointForMode,
   osrmProfileForMode,
 } from "@/lib/routing";
 
@@ -27,10 +28,20 @@ describe("formatRouteDuration", () => {
   });
 });
 
-describe("osrmProfileForMode", () => {
-  it("maps travel modes to OSRM profiles", () => {
-    expect(osrmProfileForMode("foot")).toBe("foot");
-    expect(osrmProfileForMode("bike")).toBe("bike");
-    expect(osrmProfileForMode("driving")).toBe("driving");
+describe("osrmEndpointForMode", () => {
+  it("uses mode-specific FOSSGIS endpoints by default", () => {
+    expect(osrmEndpointForMode("foot")).toEqual({
+      baseUrl: "https://routing.openstreetmap.de/routed-foot",
+      profile: "foot",
+    });
+    expect(osrmEndpointForMode("bike")).toEqual({
+      baseUrl: "https://routing.openstreetmap.de/routed-bike",
+      profile: "bike",
+    });
+    expect(osrmEndpointForMode("driving")).toEqual({
+      baseUrl: "https://routing.openstreetmap.de/routed-car",
+      profile: "car",
+    });
+    expect(osrmProfileForMode("driving")).toBe("car");
   });
 });
