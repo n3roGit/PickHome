@@ -4,6 +4,12 @@ Self-hosted apartment scoring for house hunting: weighted criteria, dealbreakers
 
 Repository: [github.com/n3roGit/PickHome](https://github.com/n3roGit/PickHome)
 
+I would greatly appreciate support for my project. Every $ contributes to enhancing the project.
+
+<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=6ZFSVPZWLLAMC">
+  <img src="./docs/paypal-donate-button.png" alt="Donate with PayPal" style="width: 50%;">
+</a>
+
 ## Features
 
 ### Scoring and collaboration
