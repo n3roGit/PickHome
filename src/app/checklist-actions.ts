@@ -8,6 +8,7 @@ import {
   assertApartmentAccess,
   assertCriterionGroupAccess,
   assertProjectAccess,
+  type ProjectAccessUser,
 } from "@/lib/project-data";
 
 function revalidateChecklist(projectId: string, apartmentId?: string) {
@@ -25,13 +26,13 @@ async function assertCriterionInProject(criterionId: string, projectId: string) 
   });
 }
 
-async function assertChecklistItemAccess(itemId: string, userId: string) {
+async function assertChecklistItemAccess(itemId: string, user: ProjectAccessUser) {
   const item = await prisma.checklistItem.findUnique({
     where: { id: itemId },
     select: { id: true, projectId: true },
   });
   if (!item) return null;
-  const project = await assertProjectAccess(item.projectId, { id: userId });
+  const project = await assertProjectAccess(item.projectId, user);
   if (!project) return null;
   return item;
 }
@@ -79,7 +80,7 @@ export async function updateChecklistItemAssigneeAction(
   assigneeUserId: string | null
 ) {
   const user = await requireUser();
-  const item = await assertChecklistItemAccess(itemId, user.id);
+  const item = await assertChecklistItemAccess(itemId, user);
   if (!item) return;
 
   if (assigneeUserId) {
