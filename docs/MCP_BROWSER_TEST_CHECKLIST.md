@@ -54,7 +54,7 @@ Walk steps in this sequence so auth and project context stay consistent:
 
 - Admin: «← Zurück» points to `/admin`.
 - Standard-Verkehrsmittel: change + Speichern (e.g. Rad).
-- Firmenwagen checkbox on «Arbeitsstätte» in address form.
+- Firmenwagen checkbox + Bruttolistenpreis; **Arbeitsstätte** on work address (required for commute cost on apartments); Pendlerpauschale fields (optional).
 - Meine Adressen: form «Adresse hinzufügen» (submit optional).
 - Passwort ändern: three fields + Speichern (optional).
 - 2FA: «Einrichtung starten» → confirm step (`?step=confirm`); cancel without activating unless testing full flow.
@@ -155,7 +155,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 - Score legend + «angemeldet als …»; Archivieren, Löschen.
 - Preis & Adresse: Adressfeld + **GetGeo** (nur diese Adresse); **Street View öffnen ↗** under address when coords/address present; Speichern für alle Felder; Hinweis bei nicht auflösbarer Adresse.
 - **Inserat-Link** (expand): URL + «Daten laden» + Speichern.
-- **Anfahrt** (expand): per-member rows; lines containing «Route:» or mode/duration (admin may see all members).
+- **Anfahrt** (expand): per-member rows; km/min; with Firmenwagen + Arbeitsstätte: «Firmenwagen: Brutto …» and «Pendlerpauschale (geschätzt, Steuererklärung)» under workplace leg.
 - **Kaufnebenkosten & Finanzierung** (expand): project financing reflected.
 - Bilder / Kamera / Exposé upload UI (optional upload).
 - Notizen, Beschreibung (expand + Speichern optional).
@@ -189,6 +189,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 
 ## Changelog (agent notes, no real data)
 
+- **2026-05-21 (port 3000, Pendlerpauschale):** After schema change: `npx prisma generate` if apartment page throws Prisma validation on new user fields. Account: Firmenwagen + Pendlerpauschale fields; address **Arbeitsstätte** must be saved via «Aktualisieren» (not only Firmenwagen Speichern). Apartment Anfahrt OK: Firmenwagen Brutto/Netto + Pendlerpauschale/Jahr. Also: user `/admin`→dashboard, admin backup list + Download links, map mobile 390×844 (Menü), `plz-overlays` API 200 + `radiusM`. Skipped: backup download click, remember-login, TOTP activation.
 - **2026-05-21 (port 3000, full pass):** Recommended order end-to-end after Street View feature. OK: auth, account (2FA start/Abbrechen), admin users/backup/timezone, dashboard user+admin roles, all project tabs, compare (2 selected), map (Street View popup, overlays API `radiusM` 2200), calendar (iCal `localhost:3000`), apartment detail (Street View, Anfahrt km/min), mobile 390×844 no overflow. Skipped optional: backup download/import, TOTP activation, archivieren, slider reload, remember-login cookie.
 - **2026-05-21 (port 3000):** Street View links on map popup + apartment «Preis & Adresse»; pano URL with `viewpoint=` from geocoded coords; no console errors.
 - **2026-05-21 (port 3001, expanded guide):** Ran recommended order end-to-end. OK: bad password, remember-login `Max-Age=2592000`, admin nav (Verwaltung), account (Firmenwagen, 2FA start), admin backup (auto + list + Jetzt sichern), timezone, dashboard both roles, all project tabs, compare (2 selected), map (leaflet, ausblenden, overlays API), apartment (NoGo badge, Route:, Meinungsunterschiede), user `/admin`→dashboard, mobile 390×844 no overflow. **Fail/known:** iCal URL still `localhost:3000` (env unset). Ortsteile UI not verified (panel collapsed). Optional skipped: backup download/import, TOTP activation, archivieren, slider reload.

@@ -84,6 +84,10 @@ describe("commute cache integration", () => {
       companyCarContributionEur: null,
       companyCarSelfPaidCostsEur: null,
       companyCarEmployerFuelCard: true,
+      commuteAllowanceDaysPerYear: null,
+      commuteAllowanceVacationDays: null,
+      commuteAllowanceSickDays: null,
+      commuteAllowanceHomeOfficeDays: null,
     };
 
     const first = await computeCommuteLegs(input);
@@ -248,6 +252,10 @@ describe("commute cache integration", () => {
       companyCarContributionEur: null,
       companyCarSelfPaidCostsEur: null,
       companyCarEmployerFuelCard: true,
+      commuteAllowanceDaysPerYear: null,
+      commuteAllowanceVacationDays: null,
+      commuteAllowanceSickDays: null,
+      commuteAllowanceHomeOfficeDays: null,
     });
 
     expect(legs[0]?.routingNote).toContain("Rad");
@@ -358,6 +366,10 @@ describe("commute cache integration", () => {
       companyCarContributionEur: null,
       companyCarSelfPaidCostsEur: null,
       companyCarEmployerFuelCard: true,
+      commuteAllowanceDaysPerYear: null,
+      commuteAllowanceVacationDays: null,
+      commuteAllowanceSickDays: null,
+      commuteAllowanceHomeOfficeDays: null,
     });
 
     expect(legs[0]?.connectionSummary).toContain("S 1 → U2");
@@ -439,6 +451,10 @@ describe("commute cache integration", () => {
       companyCarContributionEur: null,
       companyCarSelfPaidCostsEur: null,
       companyCarEmployerFuelCard: true,
+      commuteAllowanceDaysPerYear: null,
+      commuteAllowanceVacationDays: null,
+      commuteAllowanceSickDays: null,
+      commuteAllowanceHomeOfficeDays: null,
       cacheOnly: true,
     });
 
@@ -519,6 +535,10 @@ describe("commute cache integration", () => {
       companyCarContributionEur: null,
       companyCarSelfPaidCostsEur: null,
       companyCarEmployerFuelCard: true,
+      commuteAllowanceDaysPerYear: null,
+      commuteAllowanceVacationDays: null,
+      commuteAllowanceSickDays: null,
+      commuteAllowanceHomeOfficeDays: null,
       cacheOnly: true,
     });
 
@@ -596,10 +616,15 @@ describe("commute cache integration", () => {
       companyCarContributionEur: null,
       companyCarSelfPaidCostsEur: null,
       companyCarEmployerFuelCard: true,
+      commuteAllowanceDaysPerYear: null,
+      commuteAllowanceVacationDays: null,
+      commuteAllowanceSickDays: null,
+      commuteAllowanceHomeOfficeDays: null,
       cacheOnly: true,
     });
 
     expect(legs[0]?.monthlyCompanyCarTotalBenefitEur).not.toBeNull();
+    expect(legs[0]?.annualCommuterAllowanceEur).not.toBeNull();
     expect(legs[0]?.distanceKmOneWay).toBe(5);
     await prisma.$disconnect();
   });

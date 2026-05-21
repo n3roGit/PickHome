@@ -112,6 +112,10 @@ export default async function SettingsPage({
           companyCarContributionEur={fresh.companyCarContributionEur}
           companyCarSelfPaidCostsEur={fresh.companyCarSelfPaidCostsEur}
           companyCarEmployerFuelCard={fresh.companyCarEmployerFuelCard ?? true}
+          commuteAllowanceDaysPerYear={fresh.commuteAllowanceDaysPerYear}
+          commuteAllowanceVacationDays={fresh.commuteAllowanceVacationDays}
+          commuteAllowanceSickDays={fresh.commuteAllowanceSickDays}
+          commuteAllowanceHomeOfficeDays={fresh.commuteAllowanceHomeOfficeDays}
           addresses={fresh.addresses.map((a) => ({
             id: a.id,
             label: a.label,

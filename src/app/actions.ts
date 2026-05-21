@@ -58,6 +58,13 @@ import {
   parseOfficeTripsPerMonth,
   parseOptionalEuroAmount,
 } from "@/lib/company-car";
+import {
+  parseCommuteAllowanceDays,
+  parseOptionalDayCount,
+  resolveHomeOfficeDays,
+  resolveSickDays,
+  resolveVacationDays,
+} from "@/lib/commuter-allowance";
 import { parseTravelMode } from "@/lib/travel-mode";
 import {
   parseTransitArrivalHour,
@@ -1075,6 +1082,14 @@ export async function updateTravelModeAction(formData: FormData) {
     String(formData.get("companyCarSelfPaidCostsEur") ?? "")
   );
   const companyCarEmployerFuelCard = formData.get("companyCarEmployerFuelCard") === "on";
+  const commuteAllowanceDaysPerYear = parseCommuteAllowanceDays(
+    String(formData.get("commuteAllowanceDaysPerYear") ?? "")
+  );
+  const commuteAllowanceVacationDaysRaw = String(formData.get("commuteAllowanceVacationDays") ?? "").trim();
+  const commuteAllowanceSickDaysRaw = String(formData.get("commuteAllowanceSickDays") ?? "").trim();
+  const commuteAllowanceHomeOfficeDaysRaw = String(
+    formData.get("commuteAllowanceHomeOfficeDays") ?? ""
+  ).trim();
   const transitArrival = parseTransitArrivalTimeField(String(formData.get("transitArrivalTime") ?? ""));
   const transitArrivalWeekday = parseTransitArrivalWeekday(
     String(formData.get("transitArrivalWeekday") ?? "")
@@ -1102,6 +1117,10 @@ export async function updateTravelModeAction(formData: FormData) {
     companyCarContributionEur: number | null;
     companyCarSelfPaidCostsEur: number | null;
     companyCarEmployerFuelCard: boolean;
+    commuteAllowanceDaysPerYear: number | null;
+    commuteAllowanceVacationDays: number | null;
+    commuteAllowanceSickDays: number | null;
+    commuteAllowanceHomeOfficeDays: number | null;
   } = {
     travelMode,
     companyCar: travelMode === "driving" ? companyCar : false,
@@ -1120,6 +1139,26 @@ export async function updateTravelModeAction(formData: FormData) {
       companyCarSelfPaidCostsEur:
         travelMode === "driving" && companyCar ? Math.round(companyCarSelfPaidCostsEur) : null,
       companyCarEmployerFuelCard: travelMode === "driving" && companyCar ? companyCarEmployerFuelCard : true,
+      commuteAllowanceDaysPerYear:
+        travelMode === "driving" && companyCar ? commuteAllowanceDaysPerYear : null,
+      commuteAllowanceVacationDays:
+        travelMode === "driving" && companyCar
+          ? commuteAllowanceVacationDaysRaw
+            ? parseOptionalDayCount(commuteAllowanceVacationDaysRaw, resolveVacationDays(null))
+            : null
+          : null,
+      commuteAllowanceSickDays:
+        travelMode === "driving" && companyCar
+          ? commuteAllowanceSickDaysRaw
+            ? parseOptionalDayCount(commuteAllowanceSickDaysRaw, resolveSickDays(null))
+            : null
+          : null,
+      commuteAllowanceHomeOfficeDays:
+        travelMode === "driving" && companyCar
+          ? commuteAllowanceHomeOfficeDaysRaw
+            ? parseOptionalDayCount(commuteAllowanceHomeOfficeDaysRaw, resolveHomeOfficeDays(null))
+            : null
+          : null,
   };
 
   if (travelMode === "transit") {

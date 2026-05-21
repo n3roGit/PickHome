@@ -25,6 +25,10 @@ model User {
   companyCarContributionEur Int?
   companyCarSelfPaidCostsEur Int?
   companyCarEmployerFuelCard Boolean @default(true)
+  commuteAllowanceDaysPerYear Int?
+  commuteAllowanceVacationDays Int?
+  commuteAllowanceSickDays Int?
+  commuteAllowanceHomeOfficeDays Int?
   transitArrivalHour         Int?
   transitArrivalMinute       Int?
   transitArrivalWeekday      Int?

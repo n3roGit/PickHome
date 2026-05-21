@@ -43,6 +43,10 @@ export function TravelModeForm({
   companyCarContributionEur,
   companyCarSelfPaidCostsEur,
   companyCarEmployerFuelCard,
+  commuteAllowanceDaysPerYear,
+  commuteAllowanceVacationDays,
+  commuteAllowanceSickDays,
+  commuteAllowanceHomeOfficeDays,
   action,
 }: {
   travelMode: TravelMode;
@@ -60,6 +64,10 @@ export function TravelModeForm({
   companyCarContributionEur: number | null;
   companyCarSelfPaidCostsEur: number | null;
   companyCarEmployerFuelCard: boolean;
+  commuteAllowanceDaysPerYear: number | null;
+  commuteAllowanceVacationDays: number | null;
+  commuteAllowanceSickDays: number | null;
+  commuteAllowanceHomeOfficeDays: number | null;
   action: (formData: FormData) => void | Promise<void>;
 }) {
   const [mode, setMode] = useState(travelMode);
@@ -334,6 +342,75 @@ export function TravelModeForm({
                   Sozialabgaben.
                 </span>
               </label>
+
+              <div className="border-t border-pn-border pt-3 space-y-3">
+                <p className="text-sm font-medium">Pendlerpauschale (Steuererklärung)</p>
+                <label className="block">
+                  <span className="text-sm font-medium text-pn-text-secondary">
+                    Pendeltage pro Jahr
+                  </span>
+                  <input
+                    name="commuteAllowanceDaysPerYear"
+                    type="number"
+                    min={1}
+                    max={366}
+                    step={1}
+                    defaultValue={commuteAllowanceDaysPerYear ?? ""}
+                    placeholder="leer = automatisch"
+                    className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+                  />
+                  <span className="block text-xs text-pn-text-tertiary mt-1">
+                    Leer: aus Bürofahrten/Monat × 12 oder ca. 251 Arbeitstage minus Abwesenheit
+                    (Standard-Urlaub 30 Tage).
+                  </span>
+                </label>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="block">
+                    <span className="text-sm font-medium text-pn-text-secondary">Urlaubstage</span>
+                    <input
+                      name="commuteAllowanceVacationDays"
+                      type="number"
+                      min={0}
+                      max={120}
+                      step={1}
+                      defaultValue={commuteAllowanceVacationDays ?? ""}
+                      placeholder="30"
+                      className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-pn-text-secondary">Krankheitstage</span>
+                    <input
+                      name="commuteAllowanceSickDays"
+                      type="number"
+                      min={0}
+                      max={366}
+                      step={1}
+                      defaultValue={commuteAllowanceSickDays ?? ""}
+                      placeholder="0"
+                      className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-pn-text-secondary">Homeoffice-Tage</span>
+                    <input
+                      name="commuteAllowanceHomeOfficeDays"
+                      type="number"
+                      min={0}
+                      max={366}
+                      step={1}
+                      defaultValue={commuteAllowanceHomeOfficeDays ?? ""}
+                      placeholder="0"
+                      className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-pn-text-tertiary">
+                  Nur für die Schätzung der Pendlerpauschale bei Immobilien — keine Steuerberatung.
+                  Jobticket, Doppel-Haushalt und fehlende erste Tätigkeitsstätte werden nicht
+                  berücksichtigt.
+                </p>
+              </div>
             </>
           )}
         </div>

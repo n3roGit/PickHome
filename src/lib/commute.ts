@@ -8,6 +8,11 @@ import type { FetchExternalOptions } from "@/lib/external-fetch";
 import { backgroundThrottlePause } from "@/lib/background-task";
 import type { CompanyCarCommuteMethod, CompanyCarRate } from "@/lib/company-car";
 import { distanceKmOneWay, monthlyCompanyCarBenefitEur } from "@/lib/company-car";
+import {
+  commuterAllowanceBreakdown,
+  type CommuteDaysSource,
+  type CommuterAllowanceSettings,
+} from "@/lib/commuter-allowance";
 import { prisma } from "@/lib/prisma";
 import { consumeExternalServiceUnavailable } from "@/lib/external-fetch";
 import { fetchRoute, formatRouteDistance, formatRouteDuration, type RoutePoint } from "@/lib/routing";
@@ -62,6 +67,11 @@ export type CommuteLeg = {
   companyCarCommuteMethod: CompanyCarCommuteMethod | null;
   companyCarOfficeTripsPerMonth: number | null;
   companyCarEmployerFuelCard: boolean | null;
+  annualCommuterAllowanceEur: number | null;
+  annualCommuterTaxBenefitEur: number | null;
+  commuterAllowanceDaysPerYear: number | null;
+  commuterAllowanceKmOneWay: number | null;
+  commuterAllowanceDaysSource: CommuteDaysSource | null;
   commuteCostHint: string | null;
 };
 
@@ -80,6 +90,10 @@ export type CommuteMemberInput = {
   companyCarContributionEur: number | null;
   companyCarSelfPaidCostsEur: number | null;
   companyCarEmployerFuelCard: boolean;
+  commuteAllowanceDaysPerYear: number | null;
+  commuteAllowanceVacationDays: number | null;
+  commuteAllowanceSickDays: number | null;
+  commuteAllowanceHomeOfficeDays: number | null;
 };
 
 export type CommutePersonEstimate = {
@@ -110,6 +124,21 @@ export function commuteUnavailableMessage(reason: CommuteLeg["unavailableReason"
   if (!reason) return null;
   return UNAVAILABLE_MESSAGES[reason];
 }
+
+const EMPTY_COMMUTER_ALLOWANCE_FIELDS = {
+  annualCommuterAllowanceEur: null,
+  annualCommuterTaxBenefitEur: null,
+  commuterAllowanceDaysPerYear: null,
+  commuterAllowanceKmOneWay: null,
+  commuterAllowanceDaysSource: null,
+} as const satisfies Pick<
+  CommuteLeg,
+  | "annualCommuterAllowanceEur"
+  | "annualCommuterTaxBenefitEur"
+  | "commuterAllowanceDaysPerYear"
+  | "commuterAllowanceKmOneWay"
+  | "commuterAllowanceDaysSource"
+>;
 
 export {
   invalidateCommuteCacheForApartment,
@@ -145,6 +174,10 @@ type CommuteCompanyCarMember = Pick<
   | "companyCarContributionEur"
   | "companyCarSelfPaidCostsEur"
   | "companyCarEmployerFuelCard"
+  | "commuteAllowanceDaysPerYear"
+  | "commuteAllowanceVacationDays"
+  | "commuteAllowanceSickDays"
+  | "commuteAllowanceHomeOfficeDays"
 >;
 
 export async function computeCommuteForMembers(input: {
@@ -177,6 +210,10 @@ export async function computeCommuteForMembers(input: {
         companyCarContributionEur: member.companyCarContributionEur,
         companyCarSelfPaidCostsEur: member.companyCarSelfPaidCostsEur,
         companyCarEmployerFuelCard: member.companyCarEmployerFuelCard,
+        commuteAllowanceDaysPerYear: member.commuteAllowanceDaysPerYear,
+        commuteAllowanceVacationDays: member.commuteAllowanceVacationDays,
+        commuteAllowanceSickDays: member.commuteAllowanceSickDays,
+        commuteAllowanceHomeOfficeDays: member.commuteAllowanceHomeOfficeDays,
         cacheOnly: input.cacheOnly,
       }),
     }))
@@ -205,6 +242,10 @@ export async function computeCommuteLegs(input: {
   companyCarContributionEur: number | null;
   companyCarSelfPaidCostsEur: number | null;
   companyCarEmployerFuelCard: boolean;
+  commuteAllowanceDaysPerYear: number | null;
+  commuteAllowanceVacationDays: number | null;
+  commuteAllowanceSickDays: number | null;
+  commuteAllowanceHomeOfficeDays: number | null;
   background?: boolean;
   cacheOnly?: boolean;
 }): Promise<CommuteLeg[]> {
@@ -529,6 +570,10 @@ function legFromResolved(
     | "companyCarContributionEur"
     | "companyCarSelfPaidCostsEur"
     | "companyCarEmployerFuelCard"
+    | "commuteAllowanceDaysPerYear"
+    | "commuteAllowanceVacationDays"
+    | "commuteAllowanceSickDays"
+    | "commuteAllowanceHomeOfficeDays"
   >
 ): CommuteLeg {
   const showDistance =
@@ -557,6 +602,7 @@ function legFromResolved(
     companyCarOfficeTripsPerMonth: null,
     companyCarEmployerFuelCard: null,
     commuteCostHint: null,
+    ...EMPTY_COMMUTER_ALLOWANCE_FIELDS,
   };
   return applyCompanyCarCommuteCost(base, addr, resolved.distanceMeters, member);
 }
@@ -565,19 +611,7 @@ function applyCompanyCarCommuteCost(
   leg: CommuteLeg,
   addr: CommuteAddress,
   distanceMeters: number,
-  member: Pick<
-    CommuteMemberInput,
-    | "travelMode"
-    | "companyCar"
-    | "companyCarRate"
-    | "listPrice"
-    | "marginalTaxRatePercent"
-    | "companyCarCommuteMethod"
-    | "companyCarOfficeTripsPerMonth"
-    | "companyCarContributionEur"
-    | "companyCarSelfPaidCostsEur"
-    | "companyCarEmployerFuelCard"
-  >
+  member: CommuteCompanyCarMember
 ): CommuteLeg {
   if (member.travelMode !== "driving" || !member.companyCar || !addr.isWorkplace) {
     return leg;
@@ -613,6 +647,18 @@ function applyCompanyCarCommuteCost(
     marginalTaxRatePercent: member.marginalTaxRatePercent,
   });
 
+  const allowance = commuterAllowanceBreakdown({
+    distanceMeters,
+    settings: {
+      daysPerYear: member.commuteAllowanceDaysPerYear,
+      vacationDays: member.commuteAllowanceVacationDays,
+      sickDays: member.commuteAllowanceSickDays,
+      homeOfficeDays: member.commuteAllowanceHomeOfficeDays,
+      officeTripsPerMonth: member.companyCarOfficeTripsPerMonth,
+    },
+    marginalTaxRatePercent: member.marginalTaxRatePercent,
+  });
+
   return {
     ...leg,
     distanceKmOneWay: km,
@@ -625,6 +671,11 @@ function applyCompanyCarCommuteCost(
     companyCarCommuteMethod: benefit?.commuteMethod ?? null,
     companyCarOfficeTripsPerMonth: benefit?.officeTripsPerMonth ?? null,
     companyCarEmployerFuelCard: benefit?.employerFuelCard ?? null,
+    annualCommuterAllowanceEur: allowance?.annualAllowanceEur ?? null,
+    annualCommuterTaxBenefitEur: allowance?.annualTaxBenefitEur ?? null,
+    commuterAllowanceDaysPerYear: allowance?.daysPerYear ?? null,
+    commuterAllowanceKmOneWay: allowance?.kmOneWay ?? null,
+    commuterAllowanceDaysSource: allowance?.daysSource ?? null,
     commuteCostHint: benefit == null ? "Firmenwagen-Kosten konnten nicht berechnet werden." : null,
   };
 }
@@ -653,6 +704,7 @@ function legTransitPending(addr: CommuteAddress, drivingDistanceText: string | n
     companyCarOfficeTripsPerMonth: null,
     companyCarEmployerFuelCard: null,
     commuteCostHint: null,
+    ...EMPTY_COMMUTER_ALLOWANCE_FIELDS,
   };
 }
 
@@ -685,6 +737,7 @@ function legReindexPending(
     companyCarOfficeTripsPerMonth: null,
     companyCarEmployerFuelCard: null,
     commuteCostHint: null,
+    ...EMPTY_COMMUTER_ALLOWANCE_FIELDS,
   };
   if (distanceMeters == null || distanceMeters <= 0) return base;
   return applyCompanyCarCommuteCost(base, addr, distanceMeters, member);
@@ -717,5 +770,6 @@ function legUnavailable(
     companyCarOfficeTripsPerMonth: null,
     companyCarEmployerFuelCard: null,
     commuteCostHint: null,
+    ...EMPTY_COMMUTER_ALLOWANCE_FIELDS,
   };
 }

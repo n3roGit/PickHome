@@ -7,6 +7,7 @@ import {
   type CommutePersonEstimate,
 } from "@/lib/commute";
 import { companyCarCommuteMethodLabel, formatCommuteBenefitEur } from "@/lib/company-car";
+import { commuteDaysSourceLabel } from "@/lib/commuter-allowance";
 import { travelModeLabel } from "@/lib/travel-mode";
 
 function CommuteCompanyCarBenefit({ leg }: { leg: CommuteLeg }) {
@@ -55,6 +56,36 @@ function CommuteCompanyCarBenefit({ leg }: { leg: CommuteLeg }) {
           {leg.companyCarEmployerFuelCard && (
             <> · Tank-/Ladekarte Arbeitgeber (in 1‑%-Regelung enthalten)</>
           )}
+        </span>
+      )}
+      {leg.annualCommuterAllowanceEur != null && (
+        <span className="block text-xs text-pn-text-tertiary mt-1">
+          Pendlerpauschale (geschätzt, Steuererklärung): ca.{" "}
+          {formatCommuteBenefitEur(leg.annualCommuterAllowanceEur)}/Jahr
+          {leg.commuterAllowanceDaysPerYear != null && (
+            <>
+              {" "}
+              bei {leg.commuterAllowanceDaysPerYear} Pendeltagen
+              {leg.commuterAllowanceKmOneWay != null && (
+                <> ({leg.commuterAllowanceKmOneWay} km einfach, abgerundet)</>
+              )}
+            </>
+          )}
+          {leg.annualCommuterTaxBenefitEur != null && leg.annualCommuterTaxBenefitEur > 0 ? (
+            <>
+              {" "}
+              · Steuervorteil ca. {formatCommuteBenefitEur(leg.annualCommuterTaxBenefitEur)}/Jahr
+              {leg.companyCarMarginalTaxRatePercent != null && (
+                <> ({leg.companyCarMarginalTaxRatePercent} % Grenzsteuersatz)</>
+              )}
+            </>
+          ) : (
+            <> · voraussichtlich kein Zusatzvorteil über Werbungskosten-Pauschale (1.230 €)</>
+          )}
+          {leg.commuterAllowanceDaysSource != null && (
+            <> · Pendeltage: {commuteDaysSourceLabel(leg.commuterAllowanceDaysSource)}</>
+          )}
+          . Keine Steuerberatung — Jobticket, Doppel-Haushalt u. a. Sonderfälle nicht berücksichtigt.
         </span>
       )}
     </p>

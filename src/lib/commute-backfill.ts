@@ -159,6 +159,10 @@ export async function runCommuteBackfillTick(
             companyCarContributionEur: true,
             companyCarSelfPaidCostsEur: true,
             companyCarEmployerFuelCard: true,
+            commuteAllowanceDaysPerYear: true,
+            commuteAllowanceVacationDays: true,
+            commuteAllowanceSickDays: true,
+            commuteAllowanceHomeOfficeDays: true,
             transitArrivalHour: true,
             transitArrivalMinute: true,
             transitArrivalWeekday: true,
@@ -219,6 +223,10 @@ export async function runCommuteBackfillTick(
         companyCarContributionEur: user.companyCar ? user.companyCarContributionEur : null,
         companyCarSelfPaidCostsEur: user.companyCar ? user.companyCarSelfPaidCostsEur : null,
         companyCarEmployerFuelCard: user.companyCar ? user.companyCarEmployerFuelCard : true,
+        commuteAllowanceDaysPerYear: user.commuteAllowanceDaysPerYear,
+        commuteAllowanceVacationDays: user.commuteAllowanceVacationDays,
+        commuteAllowanceSickDays: user.commuteAllowanceSickDays,
+        commuteAllowanceHomeOfficeDays: user.commuteAllowanceHomeOfficeDays,
         background: true,
       });
 

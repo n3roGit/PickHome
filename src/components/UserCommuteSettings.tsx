@@ -34,6 +34,10 @@ export function UserCommuteSettings({
   companyCarContributionEur,
   companyCarSelfPaidCostsEur,
   companyCarEmployerFuelCard,
+  commuteAllowanceDaysPerYear,
+  commuteAllowanceVacationDays,
+  commuteAllowanceSickDays,
+  commuteAllowanceHomeOfficeDays,
   addresses,
   saved,
   addressSaved,
@@ -55,6 +59,10 @@ export function UserCommuteSettings({
   companyCarContributionEur: number | null;
   companyCarSelfPaidCostsEur: number | null;
   companyCarEmployerFuelCard: boolean;
+  commuteAllowanceDaysPerYear: number | null;
+  commuteAllowanceVacationDays: number | null;
+  commuteAllowanceSickDays: number | null;
+  commuteAllowanceHomeOfficeDays: number | null;
   addresses: AddressRow[];
   saved?: boolean;
   addressSaved?: boolean;
@@ -110,6 +118,10 @@ export function UserCommuteSettings({
           companyCarContributionEur={companyCarContributionEur}
           companyCarSelfPaidCostsEur={companyCarSelfPaidCostsEur}
           companyCarEmployerFuelCard={companyCarEmployerFuelCard ?? true}
+          commuteAllowanceDaysPerYear={commuteAllowanceDaysPerYear}
+          commuteAllowanceVacationDays={commuteAllowanceVacationDays}
+          commuteAllowanceSickDays={commuteAllowanceSickDays}
+          commuteAllowanceHomeOfficeDays={commuteAllowanceHomeOfficeDays}
           action={updateTravelModeAction}
         />
       </section>

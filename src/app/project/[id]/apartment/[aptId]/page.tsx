@@ -149,6 +149,10 @@ export default async function ApartmentPage({
       companyCarContributionEur: true,
       companyCarSelfPaidCostsEur: true,
       companyCarEmployerFuelCard: true,
+      commuteAllowanceDaysPerYear: true,
+      commuteAllowanceVacationDays: true,
+      commuteAllowanceSickDays: true,
+      commuteAllowanceHomeOfficeDays: true,
       addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
     },
   });
@@ -181,6 +185,10 @@ export default async function ApartmentPage({
       companyCarContributionEur: member.companyCar ? member.companyCarContributionEur : null,
       companyCarSelfPaidCostsEur: member.companyCar ? member.companyCarSelfPaidCostsEur : null,
       companyCarEmployerFuelCard: member.companyCar ? member.companyCarEmployerFuelCard : true,
+      commuteAllowanceDaysPerYear: member.commuteAllowanceDaysPerYear,
+      commuteAllowanceVacationDays: member.commuteAllowanceVacationDays,
+      commuteAllowanceSickDays: member.commuteAllowanceSickDays,
+      commuteAllowanceHomeOfficeDays: member.commuteAllowanceHomeOfficeDays,
       addresses: member.addresses.map((a) => ({
         id: a.id,
         label: a.label,

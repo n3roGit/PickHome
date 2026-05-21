@@ -51,6 +51,10 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
             companyCarContributionEur: true,
             companyCarSelfPaidCostsEur: true,
             companyCarEmployerFuelCard: true,
+            commuteAllowanceDaysPerYear: true,
+            commuteAllowanceVacationDays: true,
+            commuteAllowanceSickDays: true,
+            commuteAllowanceHomeOfficeDays: true,
             addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
           },
         },
@@ -74,6 +78,10 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
     companyCarContributionEur: m.user.companyCar ? m.user.companyCarContributionEur : null,
     companyCarSelfPaidCostsEur: m.user.companyCar ? m.user.companyCarSelfPaidCostsEur : null,
     companyCarEmployerFuelCard: m.user.companyCar ? m.user.companyCarEmployerFuelCard : true,
+    commuteAllowanceDaysPerYear: m.user.commuteAllowanceDaysPerYear,
+    commuteAllowanceVacationDays: m.user.commuteAllowanceVacationDays,
+    commuteAllowanceSickDays: m.user.commuteAllowanceSickDays,
+    commuteAllowanceHomeOfficeDays: m.user.commuteAllowanceHomeOfficeDays,
     addresses: m.user.addresses.map((a) => ({
       id: a.id,
       label: a.label,
@@ -127,6 +135,10 @@ export async function reindexProjectCommute(projectId: string): Promise<ReindexP
         companyCarContributionEur: member.companyCarContributionEur,
         companyCarSelfPaidCostsEur: member.companyCarSelfPaidCostsEur,
         companyCarEmployerFuelCard: member.companyCarEmployerFuelCard,
+        commuteAllowanceDaysPerYear: member.commuteAllowanceDaysPerYear,
+        commuteAllowanceVacationDays: member.commuteAllowanceVacationDays,
+        commuteAllowanceSickDays: member.commuteAllowanceSickDays,
+        commuteAllowanceHomeOfficeDays: member.commuteAllowanceHomeOfficeDays,
         background: true,
       });
 
