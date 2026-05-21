@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  reindexProjectAddressesAction,
   reindexProjectCommuteAction,
   reindexProjectDocumentsAction,
 } from "@/app/actions";
@@ -11,6 +12,7 @@ import { formatDocumentsReindexMessage } from "@/lib/project-reindex-messages";
 type ReindexJobsResponse = {
   documents: ProjectReindexJobView | null;
   commute: ProjectReindexJobView | null;
+  addresses: ProjectReindexJobView | null;
   commutePendingLegs: number;
   commuteTotalLegs: number;
 };
@@ -22,15 +24,23 @@ const reindexErrors: Record<string, string> = {
 function jobMessage(job: ProjectReindexJobView | null): string | null {
   if (!job) return null;
   if (job.status === "running") {
-    return job.kind === "documents"
-      ? "PDFs werden eingelesen — du kannst die App weiter nutzen."
-      : "Anfahrtszeiten werden berechnet — du kannst die App weiter nutzen.";
+    if (job.kind === "documents") {
+      return "PDFs werden eingelesen — du kannst die App weiter nutzen.";
+    }
+    if (job.kind === "addresses") {
+      return "Adressen werden angereichert — du kannst die App weiter nutzen.";
+    }
+    return "Anfahrtszeiten werden berechnet — du kannst die App weiter nutzen.";
   }
   if (job.status === "failed") {
     return "Indizierung fehlgeschlagen.";
   }
   if (job.kind === "documents" && job.documentsResult) {
     return formatDocumentsReindexMessage(job.documentsResult);
+  }
+  if (job.kind === "addresses" && job.addressesResult) {
+    const r = job.addressesResult;
+    return `${r.updated} Adresse(n) angereichert (${r.processed} geprüft).`;
   }
   return null;
 }
@@ -67,7 +77,7 @@ export function ProjectReindexPanel({
   errorCode,
 }: {
   projectId: string;
-  startedKind?: "documents" | "commute";
+  startedKind?: "documents" | "commute" | "addresses";
   errorCode?: string;
 }) {
   const [jobs, setJobs] = useState<ReindexJobsResponse | null>(null);
@@ -111,6 +121,8 @@ export function ProjectReindexPanel({
 
   const documentsRunning = jobs?.documents?.status === "running";
   const commuteRunning = jobs?.commute?.status === "running";
+  const addressesRunning = jobs?.addresses?.status === "running";
+  const addressesMessage = jobMessage(jobs?.addresses ?? null);
   const commutePendingLegs = jobs?.commutePendingLegs ?? 0;
   const commuteTotalLegs = jobs?.commuteTotalLegs ?? 0;
   const documentsMessage = jobMessage(jobs?.documents ?? null);
@@ -145,6 +157,28 @@ export function ProjectReindexPanel({
             className="bg-pn-bg-subtle border border-pn-border text-pn-text-primary font-medium px-4 py-2 rounded-lg text-sm hover:bg-pn-border/40 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {documentsRunning ? "PDFs werden eingelesen…" : "PDFs neu einlesen"}
+          </button>
+        </form>
+      </section>
+
+      <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 max-w-lg space-y-4">
+        <div>
+          <h2 className="font-semibold mb-1">Adressen (Wunschgebiet)</h2>
+          <p className="text-sm text-pn-text-secondary">
+            Stadtteil aus OpenStreetMap ergänzen, damit die Lage im
+            Wunschgebiet erkannt wird. Läuft auch automatisch im Hintergrund für alle Projekte.
+          </p>
+        </div>
+        {addressesMessage && (
+          <p className={messageClassName(jobs?.addresses ?? null)}>{addressesMessage}</p>
+        )}
+        <form action={reindexProjectAddressesAction.bind(null, projectId)}>
+          <button
+            type="submit"
+            disabled={addressesRunning}
+            className="bg-pn-bg-subtle border border-pn-border text-pn-text-primary font-medium px-4 py-2 rounded-lg text-sm hover:bg-pn-border/40 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {addressesRunning ? "Adressen werden angereichert…" : "Adressen jetzt anreichern"}
           </button>
         </form>
       </section>

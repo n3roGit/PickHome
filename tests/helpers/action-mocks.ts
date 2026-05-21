@@ -2,7 +2,12 @@ import type { User } from "@prisma/client";
 
 export const REDIRECT_PREFIX = "NEXT_REDIRECT:";
 
-export const DEFAULT_MOCK_GEOCODE = { latitude: 53.08, longitude: 8.8 };
+export const DEFAULT_MOCK_GEOCODE = {
+  latitude: 53.08,
+  longitude: 8.8,
+  district: null as string | null,
+  displayName: null as string | null,
+};
 
 export const mockAuthState: {
   user: User | null;

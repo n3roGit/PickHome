@@ -4,5 +4,9 @@ export async function register() {
     startBackupJobScheduler();
     const { startCommuteBackfillScheduler } = await import("@/lib/commute-backfill-scheduler");
     startCommuteBackfillScheduler();
+    const { startAddressEnrichmentBackfillScheduler } = await import(
+      "@/lib/address-enrichment-backfill-scheduler"
+    );
+    startAddressEnrichmentBackfillScheduler();
   }
 }

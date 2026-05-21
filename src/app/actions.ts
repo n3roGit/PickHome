@@ -24,7 +24,8 @@ import {
   invalidateCommuteCacheForUser,
   invalidateCommuteCacheForUserAddress,
 } from "@/lib/commute-cache";
-import { geocodeAddress } from "@/lib/geocode";
+import { resolveApartmentGeocode } from "@/lib/apartment-address-enrichment";
+import { applyGeocodeToStoredAddress, geocodeAddress } from "@/lib/geocode";
 import { parseEnergyClassInput } from "@/lib/listing-import";
 import { normalizeListingUrl } from "@/lib/listing-url";
 import { readPasswordPair } from "@/lib/password";
@@ -357,6 +358,24 @@ export async function reindexProjectDocumentsAction(projectId: string) {
   redirect(`${base}&reindex_started=documents`);
 }
 
+export async function reindexProjectAddressesAction(projectId: string) {
+  const user = await requireUser();
+  const project = await assertProjectAccess(projectId, user);
+  if (!project) redirect("/dashboard");
+
+  const base = `/project/${projectId}?tab=settings`;
+  const { startProjectReindexJob } = await import("@/lib/project-reindex-jobs");
+  try {
+    await startProjectReindexJob(projectId, "addresses");
+  } catch (err) {
+    if (err instanceof Error && err.message === "reindex_already_running") {
+      redirect(`${base}&reindex_error=already_running&reindex_kind=addresses`);
+    }
+    throw err;
+  }
+  redirect(`${base}&reindex_started=addresses`);
+}
+
 export async function reindexProjectCommuteAction(projectId: string) {
   const user = await requireUser();
 
@@ -450,12 +469,13 @@ export async function createApartmentAction(projectId: string, formData: FormDat
   const address = String(formData.get("address") ?? "").trim() || null;
   let latitude: number | null = null;
   let longitude: number | null = null;
+  let storedAddress = address;
   if (address) {
-    const coords = await geocodeAddress(address);
-    if (coords) {
-      latitude = coords.latitude;
-      longitude = coords.longitude;
-    }
+    const geocoded = await geocodeAddress(address);
+    const applied = applyGeocodeToStoredAddress(address, geocoded);
+    storedAddress = applied.address || address;
+    latitude = applied.latitude;
+    longitude = applied.longitude;
   }
 
   const brokerInvolved = formData.get("brokerInvolved") === "on";
@@ -464,7 +484,7 @@ export async function createApartmentAction(projectId: string, formData: FormDat
     data: {
       projectId,
       title,
-      address,
+      address: storedAddress,
       latitude,
       longitude,
       price: Number.isFinite(price) ? price : null,
@@ -512,16 +532,20 @@ export async function updateApartmentListingUrlAction(apartmentId: string, formD
   redirect(`${base}?listing_saved=1`);
 }
 
-async function geocodeApartmentAddressFields(address: string) {
+async function geocodeApartmentAddressFields(
+  address: string,
+  existing?: { latitude: number | null; longitude: number | null }
+) {
   const trimmed = address.trim();
   if (!trimmed) {
     return { address: null as string | null, latitude: null as number | null, longitude: null as number | null };
   }
-  const coords = await geocodeAddress(trimmed);
+  const geocoded = await resolveApartmentGeocode(trimmed, existing);
+  const applied = applyGeocodeToStoredAddress(trimmed, geocoded);
   return {
-    address: trimmed,
-    latitude: coords?.latitude ?? null,
-    longitude: coords?.longitude ?? null,
+    address: applied.address || null,
+    latitude: applied.latitude,
+    longitude: applied.longitude,
   };
 }
 
@@ -534,7 +558,10 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   const price = priceRaw ? parseInt(priceRaw.replace(/\D/g, ""), 10) : null;
   const addressRaw = String(formData.get("address") ?? "").trim();
   const geocoded = addressRaw
-    ? await geocodeApartmentAddressFields(addressRaw)
+    ? await geocodeApartmentAddressFields(addressRaw, {
+        latitude: apt.latitude,
+        longitude: apt.longitude,
+      })
     : { address: null, latitude: null, longitude: null };
   const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
   const sizeSqmRaw = String(formData.get("sizeSqm") ?? "").trim();

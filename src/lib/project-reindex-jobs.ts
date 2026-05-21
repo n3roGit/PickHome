@@ -1,9 +1,10 @@
+import type { ReindexProjectAddressesResult } from "@/lib/apartment-address-enrichment";
 import type { ReindexProjectCommuteResult } from "@/lib/commute-reindex";
 import type { ReindexProjectDocumentsResult } from "@/lib/pdf-reindex";
 import { beginBackgroundTask, endBackgroundTask } from "@/lib/background-task";
 import { prisma } from "@/lib/prisma";
 
-export type ProjectReindexJobKind = "documents" | "commute";
+export type ProjectReindexJobKind = "documents" | "commute" | "addresses";
 export type ProjectReindexJobStatus = "running" | "completed" | "failed";
 
 export type ProjectReindexJobView = {
@@ -14,6 +15,7 @@ export type ProjectReindexJobView = {
   finishedAt: string | null;
   documentsResult: ReindexProjectDocumentsResult | null;
   commuteResult: ReindexProjectCommuteResult | null;
+  addressesResult: ReindexProjectAddressesResult | null;
   errorMessage: string | null;
 };
 
@@ -43,6 +45,15 @@ function parseCommuteResult(raw: string | null): ReindexProjectCommuteResult | n
   }
 }
 
+function parseAddressesResult(raw: string | null): ReindexProjectAddressesResult | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as ReindexProjectAddressesResult;
+  } catch {
+    return null;
+  }
+}
+
 function toJobView(job: {
   id: string;
   kind: string;
@@ -61,6 +72,7 @@ function toJobView(job: {
     finishedAt: job.finishedAt?.toISOString() ?? null,
     documentsResult: kind === "documents" ? parseDocumentsResult(job.resultJson) : null,
     commuteResult: kind === "commute" ? parseCommuteResult(job.resultJson) : null,
+    addressesResult: kind === "addresses" ? parseAddressesResult(job.resultJson) : null,
     errorMessage: job.errorMessage,
   };
 }
@@ -91,7 +103,11 @@ async function executeProjectReindexJob(jobId: string, key: string) {
     const result =
       job.kind === "documents"
         ? await (await import("@/lib/pdf-reindex")).reindexProjectPdfDocuments(job.projectId)
-        : await (await import("@/lib/commute-reindex")).reindexProjectCommute(job.projectId);
+        : job.kind === "commute"
+          ? await (await import("@/lib/commute-reindex")).reindexProjectCommute(job.projectId)
+          : await (await import("@/lib/apartment-address-enrichment")).reindexProjectAddresses(
+              job.projectId
+            );
 
     await prisma.projectReindexJob.update({
       where: { id: jobId },
@@ -166,15 +182,18 @@ async function latestJobForKind(projectId: string, kind: ProjectReindexJobKind) 
 export async function getProjectReindexJobs(projectId: string): Promise<{
   documents: ProjectReindexJobView | null;
   commute: ProjectReindexJobView | null;
+  addresses: ProjectReindexJobView | null;
 }> {
-  const [documents, commute] = await Promise.all([
+  const [documents, commute, addresses] = await Promise.all([
     latestJobForKind(projectId, "documents"),
     latestJobForKind(projectId, "commute"),
+    latestJobForKind(projectId, "addresses"),
   ]);
 
   return {
     documents: documents ? toJobView(documents) : null,
     commute: commute ? toJobView(commute) : null,
+    addresses: addresses ? toJobView(addresses) : null,
   };
 }
 

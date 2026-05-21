@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  TEST_ADDRESS_BERLIN_DISTRICT,
+  TEST_ADDRESS_BERLIN_ENRICHED,
+  TEST_ADDRESS_BERLIN_RAW,
+} from "../helpers/synthetic-addresses";
+import {
   PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M,
   PLZ_MAP_CIRCLE_RADIUS_MAX_M,
   PLZ_MAP_CIRCLE_RADIUS_MIN_M,
@@ -147,30 +152,36 @@ describe("area-filter", () => {
     expect(result.status).toBe("unknown");
   });
 
-  it("matches inside on PLZ when custom districts exist but none are selected", () => {
-    const importedLikeCatalog: Record<string, string[]> = {
-      "28209": [
-        "Barkhof",
-        "Bremen-Mitte",
-        "Bremen-Ost",
-        "Bürgerpark",
-        "Bürgerweide",
-        "Mitte",
-        "Schwachhausen",
-      ],
+  it("returns unknown for partial district filter without district in address text", () => {
+    const partialConfig = {
+      selectedPlz: ["10117"],
+      selectedDistricts: ["Wedding"],
     };
-    const importedConfig = {
-      selectedPlz: ["28209"],
-      selectedDistricts: ["Bremen-Mitte", "Bremen-Ost", "Mitte", "Schwachhausen"],
-    };
+    const berlinCatalog = { "10117": ["Gesundbrunnen", "Mitte", "Wedding"] };
     const result = matchApartmentToAreaFilter(
-      "Carl-Schurz-Str. 29; 28209 Bremen",
-      "Bremen|Bremen",
-      importedConfig,
-      importedLikeCatalog
+      TEST_ADDRESS_BERLIN_RAW,
+      "Berlin|Berlin",
+      partialConfig,
+      berlinCatalog
+    );
+    expect(result.status).toBe("unknown");
+    expect(result.plz).toBe("10117");
+  });
+
+  it("matches inside when address includes geocoded district name", () => {
+    const config = {
+      selectedPlz: ["10117"],
+      selectedDistricts: ["Gesundbrunnen", "Mitte", "Wedding"],
+    };
+    const berlinCatalog = { "10117": ["Gesundbrunnen", "Mitte", "Wedding"] };
+    const result = matchApartmentToAreaFilter(
+      TEST_ADDRESS_BERLIN_ENRICHED,
+      "Berlin|Berlin",
+      config,
+      berlinCatalog
     );
     expect(result.status).toBe("inside");
-    expect(result.plz).toBe("28209");
+    expect(result.district).toBe(TEST_ADDRESS_BERLIN_DISTRICT);
   });
 
   it("extracts district with slash variant", () => {

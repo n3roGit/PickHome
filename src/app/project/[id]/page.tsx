@@ -226,7 +226,8 @@ export default async function ProjectPage({
 
   const reindexStartedKind =
     resolvedSearchParams.reindex_started === "documents" ||
-    resolvedSearchParams.reindex_started === "commute"
+    resolvedSearchParams.reindex_started === "commute" ||
+    resolvedSearchParams.reindex_started === "addresses"
       ? resolvedSearchParams.reindex_started
       : undefined;
   const reindexError =

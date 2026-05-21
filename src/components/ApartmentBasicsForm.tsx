@@ -23,7 +23,8 @@ export function ApartmentBasicsForm({
     <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6">
       <h2 className="font-semibold mb-1">Preis & Adresse</h2>
       <p className="text-sm text-pn-text-secondary mb-4">
-        Für Karte, Anfahrt und Kostenrechnung. Adresse wird für Koordinaten geocodiert.
+        Für Karte, Anfahrt und Wunschgebiet. Beim Speichern wird die Adresse per OpenStreetMap
+        ergänzt (Koordinaten und Stadtteil aus OpenStreetMap).
       </p>
       {saved && (
         <p className="text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg mb-4">

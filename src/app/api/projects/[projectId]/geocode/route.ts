@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
+import { enrichApartmentAddressRecord } from "@/lib/apartment-address-enrichment";
 import { getSessionUser } from "@/lib/auth";
-import { projectAccessWhere } from "@/lib/project-access";
 import { invalidateCommuteCacheForApartment } from "@/lib/commute-cache";
-import { geocodeAddress } from "@/lib/geocode";
+import { projectAccessWhere } from "@/lib/project-access";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(
@@ -20,7 +20,14 @@ export async function POST(
     include: {
       apartments: {
         where: { archivedAt: null },
-        select: { id: true, title: true, address: true, latitude: true, longitude: true },
+        select: {
+          id: true,
+          projectId: true,
+          title: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+        },
       },
     },
   });
@@ -30,18 +37,19 @@ export async function POST(
   }
 
   for (const apt of project.apartments) {
-    if (!apt.address?.trim() || (apt.latitude != null && apt.longitude != null)) {
-      continue;
-    }
-    const coords = await geocodeAddress(apt.address);
-    if (!coords) continue;
+    const result = await enrichApartmentAddressRecord(apt);
+    if (!result.updated) continue;
     await prisma.apartment.update({
       where: { id: apt.id },
-      data: { latitude: coords.latitude, longitude: coords.longitude },
+      data: {
+        address: result.address,
+        latitude: result.latitude ?? undefined,
+        longitude: result.longitude ?? undefined,
+      },
     });
-    await invalidateCommuteCacheForApartment(apt.id);
-    apt.latitude = coords.latitude;
-    apt.longitude = coords.longitude;
+    if (result.coordsChanged) {
+      await invalidateCommuteCacheForApartment(apt.id);
+    }
   }
 
   const updated = await prisma.apartment.findMany({
