@@ -21,11 +21,11 @@ export type LlmChatResult =
 
 const DEFAULT_CHAT_TIMEOUT_MS = 60_000;
 
-function extractAssistantContent(message: {
-  content?: string | null;
-  reasoning?: string | null;
-}): string | undefined {
-  const content = message?.content?.trim();
+function extractAssistantContent(
+  message?: { content?: string | null; reasoning?: string | null } | null
+): string | undefined {
+  if (!message) return undefined;
+  const content = message.content?.trim();
   if (content) return content;
   const reasoning = message?.reasoning?.trim();
   return reasoning || undefined;
