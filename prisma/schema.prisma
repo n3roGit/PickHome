@@ -220,6 +220,12 @@ model Rating {
   @@unique([apartmentId, criterionId, userId])
 }
 
+model AppSettings {
+  id        String   @id @default("default")
+  timeZone  String   @default("Europe/Berlin")
+  updatedAt DateTime @updatedAt
+}
+
 model BackupJobSettings {
   id          String    @id @default("default")
   enabled     Boolean   @default(false)

@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { createUserAction, resetUserPasswordAction } from "@/app/actions";
 import { AdminBackupPanel } from "@/components/AdminBackupPanel";
 import { AdminScheduledBackupPanel } from "@/components/AdminScheduledBackupPanel";
+import { AdminTimezonePanel } from "@/components/AdminTimezonePanel";
 import { DeleteUserButton } from "@/components/DeleteUserButton";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
@@ -16,12 +18,21 @@ const messages: Record<string, string> = {
   lastadmin: "Der letzte Administrator kann nicht gelöscht werden.",
 };
 
+const ADMIN_TABS = ["users", "backup", "timezone"] as const;
+type AdminTab = (typeof ADMIN_TABS)[number];
+
+function parseAdminTab(value: string | undefined): AdminTab {
+  if (value && ADMIN_TABS.includes(value as AdminTab)) return value as AdminTab;
+  return "users";
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; created?: string; password_reset?: string }>;
+  searchParams: Promise<{ error?: string; created?: string; password_reset?: string; tab?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
+  const tab = parseAdminTab(resolvedSearchParams.tab);
   const admin = await requireAdmin();
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
@@ -43,132 +54,188 @@ export default async function AdminPage({
     <>
       <Nav userName={admin.name} isAdmin />
       <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 w-full min-w-0">
-        <h1 className="text-2xl font-bold mb-2">Benutzerverwaltung</h1>
-        <p className="text-pn-text-secondary text-sm mb-8">
-          Benutzer anlegen — diese können sich mit Benutzername und Passwort anmelden und Projekte erstellen.
+        <h1 className="text-2xl font-bold mb-2">Administration</h1>
+        <p className="text-pn-text-secondary text-sm mb-6">
+          Benutzer, Sicherungen und globale Einstellungen.
         </p>
 
-        {msg && (
-          <p className="mb-4 text-sm text-pn-score-low bg-pn-score-low-bg px-3 py-2 rounded-lg">{msg}</p>
-        )}
-        {created && (
-          <p className="mb-4 text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
-            Benutzer wurde angelegt.
-          </p>
-        )}
-        {passwordResetUser && (
-          <p className="mb-4 text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
-            Passwort für <span className="font-mono">{passwordResetUser}</span> wurde gesetzt.
-          </p>
+        <nav className="flex gap-4 border-b border-pn-border mb-8 text-sm overflow-x-auto">
+          <AdminTabLink href="/admin?tab=users" active={tab === "users"}>
+            Benutzer
+          </AdminTabLink>
+          <AdminTabLink href="/admin?tab=backup" active={tab === "backup"}>
+            Sicherung
+          </AdminTabLink>
+          <AdminTabLink href="/admin?tab=timezone" active={tab === "timezone"}>
+            Zeitzone
+          </AdminTabLink>
+        </nav>
+
+        {tab === "backup" && (
+          <>
+            <AdminScheduledBackupPanel />
+            <AdminBackupPanel />
+          </>
         )}
 
-        <AdminScheduledBackupPanel />
-        <AdminBackupPanel />
+        {tab === "timezone" && <AdminTimezonePanel />}
 
-        <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-8">
-          <h2 className="font-semibold mb-4">Neuer Benutzer</h2>
-          <form action={createUserAction} className="grid sm:grid-cols-2 gap-3">
-            <input
-              name="username"
-              placeholder="Benutzername"
-              required
-              pattern="[a-zA-Z0-9._-]+"
-              title="Nur Buchstaben, Zahlen, Punkt, Unterstrich, Bindestrich"
-              className="border border-pn-border rounded-lg px-3 py-2 text-sm"
-            />
-            <input
-              name="name"
-              placeholder="Anzeigename"
-              required
-              className="border border-pn-border rounded-lg px-3 py-2 text-sm"
-            />
-            <input
-              name="password"
-              type="password"
-              placeholder="Passwort"
-              required
-              minLength={MIN_PASSWORD_LENGTH}
-              className="border border-pn-border rounded-lg px-3 py-2 text-sm"
-            />
-            <input
-              name="passwordConfirm"
-              type="password"
-              placeholder="Passwort bestätigen"
-              required
-              minLength={MIN_PASSWORD_LENGTH}
-              className="border border-pn-border rounded-lg px-3 py-2 text-sm"
-            />
-            <button
-              type="submit"
-              className="sm:col-span-2 bg-pn-accent text-white font-semibold py-2 rounded-lg text-sm"
-            >
-              Benutzer anlegen
-            </button>
-          </form>
-        </section>
+        {tab === "users" && (
+          <>
+            <h2 className="text-lg font-semibold mb-2">Benutzerverwaltung</h2>
+            <p className="text-pn-text-secondary text-sm mb-8">
+              Benutzer anlegen — diese können sich mit Benutzername und Passwort anmelden und
+              Projekte erstellen.
+            </p>
 
-        <section>
-          <h2 className="font-semibold mb-4">Benutzer ({users.length})</h2>
-          <div className="overflow-x-auto border border-pn-border rounded-xl">
-            <table className="w-full text-sm">
-              <thead className="bg-pn-bg-subtle text-left">
-                <tr>
-                  <th className="p-3">Benutzername</th>
-                  <th className="p-3">Name</th>
-                  <th className="p-3">Rolle</th>
-                  <th className="p-3">Projekte</th>
-                  <th className="p-3">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-t border-pn-border">
-                    <td className="p-3 font-mono">{u.username}</td>
-                    <td className="p-3">{u.name}</td>
-                    <td className="p-3">{isAdmin(u) ? "Admin" : "Benutzer"}</td>
-                    <td className="p-3">{u._count.projects}</td>
-                    <td className="p-3">
-                      {!isAdmin(u) && (
-                        <DeleteUserButton userId={u.id} username={u.username} />
-                      )}
-                      <details className="inline">
-                        <summary className="text-pn-accent text-xs cursor-pointer hover:underline">
-                          Passwort
-                        </summary>
-                        <form
-                          action={resetUserPasswordAction.bind(null, u.id)}
-                          className="mt-2 flex flex-col gap-2 min-w-[12rem]"
-                        >
-                          <input
-                            name="password"
-                            type="password"
-                            placeholder="Neues Passwort"
-                            minLength={MIN_PASSWORD_LENGTH}
-                            required
-                            className="border border-pn-border rounded px-2 py-1 text-xs"
-                          />
-                          <input
-                            name="passwordConfirm"
-                            type="password"
-                            placeholder="Passwort bestätigen"
-                            minLength={MIN_PASSWORD_LENGTH}
-                            required
-                            className="border border-pn-border rounded px-2 py-1 text-xs"
-                          />
-                          <button type="submit" className="text-xs bg-pn-bg-subtle px-2 py-1 rounded border self-start">
-                            Setzen
-                          </button>
-                        </form>
-                      </details>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+            {msg && (
+              <p className="mb-4 text-sm text-pn-score-low bg-pn-score-low-bg px-3 py-2 rounded-lg">
+                {msg}
+              </p>
+            )}
+            {created && (
+              <p className="mb-4 text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
+                Benutzer wurde angelegt.
+              </p>
+            )}
+            {passwordResetUser && (
+              <p className="mb-4 text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
+                Passwort für <span className="font-mono">{passwordResetUser}</span> wurde gesetzt.
+              </p>
+            )}
+
+            <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-8">
+              <h2 className="font-semibold mb-4">Neuer Benutzer</h2>
+              <form action={createUserAction} className="grid sm:grid-cols-2 gap-3">
+                <input
+                  name="username"
+                  placeholder="Benutzername"
+                  required
+                  pattern="[a-zA-Z0-9._-]+"
+                  title="Nur Buchstaben, Zahlen, Punkt, Unterstrich, Bindestrich"
+                  className="border border-pn-border rounded-lg px-3 py-2 text-sm"
+                />
+                <input
+                  name="name"
+                  placeholder="Anzeigename"
+                  required
+                  className="border border-pn-border rounded-lg px-3 py-2 text-sm"
+                />
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="Passwort"
+                  required
+                  minLength={MIN_PASSWORD_LENGTH}
+                  className="border border-pn-border rounded-lg px-3 py-2 text-sm"
+                />
+                <input
+                  name="passwordConfirm"
+                  type="password"
+                  placeholder="Passwort bestätigen"
+                  required
+                  minLength={MIN_PASSWORD_LENGTH}
+                  className="border border-pn-border rounded-lg px-3 py-2 text-sm"
+                />
+                <button
+                  type="submit"
+                  className="sm:col-span-2 bg-pn-accent text-white font-semibold py-2 rounded-lg text-sm"
+                >
+                  Benutzer anlegen
+                </button>
+              </form>
+            </section>
+
+            <section>
+              <h2 className="font-semibold mb-4">Benutzer ({users.length})</h2>
+              <div className="overflow-x-auto border border-pn-border rounded-xl">
+                <table className="w-full text-sm">
+                  <thead className="bg-pn-bg-subtle text-left">
+                    <tr>
+                      <th className="p-3">Benutzername</th>
+                      <th className="p-3">Name</th>
+                      <th className="p-3">Rolle</th>
+                      <th className="p-3">Projekte</th>
+                      <th className="p-3">Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id} className="border-t border-pn-border">
+                        <td className="p-3 font-mono">{u.username}</td>
+                        <td className="p-3">{u.name}</td>
+                        <td className="p-3">{isAdmin(u) ? "Admin" : "Benutzer"}</td>
+                        <td className="p-3">{u._count.projects}</td>
+                        <td className="p-3">
+                          {!isAdmin(u) && (
+                            <DeleteUserButton userId={u.id} username={u.username} />
+                          )}
+                          <details className="inline">
+                            <summary className="text-pn-accent text-xs cursor-pointer hover:underline">
+                              Passwort
+                            </summary>
+                            <form
+                              action={resetUserPasswordAction.bind(null, u.id)}
+                              className="mt-2 flex flex-col gap-2 min-w-[12rem]"
+                            >
+                              <input
+                                name="password"
+                                type="password"
+                                placeholder="Neues Passwort"
+                                minLength={MIN_PASSWORD_LENGTH}
+                                required
+                                className="border border-pn-border rounded px-2 py-1 text-xs"
+                              />
+                              <input
+                                name="passwordConfirm"
+                                type="password"
+                                placeholder="Passwort bestätigen"
+                                minLength={MIN_PASSWORD_LENGTH}
+                                required
+                                className="border border-pn-border rounded px-2 py-1 text-xs"
+                              />
+                              <button
+                                type="submit"
+                                className="text-xs bg-pn-bg-subtle px-2 py-1 rounded border self-start"
+                              >
+                                Setzen
+                              </button>
+                            </form>
+                          </details>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
       </main>
       <Footer />
     </>
+  );
+}
+
+function AdminTabLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`pb-2 border-b-2 -mb-px whitespace-nowrap ${
+        active
+          ? "border-pn-accent text-pn-accent font-medium"
+          : "border-transparent text-pn-text-secondary hover:text-pn-text-primary"
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

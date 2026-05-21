@@ -1,12 +1,21 @@
-export function formatDateTimeDe(date: Date): string {
+import { DEFAULT_APP_TIME_ZONE } from "@/lib/timezone";
+
+export function formatDateTimeDe(
+  date: Date,
+  timeZone: string = DEFAULT_APP_TIME_ZONE
+): string {
   return new Intl.DateTimeFormat("de-DE", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone,
   }).format(date);
 }
 
-export function formatDateDe(date: Date): string {
-  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(date);
+export function formatDateDe(date: Date, timeZone: string = DEFAULT_APP_TIME_ZONE): string {
+  return new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "medium",
+    timeZone,
+  }).format(date);
 }
 
 export function toDatetimeLocalValue(date: Date): string {

@@ -4,6 +4,7 @@ import { join } from "path";
 import { getPickHomeDataDir, getUploadsRoot } from "@/lib/pickhome-data";
 import { resolveDatabaseUrl } from "@/lib/prisma";
 import { prisma } from "@/lib/prisma";
+import { formatTimestampForFileName } from "@/lib/timezone";
 
 export const BACKUP_FORMAT = "pickhome-backup";
 export const BACKUP_VERSION = 1;
@@ -78,8 +79,8 @@ export async function exportBackupToFile(targetPath: string) {
   zip.writeZip(targetPath);
 }
 
-export function exportBackupFileName() {
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+export function exportBackupFileName(timeZone: string, now = new Date()) {
+  const stamp = formatTimestampForFileName(now, timeZone);
   return `pickhome-backup-${stamp}.zip`;
 }
 

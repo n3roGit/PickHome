@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { addViewingAction, deleteViewingAction, updateViewingAction } from "@/app/actions";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { formatDateTimeDe, normalizeScheduledAtFormData, toDatetimeLocalValue } from "@/lib/dates";
+import { useAppTimeZone } from "@/lib/use-app-timezone";
 
 type Viewing = {
   id: string;
@@ -18,6 +19,7 @@ export function ViewingAppointments({
   apartmentId: string;
   viewings: Viewing[];
 }) {
+  const appTimeZone = useAppTimeZone();
   const [pending, startTransition] = useTransition();
   const now = new Date();
 
@@ -33,7 +35,9 @@ export function ViewingAppointments({
   );
 
   function onDelete(id: string, date: Date) {
-    if (!window.confirm(`Besichtigung am ${formatDateTimeDe(date)} wirklich löschen?`)) return;
+    if (!window.confirm(`Besichtigung am ${formatDateTimeDe(date, appTimeZone)} wirklich löschen?`)) {
+      return;
+    }
     startTransition(() => deleteViewingAction(id));
   }
 
@@ -90,6 +94,7 @@ export function ViewingAppointments({
           title="Anstehend"
           items={upcoming}
           pending={pending}
+          timeZone={appTimeZone}
           onDelete={onDelete}
           onUpdate={onUpdate}
           variant="upcoming"
@@ -100,6 +105,7 @@ export function ViewingAppointments({
           title="Vergangen"
           items={past}
           pending={pending}
+          timeZone={appTimeZone}
           onDelete={onDelete}
           onUpdate={onUpdate}
           variant="past"
@@ -116,6 +122,7 @@ function ViewingList({
   title,
   items,
   pending,
+  timeZone,
   onDelete,
   onUpdate,
   variant,
@@ -123,6 +130,7 @@ function ViewingList({
   title: string;
   items: { id: string; date: Date; note: string | null }[];
   pending: boolean;
+  timeZone: string;
   onDelete: (id: string, date: Date) => void;
   onUpdate: (id: string, formData: FormData) => void;
   variant: "upcoming" | "past";
@@ -141,7 +149,7 @@ function ViewingList({
             }`}
           >
             <div className="mb-3">
-              <p className="font-medium">{formatDateTimeDe(v.date)}</p>
+              <p className="font-medium">{formatDateTimeDe(v.date, timeZone)}</p>
               {v.note && <p className="text-sm text-pn-text-secondary">{v.note}</p>}
             </div>
             <form

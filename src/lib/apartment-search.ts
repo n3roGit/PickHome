@@ -1,4 +1,5 @@
 import { formatDateDe, formatDateTimeDe } from "@/lib/dates";
+import { DEFAULT_APP_TIME_ZONE } from "@/lib/timezone";
 
 export type ApartmentSearchInput = {
   title: string;
@@ -27,7 +28,8 @@ export function normalizeSearchQuery(query: string): string[] {
 
 export function buildApartmentSearchBlob(
   apartment: ApartmentSearchInput,
-  criterionNames: Map<string, string>
+  criterionNames: Map<string, string>,
+  timeZone: string = DEFAULT_APP_TIME_ZONE
 ): string {
   const parts: string[] = [apartment.title];
 
@@ -55,8 +57,8 @@ export function buildApartmentSearchBlob(
   }
   for (const viewing of apartment.viewings ?? []) {
     push(viewing.note);
-    push(formatDateDe(viewing.scheduledAt));
-    push(formatDateTimeDe(viewing.scheduledAt));
+    push(formatDateDe(viewing.scheduledAt, timeZone));
+    push(formatDateTimeDe(viewing.scheduledAt, timeZone));
   }
   for (const rating of apartment.ratings ?? []) {
     const criterion = criterionNames.get(rating.criterionId);
@@ -77,11 +79,15 @@ export function matchesApartmentSearch(blob: string, query: string): boolean {
 export function filterApartmentsBySearch<T extends ApartmentSearchInput>(
   apartments: T[],
   query: string,
-  criterionNames: Map<string, string>
+  criterionNames: Map<string, string>,
+  timeZone: string = DEFAULT_APP_TIME_ZONE
 ): T[] {
   const trimmed = query.trim();
   if (!trimmed) return apartments;
   return apartments.filter((apartment) =>
-    matchesApartmentSearch(buildApartmentSearchBlob(apartment, criterionNames), trimmed)
+    matchesApartmentSearch(
+      buildApartmentSearchBlob(apartment, criterionNames, timeZone),
+      trimmed
+    )
   );
 }

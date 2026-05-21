@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getAppTimeZone } from "@/lib/app-settings";
 import { formatDateDe } from "@/lib/dates";
 import { nextViewing } from "@/lib/viewings";
 import { ListingImportAssist } from "@/components/ListingImportAssist";
@@ -87,6 +88,7 @@ export default async function ProjectPage({
   const projectId = resolvedParams.id;
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  const appTimeZone = await getAppTimeZone();
   const admin = isAdmin(user);
 
   const tab = resolvedSearchParams.tab ?? "apartments";
@@ -208,7 +210,12 @@ export default async function ProjectPage({
     project.groups.flatMap((g) => g.criteria.map((c) => [c.id, c.name] as const))
   );
   const totalApartmentCount = sortedApartments.length;
-  const visibleApartments = filterApartmentsBySearch(sortedApartments, searchQuery, criterionNames);
+  const visibleApartments = filterApartmentsBySearch(
+    sortedApartments,
+    searchQuery,
+    criterionNames,
+    appTimeZone
+  );
 
   const memberMessage = resolvedSearchParams.member_added
     ? `${resolvedSearchParams.member_added} wurde zum Projekt hinzugefügt.`
@@ -387,14 +394,14 @@ export default async function ProjectPage({
                         if (upcoming) {
                           return (
                             <p className="text-xs text-pn-accent mt-1">
-                              Besichtigung: {formatDateDe(upcoming)}
+                              Besichtigung: {formatDateDe(upcoming, appTimeZone)}
                             </p>
                           );
                         }
                         if (a.viewedAt) {
                           return (
                             <p className="text-xs text-pn-text-tertiary mt-1">
-                              Besichtigt: {formatDateDe(a.viewedAt)}
+                              Besichtigt: {formatDateDe(a.viewedAt, appTimeZone)}
                             </p>
                           );
                         }

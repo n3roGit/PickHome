@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { formatDateTimeDe } from "@/lib/dates";
+import { useAppTimeZone } from "@/lib/use-app-timezone";
 
 export type CalendarEvent = {
   id: string;
@@ -20,6 +21,7 @@ export function ProjectCalendar({
   icalUrl: string;
   events: CalendarEvent[];
 }) {
+  const appTimeZone = useAppTimeZone();
   const sorted = [...events].sort(
     (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
   );
@@ -83,7 +85,9 @@ function CalendarSection({
               className="flex flex-wrap items-center justify-between gap-2 bg-pn-bg-surface border border-pn-border rounded-lg px-4 py-3"
             >
               <div>
-                <p className="font-medium text-sm">{formatDateTimeDe(new Date(e.scheduledAt))}</p>
+                <p className="font-medium text-sm">
+                  {formatDateTimeDe(new Date(e.scheduledAt), appTimeZone)}
+                </p>
                 <Link
                   href={`/project/${projectId}/apartment/${e.apartmentId}`}
                   className="text-sm text-pn-accent hover:underline"

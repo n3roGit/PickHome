@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAppTimeZone } from "@/lib/app-settings";
 import { exportBackupFileName, exportBackupToBuffer } from "@/lib/backup";
 import { getSessionUser, isAdmin } from "@/lib/auth";
 
@@ -9,8 +10,8 @@ export async function GET() {
   }
 
   try {
-    const buffer = await exportBackupToBuffer();
-    const filename = exportBackupFileName();
+    const [buffer, timeZone] = await Promise.all([exportBackupToBuffer(), getAppTimeZone()]);
+    const filename = exportBackupFileName(timeZone);
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/zip",

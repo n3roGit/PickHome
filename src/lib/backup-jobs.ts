@@ -1,6 +1,7 @@
 import AdmZip from "adm-zip";
 import { mkdir, readdir, stat, unlink } from "fs/promises";
 import { join, resolve, sep } from "path";
+import { getAppTimeZone } from "@/lib/app-settings";
 import {
   exportBackupFileName,
   exportBackupToFile,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/backup";
 import { getPickHomeDataDir } from "@/lib/pickhome-data";
 import { prisma } from "@/lib/prisma";
+import { scheduledRunAtInTimeZone } from "@/lib/timezone";
 
 export const BACKUP_JOB_SETTINGS_ID = "default";
 export const BACKUP_FILE_PATTERN = /^pickhome-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.zip$/;
@@ -74,17 +76,19 @@ export function resolveBackupFilePath(directory: string, fileName: string): stri
   return filePath;
 }
 
+/** @deprecated Use scheduledRunAtInTimeZone from @/lib/timezone */
 export function scheduledRunAt(date: Date, hour: number, minute: number): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute, 0, 0);
 }
 
 export function isBackupJobDue(
   settings: { enabled: boolean; hour: number; minute: number; lastRunAt: Date | null },
-  now = new Date()
+  now = new Date(),
+  timeZone: string
 ): boolean {
   if (!settings.enabled) return false;
 
-  const scheduled = scheduledRunAt(now, settings.hour, settings.minute);
+  const scheduled = scheduledRunAtInTimeZone(now, settings.hour, settings.minute, timeZone);
   if (now < scheduled) return false;
   if (!settings.lastRunAt) return true;
   return settings.lastRunAt < scheduled;
@@ -233,7 +237,8 @@ export async function runBackupJob(options?: { force?: boolean }): Promise<{
     const directory = resolveBackupDirectory(settings.directory);
     await mkdir(directory, { recursive: true });
 
-    const fileName = exportBackupFileName();
+    const timeZone = await getAppTimeZone();
+    const fileName = exportBackupFileName(timeZone);
     const filePath = join(directory, fileName);
     await exportBackupToFile(filePath);
     const removed = await pruneStoredBackups(directory, settings.retainCount);
@@ -250,8 +255,11 @@ export async function runBackupJob(options?: { force?: boolean }): Promise<{
 }
 
 export async function runScheduledBackupIfDue(): Promise<boolean> {
-  const settings = await getOrCreateBackupJobSettings();
-  if (!isBackupJobDue(settings)) return false;
+  const [settings, timeZone] = await Promise.all([
+    getOrCreateBackupJobSettings(),
+    getAppTimeZone(),
+  ]);
+  if (!isBackupJobDue(settings, new Date(), timeZone)) return false;
 
   await runBackupJob();
   return true;

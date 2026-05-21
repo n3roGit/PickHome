@@ -8,16 +8,17 @@ import {
 } from "@/lib/dates";
 
 describe("dates", () => {
-  const date = new Date("2026-05-17T14:30:00");
+  const date = new Date("2026-05-17T12:30:00Z");
+  const timeZone = "Europe/Berlin";
 
   it("formats date in de-DE", () => {
-    expect(formatDateDe(date)).toMatch(/17/);
-    expect(formatDateDe(date)).toMatch(/2026/);
+    expect(formatDateDe(date, timeZone)).toMatch(/17/);
+    expect(formatDateDe(date, timeZone)).toMatch(/2026/);
   });
 
   it("formats date and time in de-DE", () => {
-    expect(formatDateTimeDe(date)).toMatch(/17/);
-    expect(formatDateTimeDe(date)).toMatch(/14/);
+    expect(formatDateTimeDe(date, timeZone)).toMatch(/17/);
+    expect(formatDateTimeDe(date, timeZone)).toMatch(/14/);
   });
 
   it("builds datetime-local value", () => {

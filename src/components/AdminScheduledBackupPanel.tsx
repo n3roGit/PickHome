@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { formatDateTimeDe } from "@/lib/dates";
+import { useAppTimeZone } from "@/lib/use-app-timezone";
 
 type BackupJobSettings = {
   enabled: boolean;
@@ -35,6 +36,7 @@ const settingsErrors: Record<string, string> = {
 };
 
 export function AdminScheduledBackupPanel() {
+  const appTimeZone = useAppTimeZone();
   const [settings, setSettings] = useState<BackupJobSettings | null>(null);
   const [files, setFiles] = useState<StoredBackupFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,7 +224,9 @@ export function AdminScheduledBackupPanel() {
 
             <div className="grid sm:grid-cols-3 gap-3">
               <label className="text-sm">
-                <span className="block mb-1 text-pn-text-secondary">Uhrzeit (Server)</span>
+                <span className="block mb-1 text-pn-text-secondary">
+                  Uhrzeit ({appTimeZone})
+                </span>
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
@@ -283,7 +287,7 @@ export function AdminScheduledBackupPanel() {
             </p>
             {settings.lastRunAt && (
               <p className="text-xs text-pn-text-secondary">
-                Letzter Lauf: {formatDateTimeDe(new Date(settings.lastRunAt))}
+                Letzter Lauf: {formatDateTimeDe(new Date(settings.lastRunAt), appTimeZone)}
               </p>
             )}
 
@@ -329,7 +333,8 @@ export function AdminScheduledBackupPanel() {
                         <td className="p-3 font-mono text-xs">{file.name}</td>
                         <td className="p-3">
                           {formatDateTimeDe(
-                            new Date(file.exportedAt ?? file.modifiedAt)
+                            new Date(file.exportedAt ?? file.modifiedAt),
+                            appTimeZone
                           )}
                         </td>
                         <td className="p-3">{formatBytes(file.sizeBytes)}</td>

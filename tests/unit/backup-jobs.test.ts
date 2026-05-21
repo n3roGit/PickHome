@@ -4,9 +4,9 @@ import {
   isBackupJobDue,
   isValidBackupFileName,
   resolveBackupDirectory,
-  scheduledRunAt,
   validateBackupJobSettingsInput,
 } from "@/lib/backup-jobs";
+import { scheduledRunAtInTimeZone } from "@/lib/timezone";
 
 describe("backup job settings validation", () => {
   it("accepts valid settings", () => {
@@ -46,36 +46,49 @@ describe("backup directory resolution", () => {
 });
 
 describe("backup job schedule", () => {
+  const timeZone = "UTC";
+
   it("is due after scheduled time when never run", () => {
-    const now = new Date(2026, 4, 20, 5, 0, 0);
+    const now = new Date("2026-05-20T05:00:00Z");
     expect(
-      isBackupJobDue({ enabled: true, hour: 4, minute: 0, lastRunAt: null }, now)
+      isBackupJobDue({ enabled: true, hour: 4, minute: 0, lastRunAt: null }, now, timeZone)
     ).toBe(true);
   });
 
   it("is not due before scheduled time", () => {
-    const now = new Date(2026, 4, 20, 3, 30, 0);
+    const now = new Date("2026-05-20T03:30:00Z");
     expect(
-      isBackupJobDue({ enabled: true, hour: 4, minute: 0, lastRunAt: null }, now)
+      isBackupJobDue({ enabled: true, hour: 4, minute: 0, lastRunAt: null }, now, timeZone)
     ).toBe(false);
   });
 
   it("is not due again after successful run today", () => {
-    const scheduled = scheduledRunAt(new Date(2026, 4, 20, 5, 0, 0), 4, 0);
-    const now = new Date(2026, 4, 20, 6, 0, 0);
+    const scheduled = scheduledRunAtInTimeZone(
+      new Date("2026-05-20T05:00:00Z"),
+      4,
+      0,
+      timeZone
+    );
+    const now = new Date("2026-05-20T06:00:00Z");
     expect(
       isBackupJobDue(
         { enabled: true, hour: 4, minute: 0, lastRunAt: scheduled },
-        now
+        now,
+        timeZone
       )
     ).toBe(false);
   });
 
   it("is due again on the next day", () => {
-    const lastRun = scheduledRunAt(new Date(2026, 4, 19, 4, 0, 0), 4, 0);
-    const now = new Date(2026, 4, 20, 4, 5, 0);
+    const lastRun = scheduledRunAtInTimeZone(
+      new Date("2026-05-19T04:00:00Z"),
+      4,
+      0,
+      timeZone
+    );
+    const now = new Date("2026-05-20T04:05:00Z");
     expect(
-      isBackupJobDue({ enabled: true, hour: 4, minute: 0, lastRunAt: lastRun }, now)
+      isBackupJobDue({ enabled: true, hour: 4, minute: 0, lastRunAt: lastRun }, now, timeZone)
     ).toBe(true);
   });
 });
