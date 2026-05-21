@@ -18,6 +18,7 @@ import { ApartmentDeleteButton } from "@/components/ApartmentDeleteButton";
 import { ApartmentDescriptionForm } from "@/components/ApartmentDescriptionForm";
 import { ApartmentListingUrlForm } from "@/components/ApartmentListingUrlForm";
 import { ApartmentNotesForm } from "@/components/ApartmentNotesForm";
+import { ApartmentTitleForm } from "@/components/ApartmentTitleForm";
 import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
 import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
 import { computeCommuteForMembers } from "@/lib/commute";
@@ -61,6 +62,8 @@ export default async function ApartmentPage({
 }: {
   params: Promise<{ id: string; aptId: string }>;
   searchParams: Promise<{
+    title_saved?: string;
+    title_error?: string;
     listing_saved?: string;
     listing_error?: string;
     notes_saved?: string;
@@ -261,7 +264,12 @@ export default async function ApartmentPage({
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold break-words">{apartment.title}</h1>
+            <ApartmentTitleForm
+              apartmentId={apartment.id}
+              title={apartment.title}
+              saved={resolvedSearchParams.title_saved === "1"}
+              empty={resolvedSearchParams.title_error === "empty"}
+            />
             {archived && (
               <span className="inline-block mt-1 text-xs font-medium text-pn-text-secondary bg-pn-bg-subtle px-2 py-0.5 rounded">
                 Archiviert

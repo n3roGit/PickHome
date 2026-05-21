@@ -526,6 +526,26 @@ export async function updateApartmentBrokerAction(apartmentId: string, formData:
   revalidateApartment(apt.projectId, apartmentId);
 }
 
+export async function updateApartmentTitleAction(apartmentId: string, formData: FormData) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user);
+  if (!apt) redirect("/dashboard");
+
+  const title = String(formData.get("title") ?? "").trim();
+  const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
+
+  if (!title) {
+    redirect(`${base}?title_error=empty`);
+  }
+
+  await prisma.apartment.update({
+    where: { id: apartmentId },
+    data: { title },
+  });
+  revalidateApartment(apt.projectId, apartmentId);
+  redirect(`${base}?title_saved=1`);
+}
+
 export async function updateApartmentListingUrlAction(apartmentId: string, formData: FormData) {
   const user = await requireUser();
   const apt = await assertApartmentAccess(apartmentId, user);

@@ -8,6 +8,7 @@ import {
   deleteApartmentAction,
   unarchiveApartmentAction,
   updateApartmentBasicsAction,
+  updateApartmentTitleAction,
 } from "@/app/actions";
 import { getApartmentUploadsRoot } from "@/lib/pickhome-data";
 import { saveApartmentPhoto } from "@/lib/apartment-media";
@@ -63,6 +64,27 @@ describe("apartment server actions", () => {
     expect(apt?.title).toBe("Neue Wohnung");
     expect(apt?.latitude).toBe(53.08);
     expect(apt?.longitude).toBe(8.8);
+    await prisma.$disconnect();
+  });
+
+  it("updateApartmentTitleAction updates title", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Old title" },
+    });
+
+    const form = new FormData();
+    form.set("title", "New display name");
+
+    const { redirect: url } = await catchRedirect(() =>
+      updateApartmentTitleAction(apt.id, form)
+    );
+    expect(url).toContain("title_saved=1");
+
+    const updated = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
+    expect(updated.title).toBe("New display name");
     await prisma.$disconnect();
   });
 
