@@ -11,11 +11,13 @@ export function ApartmentListingUrlForm({
   listingUrl,
   saved,
   invalid,
+  llmExtractSlot,
 }: {
   apartmentId: string;
   listingUrl: string | null;
   saved?: boolean;
   invalid?: boolean;
+  llmExtractSlot?: React.ReactNode;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +51,7 @@ export function ApartmentListingUrlForm({
         ok?: boolean;
         fields?: ListingPreviewFields;
         warnings?: string[];
+        highlights?: string;
         error?: string;
       };
 
@@ -60,7 +63,9 @@ export function ApartmentListingUrlForm({
 
       applyListingPreviewFields(basicsForm, data.fields, { onlyEmpty: true });
       setMessage("Leere Felder übernommen — bitte prüfen und unter „Preis & Adresse“ speichern.");
-      setWarnings(data.warnings ?? []);
+      const w = [...(data.warnings ?? [])];
+      if (data.highlights) w.push(`Besonderheiten: ${data.highlights}`);
+      setWarnings(w);
     } catch {
       setMessage("Netzwerkfehler beim Laden der Inserat-Seite.");
     } finally {
@@ -114,6 +119,7 @@ export function ApartmentListingUrlForm({
           {message}
         </p>
       )}
+      {llmExtractSlot && <div className="mt-3">{llmExtractSlot}</div>}
       {warnings.map((w) => (
         <p key={w} className="text-xs text-pn-text-tertiary mt-1">
           {w}

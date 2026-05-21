@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createUserAction, resetUserPasswordAction } from "@/app/actions";
 import { AdminBackupPanel } from "@/components/AdminBackupPanel";
 import { AdminScheduledBackupPanel } from "@/components/AdminScheduledBackupPanel";
+import { AdminLlmPanel } from "@/components/AdminLlmPanel";
 import { AdminTimezonePanel } from "@/components/AdminTimezonePanel";
 import { DeleteUserButton } from "@/components/DeleteUserButton";
 import { Nav } from "@/components/Nav";
@@ -18,7 +19,7 @@ const messages: Record<string, string> = {
   lastadmin: "Der letzte Administrator kann nicht gelöscht werden.",
 };
 
-const ADMIN_TABS = ["users", "backup", "timezone"] as const;
+const ADMIN_TABS = ["users", "backup", "timezone", "llm"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 function parseAdminTab(value: string | undefined): AdminTab {
@@ -69,6 +70,9 @@ export default async function AdminPage({
           <AdminTabLink href="/admin?tab=timezone" active={tab === "timezone"}>
             Zeitzone
           </AdminTabLink>
+          <AdminTabLink href="/admin?tab=llm" active={tab === "llm"}>
+            KI
+          </AdminTabLink>
         </nav>
 
         {tab === "backup" && (
@@ -79,6 +83,8 @@ export default async function AdminPage({
         )}
 
         {tab === "timezone" && <AdminTimezonePanel />}
+
+        {tab === "llm" && <AdminLlmPanel />}
 
         {tab === "users" && (
           <>

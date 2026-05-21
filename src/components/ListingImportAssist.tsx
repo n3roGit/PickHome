@@ -34,6 +34,7 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
         ok?: boolean;
         fields?: ListingPreviewFields;
         warnings?: string[];
+        highlights?: string;
         error?: string;
       };
 
@@ -45,7 +46,9 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
 
       applyListingPreviewFields(form, data.fields, { onlyEmpty: true });
       setMessage("Leere Felder übernommen — bitte prüfen und dann speichern.");
-      setWarnings(data.warnings ?? []);
+      const w = [...(data.warnings ?? [])];
+      if (data.highlights) w.push(`Besonderheiten: ${data.highlights}`);
+      setWarnings(w);
     } catch {
       setMessage("Netzwerkfehler beim Laden der Inserat-Seite.");
     } finally {

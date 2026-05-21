@@ -47,6 +47,11 @@ import {
 } from "@/lib/area-filter";
 import { mergeDistrictsByPlz } from "@/lib/ortsteile-reference";
 import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
+import { apartmentLlmHasSourceText } from "@/lib/apartment-llm-context";
+import { isPdfDocument } from "@/lib/pdf-reindex";
+import { isLlmConfigured } from "@/lib/llm-client";
+import { ApartmentLlmChatButton } from "@/components/ApartmentLlmChatButton";
+import { ApartmentLlmExtractButton } from "@/components/ApartmentLlmExtractButton";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -107,6 +112,29 @@ export default async function ApartmentPage({
   const archived = apartment.archivedAt != null;
   const appTimeZone = await getAppTimeZone();
   const priceHistoryCount = await countApartmentPriceHistory(apartment.id);
+  const llmEnabled = await isLlmConfigured();
+  const llmContext = {
+    projectName: project.name,
+    title: apartment.title,
+    address: apartment.address,
+    listingUrl: apartment.listingUrl,
+    price: apartment.price,
+    sizeSqm: apartment.sizeSqm,
+    floor: apartment.floor,
+    yearBuilt: apartment.yearBuilt,
+    energyClass: apartment.energyClass,
+    brokerInvolved: apartment.brokerInvolved,
+    description: apartment.description,
+    notes: apartment.notes,
+    documents: apartment.documents.map((d) => ({
+      fileName: d.fileName,
+      extractedText: d.extractedText,
+    })),
+  };
+  const llmHasSourceText = apartmentLlmHasSourceText(llmContext);
+  const hasPdfDocument = apartment.documents.some((d) =>
+    isPdfDocument(d.mimeType, d.url)
+  );
 
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
   const projectAreaDistricts = await fetchProjectAreaDistricts(resolvedParams.id);
@@ -252,6 +280,12 @@ export default async function ApartmentPage({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {llmEnabled && (
+              <ApartmentLlmChatButton
+                apartmentId={apartment.id}
+                hasSourceText={llmHasSourceText}
+              />
+            )}
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />
             <ApartmentDeleteButton apartmentId={apartment.id} />
             <ApartmentLiveScoreBadge />
@@ -287,6 +321,15 @@ export default async function ApartmentPage({
           listingUrl={apartment.listingUrl}
           saved={resolvedSearchParams.listing_saved === "1"}
           invalid={resolvedSearchParams.listing_error === "invalid"}
+          llmExtractSlot={
+            llmEnabled ? (
+              <ApartmentLlmExtractButton
+                apartmentId={apartment.id}
+                hasPdfText={hasPdfDocument}
+                hasListingUrl={Boolean(apartment.listingUrl?.trim())}
+              />
+            ) : undefined
+          }
         />
         <ApartmentCommutePanel
           people={commutePeople}

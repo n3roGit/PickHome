@@ -1,4 +1,6 @@
 import { fetchExternal } from "@/lib/external-fetch";
+import { enrichListingFieldsWithLlm, htmlToListingSourceText } from "@/lib/llm-listing-extract";
+import { isLlmConfigured } from "@/lib/llm-client";
 import { normalizeListingUrl } from "@/lib/listing-url";
 
 export type ListingPreviewFields = {
@@ -10,7 +12,7 @@ export type ListingPreviewFields = {
 };
 
 export type ListingPreviewResult =
-  | { ok: true; fields: ListingPreviewFields; warnings: string[] }
+  | { ok: true; fields: ListingPreviewFields; warnings: string[]; highlights?: string; llmUsed?: boolean }
   | { ok: false; error: string; warnings: string[] };
 
 function parseGermanPrice(raw: string): number | undefined {
@@ -220,7 +222,20 @@ export async function fetchListingPreview(rawUrl: string): Promise<ListingPrevie
     };
   }
 
-  const fields = parseListingHtml(html);
+  let fields = parseListingHtml(html);
+  let highlights: string | undefined;
+  let llmUsed = false;
+
+  if (await isLlmConfigured()) {
+    const enriched = await enrichListingFieldsWithLlm(fields, htmlToListingSourceText(html));
+    fields = enriched.fields;
+    highlights = enriched.highlights;
+    llmUsed = enriched.llmUsed;
+    if (llmUsed) {
+      warnings.push("Felder per KI ergänzt — bitte prüfen.");
+    }
+  }
+
   const hasAny =
     fields.title || fields.price || fields.sizeSqm || fields.address || fields.energyClass;
 
@@ -232,5 +247,5 @@ export async function fetchListingPreview(rawUrl: string): Promise<ListingPrevie
     warnings.push("Portal blockiert möglicherweise automatischen Abruf.");
   }
 
-  return { ok: true, fields, warnings };
+  return { ok: true, fields, warnings, highlights, llmUsed };
 }

@@ -239,9 +239,13 @@ model Rating {
 }
 
 model AppSettings {
-  id        String   @id @default("default")
-  timeZone  String   @default("Europe/Berlin")
-  updatedAt DateTime @updatedAt
+  id          String   @id @default("default")
+  timeZone    String   @default("Europe/Berlin")
+  llmBaseUrl       String?
+  llmApiKey        String?
+  llmModel         String?
+  llmSystemPrompt  String?
+  updatedAt        DateTime @updatedAt
 }
 
 model BackupJobSettings {
