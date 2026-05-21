@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { constants, existsSync, readFileSync } from "node:fs";
+import { access, mkdir } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 const RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
@@ -53,6 +53,20 @@ async function ensureDataDirs() {
   await mkdir(join(dataDir, "uploads", "apartments"), { recursive: true });
 }
 
+async function assertDatabaseWritable(dbPath) {
+  const dataDir = dirname(dbPath);
+  try {
+    await access(dataDir, constants.W_OK);
+  } catch {
+    console.error(`[pickhome] Data directory is not writable: ${dataDir}`);
+    console.error(
+      "[pickhome] Docker: bind-mount ./data must be writable by the app user (uid 1000 / node). " +
+        "Update to a recent image (entrypoint chowns /app/data) or on the host: chown -R 1000:1000 ./data"
+    );
+    throw new Error("database directory not writable");
+  }
+}
+
 async function pushSchemaWithRetry() {
   const command = `npx prisma ${PRISMA_PUSH_ARGS}`;
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
@@ -80,6 +94,7 @@ async function main() {
   await ensureDataDirs();
 
   const dbPath = resolveDbFilePath();
+  await assertDatabaseWritable(dbPath);
   const isNewDatabase = !existsSync(dbPath);
   if (isNewDatabase) {
     console.log("[pickhome] No database file yet — will create and seed.");

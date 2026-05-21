@@ -40,6 +40,6 @@ RUN chmod +x docker-entrypoint.sh \
   && npm cache clean --force \
   && chown -R node:node /app
 
-USER node
+# Entrypoint runs as root to chown the bind-mounted data dir, then drops to node.
 EXPOSE 3000
 ENTRYPOINT ["./docker-entrypoint.sh"]

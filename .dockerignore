@@ -8,6 +8,5 @@ prisma/dev.db-journal
 public/uploads
 data
 tests
-docs/tile-layer-comparison.html
 *.md
 !README.md

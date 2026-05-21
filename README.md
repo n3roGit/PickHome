@@ -143,6 +143,13 @@ All runtime data lives in **`./data/`** (gitignored). Docker bind-mounts the sam
 | `data/uploads/` | Apartment photos and documents |
 | `data/backups/` | Manual and scheduled backup ZIPs |
 
+The container entrypoint ensures `./data` is writable for the app user (SQLite needs write access to the directory and `pickhome.db`). If you see `attempt to write a readonly database` on an older image, fix ownership on the host then restart:
+
+```bash
+sudo chown -R 1000:1000 ./data
+docker compose restart
+```
+
 Stop / start:
 
 ```bash
