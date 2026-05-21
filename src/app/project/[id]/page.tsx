@@ -84,6 +84,7 @@ export default async function ProjectPage({
     districts_saved?: string;
     districts_cleared?: string;
     districts_error?: string;
+    import_error?: string;
     sort?: string;
     order?: string;
     q?: string;
@@ -338,7 +339,16 @@ export default async function ProjectPage({
                 </ul>
               </section>
             )}
-            {tab === "apartments" && <ListingImportAssist projectId={project.id} />}
+            {tab === "apartments" && (
+              <>
+                {resolvedSearchParams.import_error === "no_title" && (
+                  <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    Immobilie konnte nicht angelegt werden: Bitte einen Titel angeben.
+                  </p>
+                )}
+                <ListingImportAssist projectId={project.id} />
+              </>
+            )}
             <ScoreLegend className="mb-4" />
             <ApartmentProjectSearch
               projectId={project.id}

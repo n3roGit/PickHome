@@ -24,7 +24,10 @@ import {
   invalidateCommuteCacheForUser,
   invalidateCommuteCacheForUserAddress,
 } from "@/lib/commute-cache";
-import { resolveApartmentGeocode } from "@/lib/apartment-address-enrichment";
+import {
+  resolveApartmentGeocode,
+  scheduleApartmentAddressEnrichment,
+} from "@/lib/apartment-address-enrichment";
 import { applyGeocodeToStoredAddress, geocodeAddress } from "@/lib/geocode";
 import {
   PRICE_HISTORY_SOURCE_MANUAL,
@@ -486,20 +489,12 @@ export async function createApartmentAction(projectId: string, formData: FormDat
   if (!project) redirect("/dashboard");
 
   const title = String(formData.get("title") ?? "").trim();
-  if (!title) return;
+  if (!title) {
+    redirect(`/project/${projectId}?tab=apartments&import_error=no_title`);
+  }
   const priceRaw = String(formData.get("price") ?? "").trim();
   const price = priceRaw ? parseInt(priceRaw.replace(/\D/g, ""), 10) : null;
   const address = String(formData.get("address") ?? "").trim() || null;
-  let latitude: number | null = null;
-  let longitude: number | null = null;
-  let storedAddress = address;
-  if (address) {
-    const geocoded = await geocodeAddress(address);
-    const applied = applyGeocodeToStoredAddress(address, geocoded);
-    storedAddress = applied.address || address;
-    latitude = applied.latitude;
-    longitude = applied.longitude;
-  }
 
   const brokerInvolved = formData.get("brokerInvolved") === "on";
 
@@ -507,9 +502,9 @@ export async function createApartmentAction(projectId: string, formData: FormDat
     data: {
       projectId,
       title,
-      address: storedAddress,
-      latitude,
-      longitude,
+      address,
+      latitude: null,
+      longitude: null,
       price: Number.isFinite(price) ? price : null,
       brokerInvolved,
       sizeSqm: parseInt(String(formData.get("sizeSqm") ?? ""), 10) || null,
@@ -522,7 +517,11 @@ export async function createApartmentAction(projectId: string, formData: FormDat
   if (Number.isFinite(price) && price != null && price > 0) {
     await recordApartmentPriceChange(apt.id, price, null, PRICE_HISTORY_SOURCE_MANUAL);
   }
+  if (address) {
+    scheduleApartmentAddressEnrichment(apt.id);
+  }
   revalidatePath(`/project/${projectId}`);
+  redirect(`/project/${projectId}?tab=apartments`);
 }
 
 export async function updateApartmentBrokerAction(apartmentId: string, formData: FormData) {

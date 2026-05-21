@@ -1,4 +1,9 @@
-import { backgroundThrottlePause } from "@/lib/background-task";
+import { revalidatePath } from "next/cache";
+import {
+  backgroundThrottlePause,
+  beginBackgroundTask,
+  endBackgroundTask,
+} from "@/lib/background-task";
 import { invalidateCommuteCacheForApartment } from "@/lib/commute-cache";
 import type { GeocodeResult } from "@/lib/geocode";
 import {
@@ -57,6 +62,51 @@ export async function resolveApartmentGeocode(
   }
 
   return result;
+}
+
+export async function enrichApartmentAddressInBackground(apartmentId: string): Promise<void> {
+  beginBackgroundTask();
+  try {
+    const apt = await prisma.apartment.findUnique({
+      where: { id: apartmentId },
+      select: {
+        id: true,
+        projectId: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+    if (!apt?.address?.trim()) return;
+
+    const result = await enrichApartmentAddressRecord(apt);
+    if (!result.updated) return;
+
+    await prisma.apartment.update({
+      where: { id: apartmentId },
+      data: {
+        address: result.address,
+        latitude: result.latitude ?? undefined,
+        longitude: result.longitude ?? undefined,
+      },
+    });
+    if (result.coordsChanged) {
+      await invalidateCommuteCacheForApartment(apartmentId);
+    }
+
+    revalidatePath(`/project/${apt.projectId}`);
+    revalidatePath(`/project/${apt.projectId}/apartment/${apartmentId}`);
+  } catch (error) {
+    console.error("[pickhome] Background apartment address enrichment failed:", error);
+  } finally {
+    endBackgroundTask();
+  }
+}
+
+/** Geocode one apartment after create/update without blocking the HTTP response. */
+export function scheduleApartmentAddressEnrichment(apartmentId: string): void {
+  if (process.env.PICKHOME_ADDRESS_ENRICHMENT === "0") return;
+  void enrichApartmentAddressInBackground(apartmentId);
 }
 
 export async function enrichApartmentAddressRecord(

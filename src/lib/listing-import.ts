@@ -1,4 +1,10 @@
 import { fetchExternal } from "@/lib/external-fetch";
+import {
+  extractRelaxedJsonLdListingName,
+  extractRelaxedJsonLdPropertyAddress,
+  isBrokerOfficeAddress,
+  pickPropertyListingAddress,
+} from "@/lib/listing-address";
 import { enrichListingFieldsWithLlm, htmlToListingSourceText } from "@/lib/llm-listing-extract";
 import { isLlmConfigured } from "@/lib/llm-client";
 import { normalizeListingUrl } from "@/lib/listing-url";
@@ -203,7 +209,9 @@ export function parseListingPlainText(text: string): ListingPreviewFields {
     const plzStreet = textBlob.match(
       /([A-ZÄÖÜ][a-zäöüß.\-]+(?:straße|str\.|weg|platz|allee|gasse)[^,]{0,80},\s*\d{5}\s+[A-ZÄÖÜ][a-zäöüß\-]+)/i
     );
-    if (plzStreet) fields.address = plzStreet[1].trim().slice(0, 200);
+    if (plzStreet && !isBrokerOfficeAddress(plzStreet[1])) {
+      fields.address = plzStreet[1].trim().slice(0, 200);
+    }
   }
 
   if (fields.address) fields.address = fields.address.slice(0, 300);
@@ -216,12 +224,23 @@ export function parseListingPlainText(text: string): ListingPreviewFields {
 
 export function parseListingHtml(html: string, url?: string): ListingPreviewFields {
   const fields: ListingPreviewFields = {};
-  collectFromJsonLd(extractJsonLdObjects(html), fields);
+  const jsonLdObjects = extractJsonLdObjects(html);
+  collectFromJsonLd(jsonLdObjects, fields);
+  const relaxedJsonLdAddress = extractRelaxedJsonLdPropertyAddress(html);
 
-  if (!fields.title) {
-    fields.title =
-      metaContent(html, "og:title") ??
-      html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
+  fields.title =
+    extractRelaxedJsonLdListingName(html) ??
+    metaContent(html, "og:title") ??
+    html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
+  for (const obj of jsonLdObjects) {
+    if (fields.title) break;
+    if (obj && typeof obj === "object" && typeof (obj as Record<string, unknown>).name === "string") {
+      const name = String((obj as Record<string, unknown>).name).trim();
+      if (name.length > 12 && /wohnung|haus|reihen|immobil|vorankündigung/i.test(name)) {
+        fields.title = name;
+        break;
+      }
+    }
   }
 
   const ogDesc = metaContent(html, "og:description") ?? "";
@@ -232,7 +251,15 @@ export function parseListingHtml(html: string, url?: string): ListingPreviewFiel
   if (!fields.price && fromText.price != null) fields.price = fromText.price;
   if (!fields.sizeSqm && fromText.sizeSqm != null) fields.sizeSqm = fromText.sizeSqm;
   if (!fields.energyClass && fromText.energyClass) fields.energyClass = fromText.energyClass;
-  if (!fields.address && fromText.address) fields.address = fromText.address;
+
+  const pickedAddress = pickPropertyListingAddress({
+    title: fields.title,
+    textBlob,
+    jsonLdAddress: fields.address,
+    relaxedJsonLdAddress,
+    heuristicStreet: fromText.address,
+  });
+  if (pickedAddress) fields.address = pickedAddress;
 
   if (fields.title) fields.title = fields.title.slice(0, 200);
 
@@ -340,7 +367,10 @@ export async function fetchListingPreview(rawUrl: string): Promise<ListingPrevie
     warnings.push("Keine Felder erkannt — bitte manuell ausfüllen.");
   }
 
-  if (/captcha|zugriff verweigert|access denied/i.test(html)) {
+  if (
+    !hasAny &&
+    /captcha|zugriff verweigert|access denied/i.test(html)
+  ) {
     warnings.push("Portal blockiert möglicherweise automatischen Abruf.");
   }
 

@@ -121,8 +121,10 @@ Antworte NUR mit einem JSON-Objekt (kein Markdown), Schema:
 Regeln:
 - price: Kaufpreis oder Kaltmiete in Euro als Ganzzahl ohne Cent
 - sizeSqm: Wohnfläche in m² als Ganzzahl
-- energyClass: nur A+ bis H
+- energyClass: genau ein Wert aus A+, A, B, C, D, E, F, G, H (Energieeffizienzklasse / Endenergiebedarf-Klasse) — nur Buchstabe mit optionalem Plus, kein Verbrauch (kWh), kein Primärenergie-Faktor, keine Spanne; bei A++ im Text → A+; sonst null
 - brokerInvolved: true bei Maklerprovision/Käuferprovision/provisionspflichtig; false bei provisionsfrei/von privat/ohne Makler; sonst null
+- address: Standort der Immobilie (PLZ, Stadt, ggf. Stadtteil/Straße aus Lage-Beschreibung) — NICHT Büroadresse, Impressum oder Anschrift des Maklers/Anbieters (oft andere PLZ als die Immobilie)
+- Wenn nur Stadtteil und PLZ bekannt: "Stadtteil, PLZ Stadt" (z. B. "Nordstadt, 99999 Teststadt")
 - Nur Felder setzen, die im Text klar vorkommen; sonst null
 - highlights: max. 3 kurze Stichpunkte zu Besonderheiten/Risiken (ein String)`;
 

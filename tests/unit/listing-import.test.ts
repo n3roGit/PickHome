@@ -69,6 +69,20 @@ describe("listing-import", () => {
     );
   });
 
+  it("prefers property PLZ over broker office street from broken JSON-LD", () => {
+    const html = `
+      <script type="application/ld+json">
+      {"@type":"SingleFamilyResidence","name":"Reihenhaus in Bremen-Walle","address":{"postalCode":"12345","addressLocality":"Teststadt"},"description":"Line one
+      line two"}
+      </script>
+      <body>Musterstraße 1, 12340 Teststadt</body>
+    `;
+    const fields = parseListingHtml(html);
+    expect(fields.title).toContain("Bremen-Walle");
+    expect(fields.address).toBe("Walle, 12345 Teststadt");
+    expect(fields.address).not.toContain("Musterstraße");
+  });
+
   it("infers broker from portal URL when text is silent", () => {
     expect(
       inferBrokerInvolved("Wohnung in Bremen", "https://www.immobilienscout24.de/expose/1")

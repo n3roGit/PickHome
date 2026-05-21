@@ -66,14 +66,16 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
 
     const titleInput = form.elements.namedItem("title") as HTMLInputElement | null;
     const urlInput = form.elements.namedItem("listingUrl") as HTMLInputElement | null;
-    const title = titleInput?.value?.trim() ?? "";
+    let title = titleInput?.value?.trim() ?? "";
     const url = urlInput?.value?.trim() ?? "";
 
     if (!title && url) {
       e.preventDefault();
+      setLoading(true);
       const ok = await loadFromListing();
-      const titleAfter = titleInput?.value?.trim() ?? "";
-      if (!ok || !titleAfter) {
+      setLoading(false);
+      title = titleInput?.value?.trim() ?? "";
+      if (!ok || !title) {
         setMessage(
           "Ohne Titel keine Anlage möglich — „Daten automatisch füllen“ nutzen oder Titel eintragen."
         );
@@ -86,7 +88,11 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
     if (!title) {
       e.preventDefault();
       setMessage("Bitte einen Titel eintragen oder zuerst „Daten automatisch füllen“.");
+      return;
     }
+
+    setLoading(true);
+    setMessage(null);
   }
 
   return (
@@ -155,9 +161,10 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
         </label>
         <button
           type="submit"
-          className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm w-full sm:w-auto"
+          disabled={loading}
+          className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm w-full sm:w-auto disabled:opacity-50"
         >
-          Immobilie hinzufügen
+          {loading ? "Bitte warten…" : "Immobilie hinzufügen"}
         </button>
       </div>
       <textarea

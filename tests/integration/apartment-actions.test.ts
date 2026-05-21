@@ -49,7 +49,7 @@ describe("apartment server actions", () => {
     await prisma.$disconnect();
   });
 
-  it("createApartmentAction stores geocoded coordinates", async () => {
+  it("createApartmentAction stores address immediately without blocking geocode", async () => {
     const prisma = createTestPrisma();
     const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
     const project = await createTestProject(prisma, user.id);
@@ -59,12 +59,13 @@ describe("apartment server actions", () => {
     form.set("address", "Bremen Mitte");
     form.set("price", "250000");
 
-    await createApartmentAction(project.id, form);
+    await catchRedirect(() => createApartmentAction(project.id, form));
 
     const apt = await prisma.apartment.findFirst({ where: { projectId: project.id } });
     expect(apt?.title).toBe("Neue Wohnung");
-    expect(apt?.latitude).toBe(53.08);
-    expect(apt?.longitude).toBe(8.8);
+    expect(apt?.address).toBe("Bremen Mitte");
+    expect(apt?.latitude).toBeNull();
+    expect(apt?.longitude).toBeNull();
     await prisma.$disconnect();
   });
 
