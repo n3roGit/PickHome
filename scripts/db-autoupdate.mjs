@@ -46,10 +46,32 @@ function runShell(command) {
   }
 }
 
-/** Use the image's tsx + tsconfig paths (@/*); avoid npx pulling a fresh tsx without path aliases. */
+function resolveTsxBin() {
+  const candidates = [
+    join(process.cwd(), "db-tools", "node_modules", ".bin", "tsx"),
+    join(process.cwd(), "node_modules", ".bin", "tsx"),
+    join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error("tsx not found (expected /app/db-tools/node_modules/.bin/tsx in Docker image)");
+}
+
+/** Standalone Next output has no tsx; use /app/db-tools from the image build. */
 function runTsxScript(scriptPath) {
-  const tsxCli = join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs");
-  runShell(`node "${tsxCli}" "${join(process.cwd(), scriptPath)}"`);
+  const tsxBin = resolveTsxBin();
+  const absScript = join(process.cwd(), scriptPath);
+  runShell(`"${tsxBin}" "${absScript}"`);
+}
+
+function runTsxScriptOptional(label, scriptPath) {
+  try {
+    runTsxScript(scriptPath);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[pickhome] ${label} skipped (${message})`);
+  }
 }
 
 async function ensureDataDirs() {
@@ -103,13 +125,16 @@ async function main() {
   await pushSchemaWithRetry();
 
   console.log("[pickhome] Backfilling sizeSqm from descriptions (if needed)...");
-  runTsxScript("scripts/backfill-size-sqm.mjs");
+  runTsxScriptOptional("Backfill sizeSqm", "scripts/backfill-size-sqm.mjs");
 
   console.log("[pickhome] Backfilling area filter ortKeys (if needed)...");
-  runTsxScript("scripts/backfill-area-filter-ort-keys.mjs");
+  runTsxScriptOptional("Backfill area filter ortKeys", "scripts/backfill-area-filter-ort-keys.mjs");
 
   console.log("[pickhome] Backfilling apartment price history snapshots (if needed)...");
-  runTsxScript("scripts/backfill-apartment-price-history.mjs");
+  runTsxScriptOptional(
+    "Backfill apartment price history",
+    "scripts/backfill-apartment-price-history.mjs"
+  );
 
   if (isNewDatabase) {
     console.log("[pickhome] Seeding initial admin user...");
