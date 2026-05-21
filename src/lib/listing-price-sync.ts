@@ -5,6 +5,7 @@ import {
 } from "@/lib/apartment-price-history";
 import { getAppTimeZone } from "@/lib/app-settings";
 import { fetchListingPriceFromUrl } from "@/lib/listing-import";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { scheduledRunAtInTimeZone } from "@/lib/timezone";
 
@@ -40,12 +41,12 @@ export async function getOrCreateListingPriceSyncJobSettings() {
   });
 }
 
-function apartmentsDueWhere(cycleStart: Date) {
+function apartmentsDueWhere(cycleStart: Date): Prisma.ApartmentWhereInput {
   return {
     archivedAt: null,
     listingUrl: { not: null },
     OR: [{ listingPriceCheckedAt: null }, { listingPriceCheckedAt: { lt: cycleStart } }],
-  } as const;
+  };
 }
 
 export async function countApartmentsDueForListingPriceCheck(
