@@ -159,6 +159,14 @@ export async function seedProjectChecklistFromCriteria(projectId: string) {
   }
 }
 
+export async function getProjectChecklistBrokerGroups(projectId: string) {
+  return prisma.criterionGroup.findMany({
+    where: { projectId },
+    orderBy: { sortOrder: "asc" },
+    select: { name: true, brokerQuestions: true, sortOrder: true },
+  });
+}
+
 export async function getProjectChecklistItems(projectId: string) {
   return prisma.checklistItem.findMany({
     where: { projectId },

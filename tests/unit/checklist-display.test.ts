@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBrokerQuestionsDigest,
   filterChecklistItemsForUser,
   hasChecklistInfo,
   userCanFillChecklistItem,
@@ -27,6 +28,17 @@ describe("filterChecklistItemsForUser", () => {
   it("includes both and own assignments", () => {
     const filtered = filterChecklistItemsForUser(items, "u1");
     expect(filtered).toHaveLength(2);
+  });
+});
+
+describe("buildBrokerQuestionsDigest", () => {
+  it("includes all groups with text, not only groups with checklist items", () => {
+    const digest = buildBrokerQuestionsDigest([
+      { name: "Technik", brokerQuestions: "Heizung?", sortOrder: 2 },
+      { name: "Lage", brokerQuestions: "Lärm?", sortOrder: 1 },
+      { name: "Feeling", brokerQuestions: null, sortOrder: 0 },
+    ]);
+    expect(digest).toBe("Lage:\nLärm?\n\nTechnik:\nHeizung?");
   });
 });
 

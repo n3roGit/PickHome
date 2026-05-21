@@ -80,6 +80,20 @@ export type ApartmentChecklistGroupBlock = {
   items: ApartmentChecklistItemRow[];
 };
 
+/** All criterion groups with Makler-Fragen (independent of enabled checklist points). */
+export function buildBrokerQuestionsDigest(
+  groups: { name: string; brokerQuestions: string | null; sortOrder: number }[]
+): string {
+  const brokerParts: string[] = [];
+  const sorted = [...groups].sort((a, b) => a.sortOrder - b.sortOrder);
+  for (const g of sorted) {
+    if (g.brokerQuestions?.trim()) {
+      brokerParts.push(`${g.name}:\n${g.brokerQuestions.trim()}`);
+    }
+  }
+  return brokerParts.join("\n\n");
+}
+
 export function buildApartmentChecklistGroups(
   items: {
     id: string;
@@ -96,7 +110,7 @@ export function buildApartmentChecklistGroups(
   }[],
   entries: { itemId: string; status: string; note: string | null }[],
   userId: string
-): { groups: ApartmentChecklistGroupBlock[]; brokerDigest: string } {
+): { groups: ApartmentChecklistGroupBlock[] } {
   const entryByItem = new Map(entries.map((e) => [e.itemId, e]));
   const visible = items.filter(
     (i) => i.assigneeUserId == null || i.assigneeUserId === userId
@@ -131,12 +145,5 @@ export function buildApartmentChecklistGroups(
     (a, b) => (a.items[0]?.groupSortOrder ?? 0) - (b.items[0]?.groupSortOrder ?? 0)
   );
 
-  const brokerParts: string[] = [];
-  for (const g of groups) {
-    if (g.brokerQuestions?.trim()) {
-      brokerParts.push(`${g.name}:\n${g.brokerQuestions.trim()}`);
-    }
-  }
-
-  return { groups, brokerDigest: brokerParts.join("\n\n") };
+  return { groups };
 }

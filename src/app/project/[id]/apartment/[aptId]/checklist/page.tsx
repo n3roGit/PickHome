@@ -6,10 +6,12 @@ import { ApartmentChecklist } from "@/components/ApartmentChecklist";
 import { getSessionUser, isAdmin } from "@/lib/auth";
 import {
   buildApartmentChecklistGroups,
+  buildBrokerQuestionsDigest,
   filterChecklistItemsForUser,
 } from "@/lib/checklist-display";
 import {
   getApartmentForUser,
+  getProjectChecklistBrokerGroups,
   getProjectChecklistItems,
   getProjectMetaForUser,
 } from "@/lib/project-data";
@@ -29,7 +31,11 @@ export default async function ApartmentChecklistPage({
   const apartment = await getApartmentForUser(projectId, aptId, user);
   if (!apartment) redirect(`/project/${projectId}`);
 
-  const checklistItems = await getProjectChecklistItems(projectId);
+  const [checklistItems, brokerGroups] = await Promise.all([
+    getProjectChecklistItems(projectId),
+    getProjectChecklistBrokerGroups(projectId),
+  ]);
+  const brokerDigest = buildBrokerQuestionsDigest(brokerGroups);
   const visibleItems = filterChecklistItemsForUser(checklistItems, user.id);
   const entries = apartment.checklistEntries.map((e) => ({
     itemId: e.itemId,
@@ -37,11 +43,7 @@ export default async function ApartmentChecklistPage({
     note: e.note,
   }));
 
-  const { groups, brokerDigest } = buildApartmentChecklistGroups(
-    visibleItems,
-    entries,
-    user.id
-  );
+  const { groups } = buildApartmentChecklistGroups(visibleItems, entries, user.id);
 
   const partnerViews = project.members
     .filter((m) => m.userId !== user.id)
@@ -52,7 +54,7 @@ export default async function ApartmentChecklistPage({
         userId: m.userId,
         name: m.user.name,
         groups: built.groups,
-        brokerDigest: built.brokerDigest,
+        brokerDigest,
       };
     });
 
