@@ -39,6 +39,7 @@ import { partnerComparisons } from "@/lib/rating-divergence";
 import { resolveDealbreakerThreshold } from "@/lib/scoring";
 import {
   isAreaFilterActive,
+  areaFilterMode,
   matchApartmentToAreaFilter,
   parseAreaFilterConfig,
 } from "@/lib/area-filter";
@@ -104,6 +105,7 @@ export default async function ApartmentPage({
   const projectAreaDistricts = await fetchProjectAreaDistricts(resolvedParams.id);
   const districtsByPlz = mergeDistrictsByPlz(projectAreaDistricts);
   const areaFilterEnabled = isAreaFilterActive(project.areaFilterOrtKey, areaFilterConfig);
+  const areaFilterModeValue = areaFilterMode(areaFilterConfig);
   const areaMatch = matchApartmentToAreaFilter(
     apartment.address,
     project.areaFilterOrtKey,
@@ -230,7 +232,7 @@ export default async function ApartmentPage({
             <DuplicateApartmentBadge projectId={project.id} matches={duplicateMatches} />
             {areaFilterEnabled && (
               <div className="mt-2">
-                <DesiredAreaBadge status={areaMatch.status} />
+                <DesiredAreaBadge status={areaMatch.status} mode={areaFilterModeValue} />
               </div>
             )}
           </div>

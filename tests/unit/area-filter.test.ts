@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  areaFilterLabel,
+  areaFilterMode,
   areaFilterOrtKeys,
+  areaFilterSectionTitle,
   extractDistrictFromAddress,
   isAreaFilterActive,
   matchApartmentToAreaFilter,
@@ -174,5 +177,23 @@ describe("area-filter", () => {
 
   it("returns unset when filter inactive", () => {
     expect(matchApartmentToAreaFilter("28203 Bremen", null, null, {}).status).toBe("unset");
+  });
+
+  it("parses and serializes deny mode", () => {
+    const denyConfig = {
+      selectedPlz: ["20095"],
+      selectedDistricts: [] as string[],
+      mode: "deny" as const,
+    };
+    const raw = serializeAreaFilterConfig(denyConfig);
+    expect(parseAreaFilterConfig(raw)).toEqual(denyConfig);
+    expect(areaFilterMode(denyConfig)).toBe("deny");
+    expect(areaFilterSectionTitle("deny")).toBe("NoGo-Zone");
+  });
+
+  it("uses inverted labels in deny mode", () => {
+    expect(areaFilterLabel("inside", "deny")).toBe("In NoGo-Zone");
+    expect(areaFilterLabel("outside", "deny")).toBe("Außerhalb NoGo-Zone");
+    expect(areaFilterLabel("inside", "allow")).toBe("Im Wunschgebiet");
   });
 });

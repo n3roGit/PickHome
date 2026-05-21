@@ -9,10 +9,13 @@ import { ScoreBadge } from "@/components/ScoreBadge";
 import { DesiredAreaBadge } from "@/components/DesiredAreaBadge";
 import { markerColorForScore } from "@/lib/scoring";
 import type { MappedApartment, PlzMapOverlay } from "@/components/ProjectMap";
+import type { AreaFilterMode } from "@/lib/area-filter";
 import { DEFAULT_PLZ_OVERLAY_RADIUS_M } from "@/lib/plz-map-overlays";
 
 const DESIRED_AREA_FILL = "#22c55e";
 const DESIRED_AREA_STROKE = "#15803d";
+const NOGO_AREA_FILL = "#ef4444";
+const NOGO_AREA_STROKE = "#b91c1c";
 const DESIRED_AREA_FILL_OPACITY = 0.28;
 
 function markerIcon(color: string) {
@@ -27,9 +30,11 @@ function markerIcon(color: string) {
 function PopupContent({
   apartment,
   projectId,
+  areaFilterMode,
 }: {
   apartment: MappedApartment;
   projectId: string;
+  areaFilterMode: AreaFilterMode;
 }) {
   return (
     <div>
@@ -37,7 +42,7 @@ function PopupContent({
       {apartment.address && <p className="text-xs mt-1">{apartment.address}</p>}
       {apartment.areaMatchStatus && apartment.areaMatchStatus !== "unset" && (
         <div className="mt-1">
-          <DesiredAreaBadge status={apartment.areaMatchStatus} />
+          <DesiredAreaBadge status={apartment.areaMatchStatus} mode={areaFilterMode} />
         </div>
       )}
       <div className="mt-2">
@@ -61,10 +66,12 @@ export default function ProjectMapInner({
   projectId,
   apartments,
   areaFilterPlzOverlays,
+  areaFilterMode = "allow",
 }: {
   projectId: string;
   apartments: MappedApartment[];
   areaFilterPlzOverlays: PlzMapOverlay[];
+  areaFilterMode?: AreaFilterMode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -88,12 +95,15 @@ export default function ProjectMapInner({
 
     const bounds = L.latLngBounds([]);
 
+    const overlayFill = areaFilterMode === "deny" ? NOGO_AREA_FILL : DESIRED_AREA_FILL;
+    const overlayStroke = areaFilterMode === "deny" ? NOGO_AREA_STROKE : DESIRED_AREA_STROKE;
+
     for (const entry of areaFilterPlzOverlays) {
       const radiusM = entry.radiusM ?? DEFAULT_PLZ_OVERLAY_RADIUS_M;
       const circle = L.circle([entry.lat, entry.lng], {
         radius: radiusM,
-        color: DESIRED_AREA_STROKE,
-        fillColor: DESIRED_AREA_FILL,
+        color: overlayStroke,
+        fillColor: overlayFill,
         fillOpacity: DESIRED_AREA_FILL_OPACITY,
         weight: 2.5,
       }).addTo(map);
@@ -112,7 +122,13 @@ export default function ProjectMapInner({
       const popupEl = document.createElement("div");
       const root = createRoot(popupEl);
       popupRootsRef.current.push(root);
-      root.render(<PopupContent apartment={apartment} projectId={projectId} />);
+      root.render(
+        <PopupContent
+          apartment={apartment}
+          projectId={projectId}
+          areaFilterMode={areaFilterMode}
+        />
+      );
       marker.bindPopup(popupEl);
     }
 
@@ -131,7 +147,7 @@ export default function ProjectMapInner({
         }
       });
     };
-  }, [apartments, areaFilterPlzOverlays, projectId]);
+  }, [apartments, areaFilterPlzOverlays, areaFilterMode, projectId]);
 
   return (
     <div

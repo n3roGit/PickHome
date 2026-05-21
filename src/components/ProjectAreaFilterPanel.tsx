@@ -8,8 +8,14 @@ import {
   searchOrteAction,
   updateProjectAreaFilterAction,
 } from "@/app/actions";
-import type { AreaFilterConfig } from "@/lib/area-filter";
-import { areaFilterOrtKeys, defaultDistrictsForPlzSelection, districtsForPlzList } from "@/lib/area-filter";
+import type { AreaFilterConfig, AreaFilterMode } from "@/lib/area-filter";
+import {
+  areaFilterMode,
+  areaFilterOrtKeys,
+  areaFilterSectionTitle,
+  defaultDistrictsForPlzSelection,
+  districtsForPlzList,
+} from "@/lib/area-filter";
 import { serializeProjectAreaDistrictsImport } from "@/lib/location-catalog-import";
 import {
   findOrtByKey,
@@ -91,7 +97,11 @@ export function ProjectAreaFilterPanel({
   const [importTablesByOrtKey, setImportTablesByOrtKey] = useState<Record<string, string>>(() =>
     buildImportTablesByOrt(initialOrte, projectAreaDistricts)
   );
+  const [denyMode, setDenyMode] = useState(() => areaFilterMode(initial.config) === "deny");
   const [pending, startTransition] = useTransition();
+
+  const filterMode: AreaFilterMode = denyMode ? "deny" : "allow";
+  const filterSectionTitle = areaFilterSectionTitle(filterMode);
 
   const activeOrt = useMemo(
     () =>
@@ -263,6 +273,7 @@ export function ProjectAreaFilterPanel({
         ortKeys: selectedOrte.map((o) => ortReferenceKey(o.name, o.bundesland)),
         selectedPlz,
         selectedDistricts,
+        mode: filterMode,
       });
     });
   }
@@ -292,7 +303,7 @@ export function ProjectAreaFilterPanel({
       {(saved || districtsSaved) && (
         <p className="text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
           {saved
-            ? "Wunschgebiet wurde gespeichert."
+            ? `${filterSectionTitle} wurde gespeichert.`
             : districtsCleared
               ? "Optionale Ortsteile wurden entfernt."
               : "Ortsteile wurden übernommen."}
@@ -308,6 +319,31 @@ export function ProjectAreaFilterPanel({
           Import fehlgeschlagen. Bitte mindestens eine Zeile mit PLZ und Ortsteilen angeben.
         </p>
       )}
+
+      <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
+        <div>
+          <h3 className="font-semibold mb-1">Modus</h3>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={denyMode}
+              onChange={(e) => setDenyMode(e.target.checked)}
+              disabled={pending}
+              className="mt-1 rounded border-pn-border"
+            />
+            <span>
+              <span className="text-sm font-medium text-pn-text-primary block">
+                Als NoGo-Zone verwenden
+              </span>
+              <span className="text-sm text-pn-text-secondary">
+                {denyMode
+                  ? "Immobilien in den gewählten PLZ/Ortsteilen werden rot markiert (ausgeschlossenes Gebiet)."
+                  : "Immobilien in den gewählten PLZ/Ortsteilen werden grün markiert (Wunschgebiet)."}
+              </span>
+            </span>
+          </label>
+        </div>
+      </section>
 
       <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
         <div>
@@ -514,7 +550,7 @@ export function ProjectAreaFilterPanel({
           {selectedPlzForActiveOrtList.length > 0 && !hasDistricts && (
             <p className="text-sm text-pn-text-secondary bg-pn-bg-subtle border border-pn-border rounded-lg px-3 py-2">
               Für die gewählten PLZ in {formatOrtLabel(activeOrt)} liegen keine Ortsteile vor —
-              die ganze PLZ gilt als Wunschgebiet. Du kannst unten fehlende Ortsteile ergänzen.
+              die ganze PLZ gilt als {denyMode ? "NoGo-Zone" : "Wunschgebiet"}. Du kannst unten fehlende Ortsteile ergänzen.
             </p>
           )}
 
@@ -635,7 +671,7 @@ export function ProjectAreaFilterPanel({
           disabled={pending || selectedOrte.length === 0 || selectedPlz.length === 0}
           className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm disabled:opacity-50"
         >
-          {pending ? "Speichern…" : "Wunschgebiet speichern"}
+          {pending ? "Speichern…" : `${filterSectionTitle} speichern`}
         </button>
         {(selectedOrte.length > 0 || selectedPlz.length > 0) && (
           <button

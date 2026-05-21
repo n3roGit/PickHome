@@ -1,10 +1,13 @@
 import { extractGermanPlz } from "@/lib/federal-state-from-address";
 import { staticDistrictsForPlz } from "@/lib/ortsteile-reference";
 
+export type AreaFilterMode = "allow" | "deny";
+
 export type AreaFilterConfig = {
   ortKeys?: string[];
   selectedPlz: string[];
   selectedDistricts: string[];
+  mode?: AreaFilterMode;
 };
 
 export type AreaMatchStatus = "inside" | "outside" | "unknown" | "unset";
@@ -39,6 +42,14 @@ export function areaFilterOrtKeys(
   return legacy ? [legacy] : [];
 }
 
+export function areaFilterMode(config: AreaFilterConfig | null | undefined): AreaFilterMode {
+  return config?.mode === "deny" ? "deny" : "allow";
+}
+
+export function areaFilterSectionTitle(mode: AreaFilterMode): string {
+  return mode === "deny" ? "NoGo-Zone" : "Wunschgebiet";
+}
+
 export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilterConfig | null {
   if (!raw?.trim()) return null;
   try {
@@ -49,12 +60,14 @@ export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilte
     const ortKeys = normalizeOrtKeys(
       Array.isArray(data.ortKeys) ? data.ortKeys.map(String) : undefined
     );
+    const mode: AreaFilterMode | undefined = data.mode === "deny" ? "deny" : undefined;
     return {
       ...(ortKeys.length > 0 ? { ortKeys } : {}),
       selectedPlz: [...new Set(data.selectedPlz.map(String))].sort(),
       selectedDistricts: [...new Set(data.selectedDistricts.map(String))].sort((a, b) =>
         a.localeCompare(b, "de")
       ),
+      ...(mode ? { mode } : {}),
     };
   } catch {
     return null;
@@ -63,10 +76,12 @@ export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilte
 
 export function serializeAreaFilterConfig(config: AreaFilterConfig): string {
   const ortKeys = normalizeOrtKeys(config.ortKeys);
+  const mode = areaFilterMode(config);
   return JSON.stringify({
     ...(ortKeys.length > 0 ? { ortKeys } : {}),
     selectedPlz: [...config.selectedPlz].sort(),
     selectedDistricts: [...config.selectedDistricts].sort((a, b) => a.localeCompare(b, "de")),
+    ...(mode === "deny" ? { mode: "deny" as const } : {}),
   });
 }
 
@@ -209,7 +224,23 @@ export function defaultDistrictsForPlzSelection(
   return districtsForPlzList(customDistrictsByPlz, selectedPlz);
 }
 
-export function areaFilterLabel(status: AreaMatchStatus): string {
+export function areaFilterLabel(
+  status: AreaMatchStatus,
+  mode: AreaFilterMode = "allow"
+): string {
+  if (mode === "deny") {
+    switch (status) {
+      case "inside":
+        return "In NoGo-Zone";
+      case "outside":
+        return "Außerhalb NoGo-Zone";
+      case "unknown":
+        return "Lage unklar";
+      default:
+        return "";
+    }
+  }
+
   switch (status) {
     case "inside":
       return "Im Wunschgebiet";

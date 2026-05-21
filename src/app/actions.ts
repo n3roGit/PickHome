@@ -174,6 +174,7 @@ export async function updateProjectAreaFilterAction(
     ortKeys: string[];
     selectedPlz: string[];
     selectedDistricts: string[];
+    mode?: "allow" | "deny";
   }
 ) {
   const user = await requireUser();
@@ -206,9 +207,10 @@ export async function updateProjectAreaFilterAction(
   }
 
   const { serializeAreaFilterConfig } = await import("@/lib/area-filter");
+  const mode = payload.mode === "deny" ? "deny" : "allow";
   const config =
     ortKeys.length > 0 && selectedPlz.length > 0
-      ? serializeAreaFilterConfig({ ortKeys, selectedPlz, selectedDistricts })
+      ? serializeAreaFilterConfig({ ortKeys, selectedPlz, selectedDistricts, mode })
       : null;
 
   await prisma.project.update({

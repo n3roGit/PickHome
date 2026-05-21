@@ -45,7 +45,9 @@ import { archiveReasonLabel } from "@/lib/archive-reasons";
 import { buildDuplicateIndex } from "@/lib/apartment-duplicates";
 import { maxNotableDivergence, partnerComparisons } from "@/lib/rating-divergence";
 import {
+  areaFilterMode,
   areaFilterOrtKeys,
+  areaFilterSectionTitle,
   isAreaFilterActive,
   matchApartmentToAreaFilter,
   parseAreaFilterConfig,
@@ -155,6 +157,8 @@ export default async function ProjectPage({
   const districtsByPlz = mergeDistrictsByPlz(projectAreaDistricts);
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
   const areaFilterEnabled = isAreaFilterActive(project.areaFilterOrtKey, areaFilterConfig);
+  const areaFilterModeValue = areaFilterMode(areaFilterConfig);
+  const areaFilterSectionLabel = areaFilterSectionTitle(areaFilterModeValue);
   const areaFilterOrtKeyList = areaFilterOrtKeys(project.areaFilterOrtKey, areaFilterConfig);
   const initialOrte = areaFilterOrtKeyList
     .map((key) => findOrtByKey(key))
@@ -162,7 +166,7 @@ export default async function ProjectPage({
   const initialOrt = initialOrte[0] ?? findOrtByKey(project.areaFilterOrtKey ?? "");
   const areaFilterSummary =
     areaFilterEnabled && areaFilterConfig && initialOrte.length > 0
-      ? `${initialOrte.map((o) => o.name).join(", ")} · ${areaFilterConfig.selectedPlz.length} PLZ`
+      ? `${areaFilterSectionLabel} · ${initialOrte.map((o) => o.name).join(", ")} · ${areaFilterConfig.selectedPlz.length} PLZ`
       : undefined;
 
   const apartments = project.apartments.map((a) => {
@@ -344,7 +348,11 @@ export default async function ProjectPage({
                       )}
                       {a.address && <p className="text-sm text-pn-text-secondary">{a.address}</p>}
                       {areaFilterEnabled && (
-                        <DesiredAreaBadge status={a.areaMatch.status} className="mt-1" />
+                        <DesiredAreaBadge
+                          status={a.areaMatch.status}
+                          mode={areaFilterModeValue}
+                          className="mt-1"
+                        />
                       )}
                       {tab === "archived" && a.archiveReason && (
                         <p className="text-xs text-pn-text-tertiary mt-1">
@@ -508,6 +516,7 @@ export default async function ProjectPage({
               key="project-map"
               projectId={project.id}
               areaFilterEnabled={areaFilterEnabled}
+              areaFilterMode={areaFilterModeValue}
               apartments={activeProject.apartments.map((a) => {
                 const scored = apartmentScore(
                   criteria,
@@ -534,7 +543,7 @@ export default async function ProjectPage({
                 };
               })}
             />
-            <CollapsibleSection title="Wunschgebiet" defaultOpen={false} headerAside={areaFilterSummary}>
+            <CollapsibleSection title={areaFilterSectionLabel} defaultOpen={false} headerAside={areaFilterSummary}>
               <ProjectAreaFilterPanel
                 projectId={project.id}
                 saved={resolvedSearchParams.areas_saved === "1"}

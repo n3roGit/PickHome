@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { ScoreLegend } from "@/components/ScoreLegend";
+import type { AreaFilterMode } from "@/lib/area-filter";
 import type { AreaMatchStatus } from "@/lib/area-filter";
 import type { PlzMapOverlay } from "@/lib/plz-map-overlays";
 
@@ -28,10 +29,12 @@ export function ProjectMap({
   projectId,
   apartments,
   areaFilterEnabled = false,
+  areaFilterMode = "allow",
 }: {
   projectId: string;
   apartments: MapApartment[];
   areaFilterEnabled?: boolean;
+  areaFilterMode?: AreaFilterMode;
 }) {
   const [points, setPoints] = useState(apartments);
   const [loading, setLoading] = useState(false);
@@ -121,6 +124,11 @@ export function ProjectMap({
   const mapped = withAddress.filter(
     (a): a is MappedApartment => a.latitude != null && a.longitude != null
   );
+  const areaOverlayLabel = areaFilterMode === "deny" ? "NoGo-Zonen" : "Wunschgebiete";
+  const areaOverlayHint =
+    areaFilterMode === "deny"
+      ? `${plzOverlays.length} rote Kreise markieren die ausgeschlossenen PLZ-Bereiche.`
+      : `${plzOverlays.length} grüne Kreise markieren die gewählten PLZ-Bereiche des Wunschgebiets.`;
   const visiblePlzOverlays =
     areaFilterEnabled && showDesiredAreas ? plzOverlays : [];
 
@@ -148,14 +156,12 @@ export function ProjectMap({
                 : "border-pn-border text-pn-text-secondary"
             }`}
           >
-            {showDesiredAreas ? "Wunschgebiete ausblenden" : "Wunschgebiete anzeigen"}
+            {showDesiredAreas ? `${areaOverlayLabel} ausblenden` : `${areaOverlayLabel} anzeigen`}
           </button>
         )}
       </div>
       {areaFilterEnabled && showDesiredAreas && mapped.length > 0 && plzOverlays.length > 0 && (
-        <p className="text-xs text-pn-text-secondary">
-          {plzOverlays.length} grüne Kreise markieren die gewählten PLZ-Bereiche des Wunschgebiets.
-        </p>
+        <p className="text-xs text-pn-text-secondary">{areaOverlayHint}</p>
       )}
       {mapped.length === 0 ? (
         <p className="text-sm text-pn-text-tertiary py-8 text-center">
@@ -171,6 +177,7 @@ export function ProjectMap({
             projectId={projectId}
             apartments={mapped}
             areaFilterPlzOverlays={visiblePlzOverlays}
+            areaFilterMode={areaFilterMode}
           />
           <ScoreLegend />
         </>
