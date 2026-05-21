@@ -132,6 +132,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 ### Karte (`?tab=map`)
 
 - Leaflet map; «Adressen auf Karte laden»; coordinate count increases when addresses geocoded.
+- Layer control (top-right): **OpenStreetMap** (default) ↔ **Luftbild** (Esri World Imagery).
 - Overlay toggle: «Wunschgebiete ausblenden» or «NoGo-Zonen ausblenden» when areas configured.
 - Collapsible area panel: Modus (Wunschgebiet / NoGo), **Kartenradius** (km + «Standard»), add PLZ per city.
 - Per active city: **Stadtteile / Ortsteile** — import textarea, «Ortsteile übernehmen» (optional); OSM hint when no districts.

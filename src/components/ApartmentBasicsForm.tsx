@@ -3,6 +3,7 @@ import {
   geocodeApartmentAddressAction,
   updateApartmentBasicsAction,
 } from "@/app/actions";
+import { ApartmentPriceHistoryButton } from "@/components/ApartmentPriceHistoryButton";
 import { apartmentBasicsFormId } from "@/lib/listing-import-form";
 import { formatBudgetHint, formatPrice } from "@/lib/scoring";
 
@@ -11,6 +12,8 @@ export function ApartmentBasicsForm({
   apartmentId,
   address,
   price,
+  priceHistoryCount,
+  timeZone,
   sizeSqm,
   energyClass,
   budget,
@@ -23,6 +26,8 @@ export function ApartmentBasicsForm({
   apartmentId: string;
   address: string | null;
   price: number | null;
+  priceHistoryCount: number;
+  timeZone: string;
   sizeSqm?: number | null;
   energyClass?: string | null;
   budget: number | null;
@@ -103,7 +108,17 @@ export function ApartmentBasicsForm({
           (Projekt-Einstellungen)
         </p>
         <label className="block">
-          <span className="text-sm font-medium text-pn-text-secondary">Preis (€)</span>
+          <span className="text-sm font-medium text-pn-text-secondary flex items-center gap-2">
+            Preis (€)
+            {priceHistoryCount > 0 && (
+              <ApartmentPriceHistoryButton
+                projectId={projectId}
+                apartmentId={apartmentId}
+                entryCount={priceHistoryCount}
+                timeZone={timeZone}
+              />
+            )}
+          </span>
           <input
             name="price"
             defaultValue={price != null ? String(price) : ""}

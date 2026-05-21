@@ -9,6 +9,8 @@ import { ApartmentScoreProvider } from "@/components/ApartmentScoreProvider";
 import { ApartmentDocuments } from "@/components/ApartmentDocuments";
 import { RatingSliders } from "@/components/RatingSliders";
 import { ViewingAppointments } from "@/components/ViewingAppointments";
+import { countApartmentPriceHistory } from "@/lib/apartment-price-history";
+import { getAppTimeZone } from "@/lib/app-settings";
 import { getSessionUser, isAdmin } from "@/lib/auth";
 import { ApartmentBasicsForm } from "@/components/ApartmentBasicsForm";
 import { ApartmentArchiveButton } from "@/components/ApartmentArchiveButton";
@@ -103,6 +105,8 @@ export default async function ApartmentPage({
   });
   const myScore = apartmentScore(criteria, apartment.ratings, user.id, dealbreakerThreshold);
   const archived = apartment.archivedAt != null;
+  const appTimeZone = await getAppTimeZone();
+  const priceHistoryCount = await countApartmentPriceHistory(apartment.id);
 
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
   const projectAreaDistricts = await fetchProjectAreaDistricts(resolvedParams.id);
@@ -252,6 +256,8 @@ export default async function ApartmentPage({
           apartmentId={apartment.id}
           address={apartment.address}
           price={apartment.price}
+          priceHistoryCount={priceHistoryCount}
+          timeZone={appTimeZone}
           sizeSqm={apartment.sizeSqm}
           energyClass={apartment.energyClass}
           budget={project.budget}

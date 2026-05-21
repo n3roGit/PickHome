@@ -142,7 +142,8 @@ model Apartment {
   yearBuilt   Int?
   description String?
   notes       String?
-  listingUrl    String?
+  listingUrl              String?
+  listingPriceCheckedAt   DateTime?
   energyClass   String?
   archiveReason String?
   archiveNote   String?
@@ -155,6 +156,19 @@ model Apartment {
   documents   ApartmentDocument[]
   viewings      ViewingAppointment[]
   commuteCaches CommuteCache[]
+  priceHistory  ApartmentPriceHistory[]
+}
+
+model ApartmentPriceHistory {
+  id            String    @id @default(uuid())
+  apartmentId   String
+  price         Int
+  previousPrice Int?
+  source        String
+  recordedAt    DateTime  @default(now())
+  apartment     Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@index([apartmentId, recordedAt])
 }
 
 model CommuteCache {
@@ -235,6 +249,15 @@ model BackupJobSettings {
   directory   String    @default("")
   lastRunAt   DateTime?
   updatedAt   DateTime  @updatedAt
+}
+
+model ListingPriceSyncJobSettings {
+  id        String    @id @default("default")
+  enabled   Boolean   @default(true)
+  hour      Int       @default(6)
+  minute    Int       @default(0)
+  lastRunAt DateTime?
+  updatedAt DateTime  @updatedAt
 }
 
 model ProjectReindexJob {

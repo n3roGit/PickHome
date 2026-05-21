@@ -26,6 +26,11 @@ import {
 } from "@/lib/commute-cache";
 import { resolveApartmentGeocode } from "@/lib/apartment-address-enrichment";
 import { applyGeocodeToStoredAddress, geocodeAddress } from "@/lib/geocode";
+import {
+  applyApartmentPriceUpdate,
+  PRICE_HISTORY_SOURCE_MANUAL,
+  recordApartmentPriceChange,
+} from "@/lib/apartment-price-history";
 import { parseEnergyClassInput } from "@/lib/listing-import";
 import { normalizeListingUrl } from "@/lib/listing-url";
 import { readPasswordPair } from "@/lib/password";
@@ -480,7 +485,7 @@ export async function createApartmentAction(projectId: string, formData: FormDat
 
   const brokerInvolved = formData.get("brokerInvolved") === "on";
 
-  await prisma.apartment.create({
+  const apt = await prisma.apartment.create({
     data: {
       projectId,
       title,
@@ -494,6 +499,9 @@ export async function createApartmentAction(projectId: string, formData: FormDat
       listingUrl: normalizeListingUrl(String(formData.get("listingUrl") ?? "")),
     },
   });
+  if (Number.isFinite(price) && price != null && price > 0) {
+    await recordApartmentPriceChange(apt.id, price, null, PRICE_HISTORY_SOURCE_MANUAL);
+  }
   revalidatePath(`/project/${projectId}`);
 }
 
@@ -611,18 +619,18 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   const sizeSqmRaw = String(formData.get("sizeSqm") ?? "").trim();
   const energyClassRaw = String(formData.get("energyClass") ?? "").trim();
   const sizeSqmParsed = sizeSqmRaw ? parseInt(sizeSqmRaw.replace(/\D/g, ""), 10) : null;
-  const data = {
-    price: Number.isFinite(price) ? price : null,
-    address: geocoded.address,
-    latitude: geocoded.latitude,
-    longitude: geocoded.longitude,
-    sizeSqm: sizeSqmParsed != null && Number.isFinite(sizeSqmParsed) ? sizeSqmParsed : null,
-    energyClass: energyClassRaw ? parseEnergyClassInput(energyClassRaw) : null,
-  };
+  const resolvedPrice = Number.isFinite(price) ? price : null;
 
+  await applyApartmentPriceUpdate(apartmentId, resolvedPrice, PRICE_HISTORY_SOURCE_MANUAL);
   await prisma.apartment.update({
     where: { id: apartmentId },
-    data,
+    data: {
+      address: geocoded.address,
+      latitude: geocoded.latitude,
+      longitude: geocoded.longitude,
+      sizeSqm: sizeSqmParsed != null && Number.isFinite(sizeSqmParsed) ? sizeSqmParsed : null,
+      energyClass: energyClassRaw ? parseEnergyClassInput(energyClassRaw) : null,
+    },
   });
   await invalidateCommuteCacheForApartment(apartmentId);
   revalidateApartment(apt.projectId, apartmentId);

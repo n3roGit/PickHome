@@ -18,6 +18,23 @@ const NOGO_AREA_FILL = "#ef4444";
 const NOGO_AREA_STROKE = "#b91c1c";
 const DESIRED_AREA_FILL_OPACITY = 0.28;
 
+const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const ESRI_IMAGERY_TILE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
+function createBaseLayers() {
+  const osm = L.tileLayer(OSM_TILE_URL, {
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  });
+  const satellite = L.tileLayer(ESRI_IMAGERY_TILE_URL, {
+    maxZoom: 19,
+    attribution:
+      'Tiles &copy; <a href="https://www.esri.com/">Esri</a>',
+  });
+  return { osm, satellite };
+}
+
 function markerIcon(color: string) {
   return L.divIcon({
     className: "",
@@ -62,6 +79,18 @@ function PopupContent({
   );
 }
 
+function extendBoundsWithOverlays(bounds: L.LatLngBounds, overlays: PlzMapOverlay[]) {
+  for (const entry of overlays) {
+    const radiusM = entry.radiusM ?? DEFAULT_PLZ_OVERLAY_RADIUS_M;
+    const lat = entry.lat;
+    const lng = entry.lng;
+    const dLat = radiusM / 111_320;
+    const dLng = radiusM / (111_320 * Math.cos((lat * Math.PI) / 180));
+    bounds.extend([lat - dLat, lng - dLng]);
+    bounds.extend([lat + dLat, lng + dLng]);
+  }
+}
+
 export default function ProjectMapInner({
   projectId,
   apartments,
@@ -75,7 +104,11 @@ export default function ProjectMapInner({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const overlaysLayerRef = useRef<L.LayerGroup | null>(null);
   const popupRootsRef = useRef<Root[]>([]);
+  const didInitialFitRef = useRef(false);
+  const initialFitHadOverlaysRef = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -88,36 +121,60 @@ export default function ProjectMapInner({
     );
     mapRef.current = map;
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
+    const { osm, satellite } = createBaseLayers();
+    osm.addTo(map);
+    L.control
+      .layers(
+        {
+          OpenStreetMap: osm,
+          Luftbild: satellite,
+        },
+        {},
+        { position: "topright" }
+      )
+      .addTo(map);
 
-    const bounds = L.latLngBounds([]);
+    const markersLayer = L.layerGroup().addTo(map);
+    markersLayerRef.current = markersLayer;
+    overlaysLayerRef.current = L.layerGroup().addTo(map);
 
-    const overlayFill = areaFilterMode === "deny" ? NOGO_AREA_FILL : DESIRED_AREA_FILL;
-    const overlayStroke = areaFilterMode === "deny" ? NOGO_AREA_STROKE : DESIRED_AREA_STROKE;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markersLayerRef.current = null;
+      overlaysLayerRef.current = null;
+      didInitialFitRef.current = false;
+      initialFitHadOverlaysRef.current = false;
+      const roots = popupRootsRef.current;
+      popupRootsRef.current = [];
+      queueMicrotask(() => {
+        for (const root of roots) {
+          root.unmount();
+        }
+      });
+    };
+  }, [apartments]);
 
-    for (const entry of areaFilterPlzOverlays) {
-      const radiusM = entry.radiusM ?? DEFAULT_PLZ_OVERLAY_RADIUS_M;
-      const circle = L.circle([entry.lat, entry.lng], {
-        radius: radiusM,
-        color: overlayStroke,
-        fillColor: overlayFill,
-        fillOpacity: DESIRED_AREA_FILL_OPACITY,
-        weight: 2.5,
-      }).addTo(map);
-      bounds.extend(circle.getBounds());
-    }
+  useEffect(() => {
+    const markersLayer = markersLayerRef.current;
+    const map = mapRef.current;
+    if (!markersLayer || !map) return;
+
+    markersLayer.clearLayers();
+    const roots = popupRootsRef.current;
+    popupRootsRef.current = [];
+    queueMicrotask(() => {
+      for (const root of roots) {
+        root.unmount();
+      }
+    });
 
     for (const apartment of apartments) {
       const shown = apartment.displayScore ?? apartment.score;
       const color = markerColorForScore(shown, apartment.dealbreaker, "score");
       const marker = L.marker([apartment.latitude, apartment.longitude], {
         icon: markerIcon(color),
-      }).addTo(map);
-
-      bounds.extend([apartment.latitude, apartment.longitude]);
+      }).addTo(markersLayer);
 
       const popupEl = document.createElement("div");
       const root = createRoot(popupEl);
@@ -131,23 +188,51 @@ export default function ProjectMapInner({
       );
       marker.bindPopup(popupEl);
     }
+  }, [apartments, areaFilterMode, projectId]);
+
+  useEffect(() => {
+    const overlaysLayer = overlaysLayerRef.current;
+    const map = mapRef.current;
+    if (!overlaysLayer || !map) return;
+
+    overlaysLayer.clearLayers();
+
+    const overlayFill = areaFilterMode === "deny" ? NOGO_AREA_FILL : DESIRED_AREA_FILL;
+    const overlayStroke = areaFilterMode === "deny" ? NOGO_AREA_STROKE : DESIRED_AREA_STROKE;
+
+    for (const entry of areaFilterPlzOverlays) {
+      const radiusM = entry.radiusM ?? DEFAULT_PLZ_OVERLAY_RADIUS_M;
+      L.circle([entry.lat, entry.lng], {
+        radius: radiusM,
+        color: overlayStroke,
+        fillColor: overlayFill,
+        fillOpacity: DESIRED_AREA_FILL_OPACITY,
+        weight: 2.5,
+      }).addTo(overlaysLayer);
+    }
+  }, [areaFilterPlzOverlays, areaFilterMode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || apartments.length === 0) return;
+
+    const hasOverlays = areaFilterPlzOverlays.length > 0;
+    if (didInitialFitRef.current) {
+      if (initialFitHadOverlaysRef.current || !hasOverlays) return;
+    }
+
+    const bounds = L.latLngBounds([]);
+    for (const apartment of apartments) {
+      bounds.extend([apartment.latitude, apartment.longitude]);
+    }
+    extendBoundsWithOverlays(bounds, areaFilterPlzOverlays);
 
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [32, 32], maxZoom: 12 });
+      didInitialFitRef.current = true;
+      if (hasOverlays) initialFitHadOverlaysRef.current = true;
     }
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-      const roots = popupRootsRef.current;
-      popupRootsRef.current = [];
-      queueMicrotask(() => {
-        for (const root of roots) {
-          root.unmount();
-        }
-      });
-    };
-  }, [apartments, areaFilterPlzOverlays, areaFilterMode, projectId]);
+  }, [apartments, areaFilterPlzOverlays, areaFilterMode]);
 
   return (
     <div

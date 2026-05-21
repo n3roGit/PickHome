@@ -95,6 +95,9 @@ async function main() {
   console.log("[pickhome] Backfilling area filter ortKeys (if needed)...");
   runShell("npx tsx scripts/backfill-area-filter-ort-keys.mjs");
 
+  console.log("[pickhome] Backfilling apartment price history snapshots (if needed)...");
+  runShell("npx tsx scripts/backfill-apartment-price-history.mjs");
+
   if (isNewDatabase) {
     console.log("[pickhome] Seeding initial admin user...");
     runShell("npx tsx prisma/seed.ts");

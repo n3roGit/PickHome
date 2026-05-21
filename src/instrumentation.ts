@@ -8,5 +8,9 @@ export async function register() {
       "@/lib/address-enrichment-backfill-scheduler"
     );
     startAddressEnrichmentBackfillScheduler();
+    const { startListingPriceSyncScheduler } = await import(
+      "@/lib/listing-price-sync-scheduler"
+    );
+    startListingPriceSyncScheduler();
   }
 }

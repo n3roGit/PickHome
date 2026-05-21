@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getAppTimeZone } from "@/lib/app-settings";
 import { formatDateDe } from "@/lib/dates";
 import { nextViewing } from "@/lib/viewings";
+import { ApartmentPriceHistoryButton } from "@/components/ApartmentPriceHistoryButton";
 import { ListingImportAssist } from "@/components/ListingImportAssist";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
@@ -155,6 +156,18 @@ export default async function ProjectPage({
     project.apartments.map((a) => ({ id: a.id, title: a.title, address: a.address }))
   );
 
+  const priceHistoryGrouped =
+    project.apartments.length > 0
+      ? await prisma.apartmentPriceHistory.groupBy({
+          by: ["apartmentId"],
+          where: { apartmentId: { in: project.apartments.map((a) => a.id) } },
+          _count: { _all: true },
+        })
+      : [];
+  const priceHistoryCountByApartment = new Map(
+    priceHistoryGrouped.map((row) => [row.apartmentId, row._count._all])
+  );
+
   const plzReference = getPlzReferenceData();
   const projectAreaDistricts = await fetchProjectAreaDistricts(projectId);
   const districtsByPlz = mergeDistrictsByPlz(projectAreaDistricts);
@@ -199,6 +212,7 @@ export default async function ProjectPage({
       divergence,
       duplicateMatches: duplicateIndex.get(a.id) ?? [],
       areaMatch,
+      priceHistoryCount: priceHistoryCountByApartment.get(a.id) ?? 0,
     };
   });
 
@@ -374,11 +388,17 @@ export default async function ProjectPage({
                         matches={a.duplicateMatches}
                       />
                       {a.price != null && (
-                        <p className="text-sm font-medium">
-                          {formatPrice(a.price)}
+                        <p className="text-sm font-medium flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <span>{formatPrice(a.price)}</span>
+                          <ApartmentPriceHistoryButton
+                            projectId={project.id}
+                            apartmentId={a.id}
+                            entryCount={a.priceHistoryCount}
+                            timeZone={appTimeZone}
+                          />
                           {project.budget != null && (
                             <span
-                              className={`block text-xs font-normal mt-0.5 ${
+                              className={`w-full text-xs font-normal ${
                                 a.price > project.budget
                                   ? "text-pn-score-low"
                                   : a.price < project.budget

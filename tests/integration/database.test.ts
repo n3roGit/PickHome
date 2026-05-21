@@ -1,4 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  applyApartmentPriceUpdate,
+  PRICE_HISTORY_SOURCE_MANUAL,
+} from "@/lib/apartment-price-history";
 import { apartmentScore } from "@/lib/project-data";
 import {
   assertTestApartmentAccess,
@@ -132,6 +136,40 @@ describe("database integration", () => {
       projectId: project.id,
     });
     expect(await assertTestApartmentAccess(prisma, apartment.id, outsider.id)).toBeNull();
+    await prisma.$disconnect();
+  });
+
+  it("records apartment price history on update", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apartment = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Price test", price: 300_000 },
+    });
+
+    await applyApartmentPriceUpdate(apartment.id, 320_000, PRICE_HISTORY_SOURCE_MANUAL);
+
+    const updated = await prisma.apartment.findUniqueOrThrow({ where: { id: apartment.id } });
+    expect(updated.price).toBe(320_000);
+
+    const history = await prisma.apartmentPriceHistory.findMany({
+      where: { apartmentId: apartment.id },
+      orderBy: { recordedAt: "desc" },
+    });
+    expect(history).toHaveLength(1);
+    expect(history[0].price).toBe(320_000);
+    expect(history[0].previousPrice).toBe(300_000);
+    expect(history[0].source).toBe(PRICE_HISTORY_SOURCE_MANUAL);
+
+    const unchanged = await applyApartmentPriceUpdate(
+      apartment.id,
+      320_000,
+      PRICE_HISTORY_SOURCE_MANUAL
+    );
+    expect(unchanged.changed).toBe(false);
+    expect(await prisma.apartmentPriceHistory.count({ where: { apartmentId: apartment.id } })).toBe(
+      1
+    );
     await prisma.$disconnect();
   });
 });

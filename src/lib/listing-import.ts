@@ -145,6 +145,49 @@ export function parseListingHtml(html: string): ListingPreviewFields {
   return fields;
 }
 
+export type ListingPriceFetchResult =
+  | { ok: true; price: number }
+  | { ok: false; error: string };
+
+export async function fetchListingPriceFromUrl(
+  rawUrl: string,
+  options?: { background?: boolean }
+): Promise<ListingPriceFetchResult> {
+  const url = normalizeListingUrl(rawUrl);
+  if (!url) {
+    return { ok: false, error: "invalid_url" };
+  }
+
+  const res = await fetchExternal(
+    "listing",
+    url,
+    {
+      headers: {
+        "User-Agent": "PickHome/1.0 (listing price sync; self-hosted)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(15_000),
+    },
+    options?.background ? { background: true } : undefined
+  );
+
+  if (!res?.ok) {
+    return { ok: false, error: "fetch_failed" };
+  }
+
+  const html = await res.text();
+  if (html.length < 200) {
+    return { ok: false, error: "empty_response" };
+  }
+
+  const fields = parseListingHtml(html);
+  if (fields.price == null || fields.price <= 0) {
+    return { ok: false, error: "price_not_found" };
+  }
+
+  return { ok: true, price: fields.price };
+}
+
 export async function fetchListingPreview(rawUrl: string): Promise<ListingPreviewResult> {
   const url = normalizeListingUrl(rawUrl);
   if (!url) {

@@ -123,8 +123,12 @@ export function ProjectMap({
     }
   }
 
-  const mapped = withAddress.filter(
-    (a): a is MappedApartment => a.latitude != null && a.longitude != null
+  const mapped = useMemo(
+    () =>
+      withAddress.filter(
+        (a): a is MappedApartment => a.latitude != null && a.longitude != null
+      ),
+    [withAddress]
   );
   const areaOverlayLabel = areaFilterMode === "deny" ? "NoGo-Zonen" : "Wunschgebiete";
   const radiusKmLabel =
