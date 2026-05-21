@@ -46,6 +46,12 @@ function runShell(command) {
   }
 }
 
+/** Use the image's tsx + tsconfig paths (@/*); avoid npx pulling a fresh tsx without path aliases. */
+function runTsxScript(scriptPath) {
+  const tsxCli = join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs");
+  runShell(`node "${tsxCli}" "${join(process.cwd(), scriptPath)}"`);
+}
+
 async function ensureDataDirs() {
   const dataDir = process.env.PICKHOME_DATA_DIR
     ? join(process.cwd(), process.env.PICKHOME_DATA_DIR)
@@ -97,17 +103,17 @@ async function main() {
   await pushSchemaWithRetry();
 
   console.log("[pickhome] Backfilling sizeSqm from descriptions (if needed)...");
-  runShell("npx tsx scripts/backfill-size-sqm.mjs");
+  runTsxScript("scripts/backfill-size-sqm.mjs");
 
   console.log("[pickhome] Backfilling area filter ortKeys (if needed)...");
-  runShell("npx tsx scripts/backfill-area-filter-ort-keys.mjs");
+  runTsxScript("scripts/backfill-area-filter-ort-keys.mjs");
 
   console.log("[pickhome] Backfilling apartment price history snapshots (if needed)...");
-  runShell("npx tsx scripts/backfill-apartment-price-history.mjs");
+  runTsxScript("scripts/backfill-apartment-price-history.mjs");
 
   if (isNewDatabase) {
     console.log("[pickhome] Seeding initial admin user...");
-    runShell("npx tsx prisma/seed.ts");
+    runTsxScript("prisma/seed.ts");
   }
 }
 

@@ -32,11 +32,14 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/src/lib ./src/lib
+COPY --from=builder /app/src/data ./src/data
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/package.json ./package.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN chmod +x docker-entrypoint.sh \
-  && npm install --no-save prisma@6.5.0 tsx@4.19.3 \
+  && npm install --no-save prisma@6.5.0 @prisma/client@6.5.0 tsx@4.19.3 \
+  && npx prisma generate \
   && npm cache clean --force \
   && chown -R node:node /app
 
