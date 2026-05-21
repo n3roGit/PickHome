@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import {
   deleteApartmentDocumentAction,
   uploadApartmentDocumentAction,
@@ -23,20 +23,33 @@ export function ApartmentDocuments({
   const [pending, startTransition] = useTransition();
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  const uploadFiles = useCallback(
+    (files: File[]) => {
+      startTransition(async () => {
+        setUploadError(null);
+        for (const file of files) {
+          if (file.size === 0) continue;
+          if (file.size > MAX_DOCUMENT_BYTES) {
+            setUploadError(apartmentDocumentUploadErrorMessage("too_large", file.name));
+            continue;
+          }
+          const single = new FormData();
+          single.set("document", file);
+          const result = await uploadApartmentDocumentAction(apartmentId, single);
+          if (result && !result.ok) {
+            setUploadError(apartmentDocumentUploadErrorMessage(result.error, file.name));
+          }
+        }
+      });
+    },
+    [apartmentId]
+  );
+
   function onUpload(formData: FormData) {
-    startTransition(async () => {
-      setUploadError(null);
-      const file = formData.get("document");
-      if (!(file instanceof File) || file.size === 0) return;
-      if (file.size > MAX_DOCUMENT_BYTES) {
-        setUploadError(apartmentDocumentUploadErrorMessage("too_large", file.name));
-        return;
-      }
-      const result = await uploadApartmentDocumentAction(apartmentId, formData);
-      if (result && !result.ok) {
-        setUploadError(apartmentDocumentUploadErrorMessage(result.error, file.name));
-      }
-    });
+    const files = formData
+      .getAll("document")
+      .filter((entry): entry is File => entry instanceof File);
+    uploadFiles(files);
   }
 
   return (
@@ -78,10 +91,14 @@ export function ApartmentDocuments({
           {uploadError}
         </p>
       )}
+      {pending && (
+        <p className="mb-3 text-sm text-pn-text-secondary">Dokumente werden hochgeladen…</p>
+      )}
       <FileDropzone
         name="document"
         accept="application/pdf,.pdf"
-        hint={`PDF, max. ${MAX_DOCUMENT_MB} MB`}
+        hint={`PDF, mehrere Dateien möglich, max. ${MAX_DOCUMENT_MB} MB je Datei`}
+        multiple
         disabled={pending}
         maxBytes={MAX_DOCUMENT_BYTES}
         onTooLarge={(fileName) =>

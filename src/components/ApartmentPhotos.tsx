@@ -104,7 +104,7 @@ export default function ApartmentPhotos({
       <FileDropzone
         name="photo"
         accept="image/jpeg,image/png,image/webp,image/*"
-        hint={`Oder Galerie / Dateien (JPG, PNG, WebP, max. ${MAX_IMAGE_MB} MB)`}
+        hint={`Oder Galerie / Dateien (JPG, PNG, WebP, mehrere möglich, max. ${MAX_IMAGE_MB} MB je Datei)`}
         multiple
         disabled={pending}
         maxBytes={MAX_IMAGE_BYTES}

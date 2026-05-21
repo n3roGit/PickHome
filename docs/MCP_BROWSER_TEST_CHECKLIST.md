@@ -167,7 +167,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 - **KI-Assistent** (Header): Dialog «Exposé-Assistent», Frage senden → `POST …/llm/chat` → `200`, Antwort aus Beschreibung/Stammdaten/PDF-Kontext.
 - **Anfahrt** (expand): per-member rows; km/min; with Firmenwagen + Arbeitsstätte: «Firmenwagen: Brutto …» and «Pendlerpauschale (geschätzt, Steuererklärung)» under workplace leg.
 - **Kaufnebenkosten & Finanzierung** (expand): project financing reflected.
-- Bilder / Kamera / Exposé upload UI (optional upload).
+- Bilder / Kamera / Exposé upload UI: `multiple` on file inputs; optional multi-file upload smoke (dropzone or multi-select).
 - Notizen, Beschreibung (expand + Speichern optional).
 - Besichtigungstermine: list, add form (optional).
 - **Meinungsunterschiede** (when team ratings exist): per-user scores vs «Noch keine gemeinsam bewerteten Kriterien».
