@@ -54,14 +54,17 @@ async function ensureDataDirs() {
 }
 
 async function assertDatabaseWritable(dbPath) {
+  if (typeof process.getuid === "function" && process.getuid() === 0) {
+    return;
+  }
   const dataDir = dirname(dbPath);
   try {
     await access(dataDir, constants.W_OK);
   } catch {
     console.error(`[pickhome] Data directory is not writable: ${dataDir}`);
     console.error(
-      "[pickhome] Docker: bind-mount ./data must be writable by the app user (uid 1000 / node). " +
-        "Update to a recent image (entrypoint chowns /app/data) or on the host: chown -R 1000:1000 ./data"
+      "[pickhome] Docker: ./data must be writable. On the host run: chown -R 1000:1000 ./data " +
+        "(Linux) or ensure the bind mount is not read-only. The entrypoint runs db-autoupdate as root when possible."
     );
     throw new Error("database directory not writable");
   }

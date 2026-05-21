@@ -4,15 +4,24 @@ set -e
 DATA_DIR="/app/data"
 mkdir -p "$DATA_DIR/uploads/apartments"
 
-run_app() {
-  node scripts/db-autoupdate.mjs
-  exec node server.js
+# Best-effort: bind mounts on some hosts ignore chown until files exist.
+fix_data_permissions() {
+  if [ "$(id -u)" != "0" ]; then
+    return 0
+  fi
+  chown -R node:node "$DATA_DIR" 2>/dev/null || true
 }
 
-# Bind-mounted ./data is often root-owned on the host; SQLite needs write on the directory and DB file.
 if [ "$(id -u)" = "0" ]; then
-  chown -R node:node "$DATA_DIR"
-  exec su node -s /bin/sh -c "node scripts/db-autoupdate.mjs && exec node server.js"
+  echo "[pickhome] Running database auto-update as root (bind-mounted ./data)..."
+  node scripts/db-autoupdate.mjs
+  fix_data_permissions
+  if su node -s /bin/sh -c "test -w ${DATA_DIR}" 2>/dev/null; then
+    exec su node -s /bin/sh -c "exec node server.js"
+  fi
+  echo "[pickhome] WARN: /app/data not writable as node — starting app as root (fix host ownership of ./data)"
+  exec node server.js
 fi
 
-run_app
+node scripts/db-autoupdate.mjs
+exec node server.js
