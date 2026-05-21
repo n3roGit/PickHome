@@ -70,4 +70,28 @@ describe("project area districts integration", () => {
     expect(byPlz["28203"]).toEqual(["Fesenfeld"]);
     expect(byPlz["28205"]).toBeUndefined();
   });
+
+  it("scoped replace updates only PLZ in scope and keeps other cities", async () => {
+    const {
+      replaceProjectAreaDistrictsForPlzScope,
+      fetchProjectAreaDistricts,
+    } = await import("@/lib/project-area-data");
+
+    await prisma.projectAreaDistrict.createMany({
+      data: [
+        { projectId, plz: "20095", name: "Altstadt" },
+        { projectId, plz: "10115", name: "Mitte" },
+      ],
+    });
+
+    await replaceProjectAreaDistrictsForPlzScope(
+      projectId,
+      [{ plz: "20095", districts: ["Neustadt", "St. Georg"] }],
+      ["20095", "20359"]
+    );
+
+    const byPlz = await fetchProjectAreaDistricts(projectId);
+    expect(byPlz["20095"]).toEqual(["Neustadt", "St. Georg"]);
+    expect(byPlz["10115"]).toEqual(["Mitte"]);
+  });
 });

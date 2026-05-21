@@ -235,37 +235,69 @@ function areaDistrictRedirect(projectId: string, params: Record<string, string>)
   redirect(`/project/${projectId}?${query.toString()}`);
 }
 
-export async function importProjectAreaDistrictsAction(projectId: string, tableRaw: string) {
+export async function importProjectAreaDistrictsAction(
+  projectId: string,
+  tableRaw: string,
+  plzScopeRaw?: string
+) {
   const user = await requireUser();
   const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
   const { parseLocationCatalogImport } = await import("@/lib/location-catalog-import");
-  const { replaceProjectAreaDistrictsFromImport } = await import("@/lib/project-area-data");
+  const {
+    clearProjectAreaDistricts,
+    clearProjectAreaDistrictsForPlzScope,
+    replaceProjectAreaDistrictsForPlzScope,
+    replaceProjectAreaDistrictsFromImport,
+  } = await import("@/lib/project-area-data");
+
+  const plzScope = plzScopeRaw
+    ? [...new Set(plzScopeRaw.split(",").map((plz) => plz.trim()).filter((plz) => /^\d{5}$/.test(plz)))]
+    : null;
 
   if (!tableRaw.trim()) {
-    const { clearProjectAreaDistricts } = await import("@/lib/project-area-data");
-    await clearProjectAreaDistricts(projectId);
+    if (plzScope?.length) {
+      await clearProjectAreaDistrictsForPlzScope(projectId, plzScope);
+    } else {
+      await clearProjectAreaDistricts(projectId);
+    }
     areaDistrictRedirect(projectId, { districts_saved: "1", districts_cleared: "1" });
   }
 
   const parsed = parseLocationCatalogImport(tableRaw, "Import");
   if (!parsed) areaDistrictRedirect(projectId, { districts_error: "import" });
 
-  const result = await replaceProjectAreaDistrictsFromImport(projectId, parsed.rows);
+  const result = plzScope?.length
+    ? await replaceProjectAreaDistrictsForPlzScope(projectId, parsed.rows, plzScope)
+    : await replaceProjectAreaDistrictsFromImport(projectId, parsed.rows);
   areaDistrictRedirect(projectId, {
     districts_saved: "1",
     districts_plz: String(result.plzCount),
   });
 }
 
-export async function clearProjectAreaDistrictsAction(projectId: string) {
+export async function clearProjectAreaDistrictsAction(
+  projectId: string,
+  plzScopeRaw?: string
+) {
   const user = await requireUser();
   const project = await assertProjectAccess(projectId, user);
   if (!project) redirect("/dashboard");
 
-  const { clearProjectAreaDistricts } = await import("@/lib/project-area-data");
-  await clearProjectAreaDistricts(projectId);
+  const { clearProjectAreaDistricts, clearProjectAreaDistrictsForPlzScope } = await import(
+    "@/lib/project-area-data"
+  );
+
+  const plzScope = plzScopeRaw
+    ? [...new Set(plzScopeRaw.split(",").map((plz) => plz.trim()).filter((plz) => /^\d{5}$/.test(plz)))]
+    : null;
+
+  if (plzScope?.length) {
+    await clearProjectAreaDistrictsForPlzScope(projectId, plzScope);
+  } else {
+    await clearProjectAreaDistricts(projectId);
+  }
   areaDistrictRedirect(projectId, { districts_saved: "1", districts_cleared: "1" });
 }
 

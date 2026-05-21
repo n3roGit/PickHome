@@ -73,11 +73,25 @@ export function parseLocationCatalogImport(
   return { cityName: resolvedCity, rows };
 }
 
+export function filterDistrictsByPlz(
+  districtsByPlz: Record<string, string[]>,
+  plzList: string[]
+): Record<string, string[]> {
+  const plzSet = new Set(plzList);
+  const out: Record<string, string[]> = {};
+  for (const [plz, districts] of Object.entries(districtsByPlz)) {
+    if (plzSet.has(plz)) out[plz] = districts;
+  }
+  return out;
+}
+
 export function serializeProjectAreaDistrictsImport(
   districtsByPlz: Record<string, string[]>,
-  cityName?: string | null
+  cityName?: string | null,
+  plzList?: string[]
 ): string {
-  return Object.entries(districtsByPlz)
+  const filtered = plzList ? filterDistrictsByPlz(districtsByPlz, plzList) : districtsByPlz;
+  return Object.entries(filtered)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([plz, districts]) => {
       const list = districts.join(", ");

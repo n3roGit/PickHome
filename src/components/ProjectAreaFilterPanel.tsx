@@ -36,6 +36,18 @@ function sortOrte(orte: PlzReferenceOrt[]): PlzReferenceOrt[] {
   return [...orte].sort((a, b) => a.name.localeCompare(b.name, "de"));
 }
 
+function buildImportTablesByOrt(
+  orte: PlzReferenceOrt[],
+  projectAreaDistricts: Record<string, string[]>
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const ort of orte) {
+    const key = ortReferenceKey(ort.name, ort.bundesland);
+    out[key] = serializeProjectAreaDistrictsImport(projectAreaDistricts, ort.name, ort.plz);
+  }
+  return out;
+}
+
 export function ProjectAreaFilterPanel({
   projectId,
   saved,
@@ -76,11 +88,8 @@ export function ProjectAreaFilterPanel({
   );
   const [ortQuery, setOrtQuery] = useState("");
   const [ortResults, setOrtResults] = useState<PlzReferenceOrt[]>([]);
-  const [importTable, setImportTable] = useState(() =>
-    serializeProjectAreaDistrictsImport(
-      projectAreaDistricts,
-      initialOrte.map((o) => o.name).join(", ") || initialOrt?.name || null
-    )
+  const [importTablesByOrtKey, setImportTablesByOrtKey] = useState<Record<string, string>>(() =>
+    buildImportTablesByOrt(initialOrte, projectAreaDistricts)
   );
   const [pending, startTransition] = useTransition();
 
@@ -90,11 +99,27 @@ export function ProjectAreaFilterPanel({
     [selectedOrte, activeOrtKey]
   );
 
-  const hasCustomDistricts = Object.keys(projectAreaDistricts).length > 0;
+  const selectedPlzForActiveOrtList = useMemo(
+    () => (activeOrt ? selectedPlz.filter((plz) => activeOrt.plz.includes(plz)) : []),
+    [activeOrt, selectedPlz]
+  );
+
+  const customDistrictsForActiveOrt = useMemo(() => {
+    if (!activeOrt) return {};
+    const out: Record<string, string[]> = {};
+    for (const plz of activeOrt.plz) {
+      if (projectAreaDistricts[plz]) out[plz] = projectAreaDistricts[plz];
+    }
+    return out;
+  }, [activeOrt, projectAreaDistricts]);
+
+  const hasCustomDistrictsForActiveOrt = Object.keys(customDistrictsForActiveOrt).length > 0;
+
+  const activeImportTable = activeOrtKey ? (importTablesByOrtKey[activeOrtKey] ?? "") : "";
 
   const availableDistricts = useMemo(
-    () => districtsForPlzList(districtsByPlz, selectedPlz),
-    [districtsByPlz, selectedPlz]
+    () => districtsForPlzList(districtsByPlz, selectedPlzForActiveOrtList),
+    [districtsByPlz, selectedPlzForActiveOrtList]
   );
 
   const hasDistricts = availableDistricts.length > 0;
@@ -121,6 +146,14 @@ export function ProjectAreaFilterPanel({
       const exists = prev.some((o) => ortReferenceKey(o.name, o.bundesland) === key);
       return exists ? prev : sortOrte([...prev, next]);
     });
+    setImportTablesByOrtKey((prev) =>
+      prev[key] != null
+        ? prev
+        : {
+            ...prev,
+            [key]: serializeProjectAreaDistrictsImport(projectAreaDistricts, next.name, next.plz),
+          }
+    );
     setActiveOrtKey(key);
     setOrtQuery("");
     setOrtResults([]);
@@ -142,9 +175,23 @@ export function ProjectAreaFilterPanel({
       );
     }
     setSelectedOrte(sortOrte(others));
+    setImportTablesByOrtKey((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
     setActiveOrtKey(
       others[0] ? ortReferenceKey(others[0].name, others[0].bundesland) : null
     );
+  }
+
+  function updateActiveImportTable(value: string) {
+    if (!activeOrtKey) return;
+    setImportTablesByOrtKey((prev) => ({ ...prev, [activeOrtKey]: value }));
+  }
+
+  function activeOrtPlzScope(): string {
+    return activeOrt?.plz.join(",") ?? "";
   }
 
   function togglePlz(plz: string, checked: boolean) {
@@ -226,6 +273,7 @@ export function ProjectAreaFilterPanel({
     setOrtQuery("");
     setSelectedPlz([]);
     setSelectedDistricts([]);
+    setImportTablesByOrtKey({});
     run(async () => {
       await updateProjectAreaFilterAction(projectId, {
         ortKeys: [],
@@ -415,13 +463,14 @@ export function ProjectAreaFilterPanel({
             </ul>
           </section>
 
-          {selectedPlz.length > 0 && hasDistricts && (
+          {selectedPlzForActiveOrtList.length > 0 && hasDistricts && (
             <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold mb-1">Stadtteile / Ortsteile</h3>
                   <p className="text-sm text-pn-text-secondary">
-                    Feinere Eingrenzung für alle gewählten PLZ ({selectedPlz.length} gesamt).
+                    Feinere Eingrenzung für {formatOrtLabel(activeOrt)} (
+                    {selectedPlzForActiveOrtList.length} PLZ gewählt).
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -462,39 +511,46 @@ export function ProjectAreaFilterPanel({
             </section>
           )}
 
-          {selectedPlz.length > 0 && !hasDistricts && (
+          {selectedPlzForActiveOrtList.length > 0 && !hasDistricts && (
             <p className="text-sm text-pn-text-secondary bg-pn-bg-subtle border border-pn-border rounded-lg px-3 py-2">
-              Für diese PLZ liegen keine Ortsteile vor — die ganze PLZ gilt als Wunschgebiet. Du
-              kannst unten fehlende Ortsteile ergänzen.
+              Für die gewählten PLZ in {formatOrtLabel(activeOrt)} liegen keine Ortsteile vor —
+              die ganze PLZ gilt als Wunschgebiet. Du kannst unten fehlende Ortsteile ergänzen.
             </p>
           )}
 
           <details
             className="bg-pn-bg-subtle border border-pn-border rounded-xl p-4"
-            open={hasCustomDistricts}
+            open={hasCustomDistrictsForActiveOrt}
           >
             <summary className="cursor-pointer text-sm font-medium text-pn-text-secondary">
-              Optionale Ortsteile{" "}
-              {hasCustomDistricts ? `(${Object.values(projectAreaDistricts).flat().length})` : ""}
+              Optionale Ortsteile für {activeOrt.name}{" "}
+              {hasCustomDistrictsForActiveOrt
+                ? `(${Object.values(customDistrictsForActiveOrt).flat().length})`
+                : ""}
             </summary>
             <div className="mt-4 space-y-4">
               <p className="text-xs text-pn-text-tertiary">
-                Ergänzungen zu den hinterlegten OSM-Ortsteilen. Text bearbeiten und übernehmen —
-                leerer Inhalt entfernt alle optionalen Einträge.
+                Ergänzungen zu den hinterlegten OSM-Ortsteilen nur für {activeOrt.name}. Text
+                bearbeiten und übernehmen — leerer Inhalt entfernt nur die optionalen Einträge
+                dieser Stadt.
               </p>
               <form
                 className="space-y-3"
                 onSubmit={(e) => {
                   e.preventDefault();
                   run(async () => {
-                    await importProjectAreaDistrictsAction(projectId, importTable);
+                    await importProjectAreaDistrictsAction(
+                      projectId,
+                      activeImportTable,
+                      activeOrtPlzScope()
+                    );
                   });
                 }}
               >
                 <textarea
-                  value={importTable}
-                  onChange={(e) => setImportTable(e.target.value)}
-                  placeholder={`28203 | Bremen | Fesenfeld, Ostertor, Steintor\n28205 | Bremen | Findorff, Walle`}
+                  value={activeImportTable}
+                  onChange={(e) => updateActiveImportTable(e.target.value)}
+                  placeholder={`20095 | Hamburg | Altstadt, Neustadt\n20359 | Hamburg | St. Pauli, Sternschanze`}
                   disabled={pending}
                   rows={8}
                   className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full font-mono"
@@ -507,26 +563,26 @@ export function ProjectAreaFilterPanel({
                   >
                     {pending ? "Speichern…" : "Ortsteile übernehmen"}
                   </button>
-                  {hasCustomDistricts && (
+                  {hasCustomDistrictsForActiveOrt && (
                     <button
                       type="button"
                       disabled={pending}
                       onClick={() =>
                         run(async () => {
-                          await clearProjectAreaDistrictsAction(projectId);
-                          setImportTable("");
+                          await clearProjectAreaDistrictsAction(projectId, activeOrtPlzScope());
+                          updateActiveImportTable("");
                         })
                       }
                       className="border border-pn-border bg-pn-bg-surface text-pn-text-primary font-medium px-4 py-2 rounded-lg text-sm hover:bg-pn-bg-subtle disabled:opacity-50"
                     >
-                      Alle entfernen
+                      Für {activeOrt.name} entfernen
                     </button>
                   )}
                 </div>
               </form>
-              {hasCustomDistricts && (
+              {hasCustomDistrictsForActiveOrt && (
                 <ul className="space-y-2">
-                  {Object.entries(projectAreaDistricts)
+                  {Object.entries(customDistrictsForActiveOrt)
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([plz, districts]) => (
                       <li key={plz} className="text-sm">

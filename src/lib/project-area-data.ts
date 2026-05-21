@@ -56,6 +56,17 @@ export async function clearProjectAreaDistricts(projectId: string): Promise<void
   await prisma.projectAreaDistrict.deleteMany({ where: { projectId } });
 }
 
+export async function clearProjectAreaDistrictsForPlzScope(
+  projectId: string,
+  plzScope: string[]
+): Promise<void> {
+  const scopedPlz = [...new Set(plzScope.map((plz) => plz.trim()).filter((plz) => /^\d{5}$/.test(plz)))];
+  if (scopedPlz.length === 0) return;
+  await prisma.projectAreaDistrict.deleteMany({
+    where: { projectId, plz: { in: scopedPlz } },
+  });
+}
+
 export async function replaceProjectAreaDistrictsFromImport(
   projectId: string,
   rows: Array<{ plz: string; districts: string[] }>
@@ -65,4 +76,26 @@ export async function replaceProjectAreaDistrictsFromImport(
     return { plzCount: 0, districtCount: 0 };
   }
   return upsertProjectAreaDistrictsFromImport(projectId, rows);
+}
+
+export async function replaceProjectAreaDistrictsForPlzScope(
+  projectId: string,
+  rows: Array<{ plz: string; districts: string[] }>,
+  plzScope: string[]
+): Promise<{ plzCount: number; districtCount: number }> {
+  const scopedPlz = [...new Set(plzScope.map((plz) => plz.trim()).filter((plz) => /^\d{5}$/.test(plz)))];
+  if (scopedPlz.length === 0) {
+    return { plzCount: 0, districtCount: 0 };
+  }
+
+  const scopeSet = new Set(scopedPlz);
+  await prisma.projectAreaDistrict.deleteMany({
+    where: { projectId, plz: { in: scopedPlz } },
+  });
+
+  const scopedRows = rows.filter((row) => scopeSet.has(row.plz));
+  if (scopedRows.length === 0) {
+    return { plzCount: 0, districtCount: 0 };
+  }
+  return upsertProjectAreaDistrictsFromImport(projectId, scopedRows);
 }

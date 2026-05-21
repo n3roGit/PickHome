@@ -42,4 +42,16 @@ describe("parseLocationCatalogImport", () => {
       "28203 | Bremen | Fesenfeld, Ostertor\n28205 | Bremen | Findorff, Walle"
     );
   });
+
+  it("serializes only PLZ within the given scope", () => {
+    const text = serializeProjectAreaDistrictsImport(
+      {
+        "20095": ["Altstadt"],
+        "10115": ["Mitte"],
+      },
+      "Hamburg",
+      ["20095", "20359"]
+    );
+    expect(text).toBe("20095 | Hamburg | Altstadt");
+  });
 });
