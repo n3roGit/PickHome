@@ -1,9 +1,8 @@
+# Manual Docker rebuild only. Normal releases build and push the image in release.yml
+# after bumping package.json so APP_VERSION in the image matches the GitHub release tag.
 name: Publish Docker image
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
@@ -18,15 +17,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Read package version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "minor=$(echo "${VERSION}" | cut -d. -f1-2)" >> "$GITHUB_OUTPUT"
+
       - uses: docker/metadata-action@v5
         id: meta
         with:
           images: n3ro88/pickhome
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.version.outputs.minor }}
+            type=sha,format=short,prefix=
 
       - uses: docker/build-push-action@v6
         with:
