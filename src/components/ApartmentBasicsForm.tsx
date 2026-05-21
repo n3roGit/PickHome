@@ -29,7 +29,7 @@ export function ApartmentBasicsForm({
   saved?: boolean;
   addressUnresolved?: boolean;
   addressGeocoded?: boolean;
-  addressGeocodeFailed?: boolean;
+  addressGeocodeFailed?: "empty" | "unresolved";
 }) {
   const geocodeOnly = addressGeocoded || addressGeocodeFailed;
 

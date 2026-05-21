@@ -86,7 +86,7 @@ export async function assertCriterionGroupAccess(groupId: string, user: ProjectA
 export async function assertApartmentAccess(apartmentId: string, user: ProjectAccessUser) {
   return prisma.apartment.findFirst({
     where: apartmentAccessWhere(apartmentId, user),
-    select: { id: true, projectId: true },
+    select: { id: true, projectId: true, latitude: true, longitude: true },
   });
 }
 
