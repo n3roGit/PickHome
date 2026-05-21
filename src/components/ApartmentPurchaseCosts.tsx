@@ -1,4 +1,5 @@
 import { updateApartmentBrokerAction } from "@/app/actions";
+import { ApartmentRevisionField } from "@/components/ApartmentRevisionField";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import {
   estimateAffordability,
@@ -149,6 +150,7 @@ function FinancingTable({
 
 export function ApartmentPurchaseCosts({
   apartmentId,
+  revision,
   price,
   address,
   federalStateCode,
@@ -161,6 +163,7 @@ export function ApartmentPurchaseCosts({
   settingsHref,
 }: {
   apartmentId: string;
+  revision: number;
   price: number | null;
   address: string | null;
   federalStateCode: string | null;
@@ -229,6 +232,7 @@ export function ApartmentPurchaseCosts({
             action={updateApartmentBrokerAction.bind(null, apartmentId)}
             className="flex flex-wrap items-center gap-3 mb-4"
           >
+            <ApartmentRevisionField revision={revision} />
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"

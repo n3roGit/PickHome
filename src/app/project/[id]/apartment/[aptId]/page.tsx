@@ -51,6 +51,7 @@ import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
 import { apartmentLlmHasSourceText } from "@/lib/apartment-llm-context";
 import { isLlmConfigured } from "@/lib/llm-client";
 import { ApartmentAutoFillButton } from "@/components/ApartmentAutoFillButton";
+import { ApartmentConflictBanner } from "@/components/ApartmentConflictBanner";
 import { ApartmentLlmChatButton } from "@/components/ApartmentLlmChatButton";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
@@ -71,6 +72,7 @@ export default async function ApartmentPage({
     address_unresolved?: string;
     address_geocoded?: string;
     address_geocode_failed?: string;
+    conflict?: string;
   }>;
 }) {
   const resolvedParams = await params;
@@ -262,6 +264,7 @@ export default async function ApartmentPage({
           <div>
             <ApartmentTitleForm
               apartmentId={apartment.id}
+              revision={apartment.revision}
               title={apartment.title}
               saved={resolvedSearchParams.title_saved === "1"}
               empty={resolvedSearchParams.title_error === "empty"}
@@ -301,9 +304,11 @@ export default async function ApartmentPage({
         </div>
         <ApartmentLiveScoreSummary userName={user.name} viewedAt={apartment.viewedAt} />
         <ScoreLegend className="mb-6" />
+        {resolvedSearchParams.conflict === "1" && <ApartmentConflictBanner />}
         <ApartmentBasicsForm
           projectId={project.id}
           apartmentId={apartment.id}
+          revision={apartment.revision}
           address={apartment.address}
           latitude={apartment.latitude}
           longitude={apartment.longitude}
@@ -326,6 +331,7 @@ export default async function ApartmentPage({
         />
         <ApartmentListingUrlForm
           apartmentId={apartment.id}
+          revision={apartment.revision}
           listingUrl={apartment.listingUrl}
           saved={resolvedSearchParams.listing_saved === "1"}
           invalid={resolvedSearchParams.listing_error === "invalid"}
@@ -337,6 +343,7 @@ export default async function ApartmentPage({
         />
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
+          revision={apartment.revision}
           price={apartment.price}
           address={apartment.address}
           federalStateCode={project.federalStateCode}
@@ -358,11 +365,13 @@ export default async function ApartmentPage({
         />
         <ApartmentNotesForm
           apartmentId={apartment.id}
+          revision={apartment.revision}
           notes={apartment.notes}
           saved={resolvedSearchParams.notes_saved === "1"}
         />
         <ApartmentDescriptionForm
           apartmentId={apartment.id}
+          revision={apartment.revision}
           description={apartment.description}
           saved={resolvedSearchParams.description_saved === "1"}
         />

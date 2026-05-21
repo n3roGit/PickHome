@@ -4,6 +4,7 @@ import {
   updateApartmentBasicsAction,
 } from "@/app/actions";
 import { ApartmentPriceHistoryButton } from "@/components/ApartmentPriceHistoryButton";
+import { ApartmentRevisionField } from "@/components/ApartmentRevisionField";
 import { apartmentBasicsFormId } from "@/lib/listing-import-form";
 import { GoogleMapsStreetViewLink } from "@/components/GoogleMapsStreetViewLink";
 import { formatBudgetHint, formatPrice } from "@/lib/scoring";
@@ -11,6 +12,7 @@ import { formatBudgetHint, formatPrice } from "@/lib/scoring";
 export function ApartmentBasicsForm({
   projectId,
   apartmentId,
+  revision,
   address,
   latitude,
   longitude,
@@ -27,6 +29,7 @@ export function ApartmentBasicsForm({
 }: {
   projectId: string;
   apartmentId: string;
+  revision: number;
   address: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -83,6 +86,7 @@ export function ApartmentBasicsForm({
         action={updateApartmentBasicsAction.bind(null, apartmentId)}
         className="space-y-3 max-w-lg"
       >
+        <ApartmentRevisionField revision={revision} />
         <div className="block">
           <span className="text-sm font-medium text-pn-text-secondary">Adresse</span>
           <div className="mt-1 flex gap-2">

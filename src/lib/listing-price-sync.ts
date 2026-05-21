@@ -98,7 +98,7 @@ export async function syncListingPriceForApartment(apartment: {
   if (!fetched.ok || fetched.price == null) {
     await prisma.apartment.update({
       where: { id: apartment.id },
-      data: { listingPriceCheckedAt: now },
+      data: { listingPriceCheckedAt: now, revision: { increment: 1 } },
     });
     return "failed";
   }
@@ -107,7 +107,7 @@ export async function syncListingPriceForApartment(apartment: {
   if (apartment.price === listingPrice) {
     await prisma.apartment.update({
       where: { id: apartment.id },
-      data: { listingPriceCheckedAt: now },
+      data: { listingPriceCheckedAt: now, revision: { increment: 1 } },
     });
     return "unchanged";
   }

@@ -1,16 +1,19 @@
 "use client";
 
 import { updateApartmentListingUrlAction } from "@/app/actions";
+import { ApartmentRevisionField } from "@/components/ApartmentRevisionField";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { apartmentListingUrlFormId } from "@/lib/listing-import-form";
 
 export function ApartmentListingUrlForm({
   apartmentId,
+  revision,
   listingUrl,
   saved,
   invalid,
 }: {
   apartmentId: string;
+  revision: number;
   listingUrl: string | null;
   saved?: boolean;
   invalid?: boolean;
@@ -37,6 +40,7 @@ export function ApartmentListingUrlForm({
         action={updateApartmentListingUrlAction.bind(null, apartmentId)}
         className="flex flex-wrap gap-2"
       >
+        <ApartmentRevisionField revision={revision} />
         <input
           name="listingUrl"
           type="url"

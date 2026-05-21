@@ -52,7 +52,7 @@ export async function applyApartmentPriceUpdate(
 
   await prisma.apartment.update({
     where: { id: apartmentId },
-    data: { price: newPrice },
+    data: { price: newPrice, revision: { increment: 1 } },
   });
 
   if (newPrice != null) {

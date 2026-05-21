@@ -10,6 +10,7 @@ import {
   updateApartmentBasicsAction,
   updateApartmentTitleAction,
 } from "@/app/actions";
+import { APARTMENT_REVISION_FIELD } from "@/lib/apartment-revision";
 import { getApartmentUploadsRoot } from "@/lib/pickhome-data";
 import { saveApartmentPhoto } from "@/lib/apartment-media";
 import {
@@ -77,6 +78,7 @@ describe("apartment server actions", () => {
 
     const form = new FormData();
     form.set("title", "New display name");
+    form.set(APARTMENT_REVISION_FIELD, String(apt.revision));
 
     const { redirect: url } = await catchRedirect(() =>
       updateApartmentTitleAction(apt.id, form)
@@ -122,6 +124,7 @@ describe("apartment server actions", () => {
     const form = new FormData();
     form.set("price", "400000");
     form.set("address", "Neue Adresse");
+    form.set(APARTMENT_REVISION_FIELD, String(apt.revision));
 
     const { redirect: url } = await catchRedirect(() =>
       updateApartmentBasicsAction(apt.id, form)
@@ -155,6 +158,7 @@ describe("apartment server actions", () => {
     form.set("address", "");
     form.set("sizeSqm", "");
     form.set("energyClass", "");
+    form.set(APARTMENT_REVISION_FIELD, String(apt.revision));
 
     await catchRedirect(() => updateApartmentBasicsAction(apt.id, form));
 

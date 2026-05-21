@@ -27,7 +27,6 @@ import {
 import { resolveApartmentGeocode } from "@/lib/apartment-address-enrichment";
 import { applyGeocodeToStoredAddress, geocodeAddress } from "@/lib/geocode";
 import {
-  applyApartmentPriceUpdate,
   PRICE_HISTORY_SOURCE_MANUAL,
   recordApartmentPriceChange,
 } from "@/lib/apartment-price-history";
@@ -75,6 +74,11 @@ import {
 } from "@/lib/transit-settings";
 import { isApartmentUploadError } from "@/lib/upload-limits";
 import type { UploadApartmentFileResult } from "@/app/apartment-photo-actions";
+import {
+  redirectApartmentRevisionConflict,
+  requireRevisionFromForm,
+  updateApartmentIfRevisionMatches,
+} from "@/lib/apartment-revision";
 
 function revalidateApartment(projectId: string, apartmentId: string) {
   revalidatePath(`/project/${projectId}`);
@@ -427,6 +431,7 @@ export async function archiveApartmentAction(apartmentId: string, formData: Form
       archivedAt: new Date(),
       archiveReason,
       archiveNote,
+      revision: { increment: 1 },
     },
   });
   revalidatePath(`/project/${apt.projectId}`);
@@ -441,7 +446,12 @@ export async function unarchiveApartmentAction(apartmentId: string) {
   if (!apt) return;
   await prisma.apartment.update({
     where: { id: apartmentId },
-    data: { archivedAt: null, archiveReason: null, archiveNote: null },
+    data: {
+      archivedAt: null,
+      archiveReason: null,
+      archiveNote: null,
+      revision: { increment: 1 },
+    },
   });
   revalidatePath(`/project/${apt.projectId}`);
   revalidatePath(`/project/${apt.projectId}/apartment/${apartmentId}`);
@@ -519,12 +529,13 @@ export async function updateApartmentBrokerAction(apartmentId: string, formData:
   const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) redirect("/dashboard");
 
+  const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
   const brokerInvolved = formData.get("brokerInvolved") === "on";
 
-  await prisma.apartment.update({
-    where: { id: apartmentId },
-    data: { brokerInvolved },
+  const ok = await updateApartmentIfRevisionMatches(apartmentId, expectedRevision, {
+    brokerInvolved,
   });
+  if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
 }
 
@@ -540,10 +551,9 @@ export async function updateApartmentTitleAction(apartmentId: string, formData: 
     redirect(`${base}?title_error=empty`);
   }
 
-  await prisma.apartment.update({
-    where: { id: apartmentId },
-    data: { title },
-  });
+  const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
+  const ok = await updateApartmentIfRevisionMatches(apartmentId, expectedRevision, { title });
+  if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   redirect(`${base}?title_saved=1`);
 }
@@ -561,10 +571,11 @@ export async function updateApartmentListingUrlAction(apartmentId: string, formD
     redirect(`${base}?listing_error=invalid`);
   }
 
-  await prisma.apartment.update({
-    where: { id: apartmentId },
-    data: { listingUrl },
+  const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
+  const ok = await updateApartmentIfRevisionMatches(apartmentId, expectedRevision, {
+    listingUrl,
   });
+  if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   redirect(`${base}?listing_saved=1`);
 }
@@ -609,14 +620,13 @@ export async function geocodeApartmentAddressAction(apartmentId: string, formDat
     longitude: apt.longitude,
   });
 
-  await prisma.apartment.update({
-    where: { id: apartmentId },
-    data: {
-      address: geocoded.address,
-      latitude: geocoded.latitude,
-      longitude: geocoded.longitude,
-    },
+  const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
+  const ok = await updateApartmentIfRevisionMatches(apartmentId, expectedRevision, {
+    address: geocoded.address,
+    latitude: geocoded.latitude,
+    longitude: geocoded.longitude,
   });
+  if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
   await invalidateCommuteCacheForApartment(apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   revalidatePath(`/project/${apt.projectId}`);
@@ -649,18 +659,32 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   const energyClassRaw = String(formData.get("energyClass") ?? "").trim();
   const sizeSqmParsed = sizeSqmRaw ? parseInt(sizeSqmRaw.replace(/\D/g, ""), 10) : null;
   const resolvedPrice = Number.isFinite(price) ? price : null;
+  const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
 
-  await applyApartmentPriceUpdate(apartmentId, resolvedPrice, PRICE_HISTORY_SOURCE_MANUAL);
-  await prisma.apartment.update({
+  const current = await prisma.apartment.findUnique({
     where: { id: apartmentId },
-    data: {
-      address: geocoded.address,
-      latitude: geocoded.latitude,
-      longitude: geocoded.longitude,
-      sizeSqm: sizeSqmParsed != null && Number.isFinite(sizeSqmParsed) ? sizeSqmParsed : null,
-      energyClass: energyClassRaw ? parseEnergyClassInput(energyClassRaw) : null,
-    },
+    select: { price: true },
   });
+  const previousPrice = current?.price ?? null;
+
+  const ok = await updateApartmentIfRevisionMatches(apartmentId, expectedRevision, {
+    price: resolvedPrice,
+    address: geocoded.address,
+    latitude: geocoded.latitude,
+    longitude: geocoded.longitude,
+    sizeSqm: sizeSqmParsed != null && Number.isFinite(sizeSqmParsed) ? sizeSqmParsed : null,
+    energyClass: energyClassRaw ? parseEnergyClassInput(energyClassRaw) : null,
+  });
+  if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
+
+  if (resolvedPrice !== previousPrice) {
+    await recordApartmentPriceChange(
+      apartmentId,
+      resolvedPrice,
+      previousPrice,
+      PRICE_HISTORY_SOURCE_MANUAL
+    );
+  }
   await invalidateCommuteCacheForApartment(apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   revalidatePath(`/project/${apt.projectId}`);
@@ -680,10 +704,9 @@ export async function updateApartmentNotesAction(apartmentId: string, formData: 
   const notes = raw.trim() || null;
   const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
 
-  await prisma.apartment.update({
-    where: { id: apartmentId },
-    data: { notes },
-  });
+  const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
+  const ok = await updateApartmentIfRevisionMatches(apartmentId, expectedRevision, { notes });
+  if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   redirect(`${base}?notes_saved=1`);
 }
@@ -697,10 +720,11 @@ export async function updateApartmentDescriptionAction(apartmentId: string, form
   const description = raw.trim() || null;
   const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
 
-  await prisma.apartment.update({
-    where: { id: apartmentId },
-    data: { description },
+  const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
+  const ok = await updateApartmentIfRevisionMatches(apartmentId, expectedRevision, {
+    description,
   });
+  if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   redirect(`${base}?description_saved=1`);
 }

@@ -1,12 +1,15 @@
 import { updateApartmentNotesAction } from "@/app/actions";
+import { ApartmentRevisionField } from "@/components/ApartmentRevisionField";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 
 export function ApartmentNotesForm({
   apartmentId,
+  revision,
   notes,
   saved,
 }: {
   apartmentId: string;
+  revision: number;
   notes: string | null;
   saved?: boolean;
 }) {
@@ -22,6 +25,7 @@ export function ApartmentNotesForm({
         </p>
       )}
       <form action={updateApartmentNotesAction.bind(null, apartmentId)}>
+        <ApartmentRevisionField revision={revision} />
         <textarea
           name="notes"
           rows={5}

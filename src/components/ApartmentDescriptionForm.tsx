@@ -1,13 +1,16 @@
 import { updateApartmentDescriptionAction } from "@/app/actions";
+import { ApartmentRevisionField } from "@/components/ApartmentRevisionField";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { apartmentDescriptionFormId } from "@/lib/listing-import-form";
 
 export function ApartmentDescriptionForm({
   apartmentId,
+  revision,
   description,
   saved,
 }: {
   apartmentId: string;
+  revision: number;
   description: string | null;
   saved?: boolean;
 }) {
@@ -26,6 +29,7 @@ export function ApartmentDescriptionForm({
         id={apartmentDescriptionFormId(apartmentId)}
         action={updateApartmentDescriptionAction.bind(null, apartmentId)}
       >
+        <ApartmentRevisionField revision={revision} />
         <textarea
           name="description"
           rows={5}

@@ -8,7 +8,7 @@ export async function syncApartmentViewedAt(apartmentId: string) {
   });
   await prisma.apartment.update({
     where: { id: apartmentId },
-    data: { viewedAt: latestPast?.scheduledAt ?? null },
+    data: { viewedAt: latestPast?.scheduledAt ?? null, revision: { increment: 1 } },
   });
 }
 
