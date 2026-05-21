@@ -44,9 +44,9 @@ function signPendingPayload(payload: string) {
   return createHmac("sha256", authSecret()).update(payload).digest("base64url");
 }
 
-export async function setPendingTotpLogin(userId: string) {
+export async function setPendingTotpLogin(userId: string, remember = false) {
   const issuedAt = Date.now();
-  const payload = Buffer.from(JSON.stringify({ userId, issuedAt })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ userId, issuedAt, remember })).toString("base64url");
   const token = `${payload}.${signPendingPayload(payload)}`;
   const cookieStore = await cookies();
   cookieStore.set(PENDING_TOTP_COOKIE, token, {
@@ -58,9 +58,12 @@ export async function setPendingTotpLogin(userId: string) {
   });
 }
 
-export async function getPendingTotpUserId(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const raw = cookieStore.get(PENDING_TOTP_COOKIE)?.value;
+export type PendingTotpLogin = {
+  userId: string;
+  remember: boolean;
+};
+
+function parsePendingTotpLogin(raw: string | undefined): PendingTotpLogin | null {
   if (!raw) return null;
   const dot = raw.indexOf(".");
   if (dot < 0) return null;
@@ -78,13 +81,27 @@ export async function getPendingTotpUserId(): Promise<string | null> {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
       userId?: unknown;
       issuedAt?: unknown;
+      remember?: unknown;
     };
     if (typeof data.userId !== "string" || typeof data.issuedAt !== "number") return null;
     if (Date.now() - data.issuedAt > PENDING_MAX_AGE_SEC * 1000) return null;
-    return data.userId;
+    return {
+      userId: data.userId,
+      remember: data.remember === true,
+    };
   } catch {
     return null;
   }
+}
+
+export async function getPendingTotpLogin(): Promise<PendingTotpLogin | null> {
+  const cookieStore = await cookies();
+  return parsePendingTotpLogin(cookieStore.get(PENDING_TOTP_COOKIE)?.value);
+}
+
+export async function getPendingTotpUserId(): Promise<string | null> {
+  const pending = await getPendingTotpLogin();
+  return pending?.userId ?? null;
 }
 
 export async function clearPendingTotpLogin() {

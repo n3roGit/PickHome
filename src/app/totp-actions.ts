@@ -7,6 +7,7 @@ import {
   createSession,
   destroySession,
   isAdmin,
+  parseRememberLoginFlag,
   requireUser,
   verifyPassword,
 } from "@/lib/auth";
@@ -16,7 +17,7 @@ import {
   generateRecoveryCodesPlain,
   generateTotpSecret,
   getOtpAuthUri,
-  getPendingTotpUserId,
+  getPendingTotpLogin,
   isTotpEnabled,
   replaceRecoveryCodes,
   setPendingTotpLogin,
@@ -44,6 +45,7 @@ function redirectAfterLoginPath(user: { role: string }) {
 export async function loginAction(formData: FormData): Promise<LoginResult> {
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const remember = parseRememberLoginFlag(formData);
   const loginKey = `login:${username || "unknown"}`;
   if (!checkRateLimit(loginKey, LOGIN_LIMIT, AUTH_WINDOW_MS)) {
     return { ok: false, error: "rate_limited" };
@@ -56,16 +58,17 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
   resetRateLimit(loginKey);
   if (isTotpEnabled(user)) {
     await destroySession();
-    await setPendingTotpLogin(user.id);
+    await setPendingTotpLogin(user.id, remember);
     return { ok: true, redirectTo: "/login/totp" };
   }
-  await createSession(user.id);
+  await createSession(user.id, { remember });
   return { ok: true, redirectTo: redirectAfterLoginPath(user) };
 }
 
 export async function verifyTotpLoginAction(formData: FormData): Promise<TotpLoginResult> {
-  const userId = await getPendingTotpUserId();
-  if (!userId) return { ok: false, error: "totp_expired" };
+  const pending = await getPendingTotpLogin();
+  if (!pending) return { ok: false, error: "totp_expired" };
+  const { userId, remember } = pending;
   const totpKey = `totp:${userId}`;
   if (!checkRateLimit(totpKey, TOTP_LIMIT, AUTH_WINDOW_MS)) {
     return { ok: false, error: "rate_limited" };
@@ -84,7 +87,7 @@ export async function verifyTotpLoginAction(formData: FormData): Promise<TotpLog
 
   await clearPendingTotpLogin();
   resetRateLimit(totpKey);
-  await createSession(user.id);
+  await createSession(user.id, { remember });
   return { ok: true, redirectTo: redirectAfterLoginPath(user) };
 }
 

@@ -61,6 +61,15 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2"
           />
         </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            name="remember"
+            disabled={pending}
+            className="rounded border-pn-border"
+          />
+          <span className="text-sm text-pn-text-secondary">Anmeldung speichern</span>
+        </label>
         <button
           type="submit"
           disabled={pending}

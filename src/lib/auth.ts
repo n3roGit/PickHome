@@ -9,6 +9,15 @@ const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 30;
 export const ROLE_ADMIN = "ADMIN";
 export const ROLE_USER = "USER";
 
+export type CreateSessionOptions = {
+  remember?: boolean;
+};
+
+export function parseRememberLoginFlag(formData: FormData): boolean {
+  const value = formData.get("remember");
+  return value === "on" || value === "true" || value === "1";
+}
+
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
 }
@@ -69,7 +78,8 @@ export function verifySessionToken(token: string): string | null {
   }
 }
 
-export async function createSession(userId: string) {
+export async function createSession(userId: string, options: CreateSessionOptions = {}) {
+  const remember = options.remember === true;
   const token = createSessionToken(userId);
   const cookieStore = await cookies();
   cookieStore.set(COOKIE, token, {
@@ -77,7 +87,7 @@ export async function createSession(userId: string) {
     sameSite: "lax",
     secure: secureCookie(),
     path: "/",
-    maxAge: SESSION_MAX_AGE_SEC,
+    ...(remember ? { maxAge: SESSION_MAX_AGE_SEC } : {}),
   });
 }
 

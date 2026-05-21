@@ -25,10 +25,20 @@ describe("pending TOTP cookie", () => {
   });
 
   it("round-trips user id after setPendingTotpLogin", async () => {
-    const { setPendingTotpLogin, getPendingTotpUserId } = await import("@/lib/totp");
+    const { setPendingTotpLogin, getPendingTotpLogin, getPendingTotpUserId } = await import(
+      "@/lib/totp"
+    );
     const userId = "00000000-0000-4000-8000-000000000099";
-    await setPendingTotpLogin(userId);
+    await setPendingTotpLogin(userId, true);
     expect(await getPendingTotpUserId()).toBe(userId);
+    expect(await getPendingTotpLogin()).toEqual({ userId, remember: true });
+  });
+
+  it("stores remember=false when not requested", async () => {
+    const { setPendingTotpLogin, getPendingTotpLogin } = await import("@/lib/totp");
+    const userId = "00000000-0000-4000-8000-000000000098";
+    await setPendingTotpLogin(userId);
+    expect(await getPendingTotpLogin()).toEqual({ userId, remember: false });
   });
 
   it("rejects tampered pending cookie", async () => {

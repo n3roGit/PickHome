@@ -3,6 +3,7 @@ import {
   createSessionToken,
   hashPassword,
   isAdmin,
+  parseRememberLoginFlag,
   ROLE_ADMIN,
   ROLE_USER,
   verifyPassword,
@@ -37,5 +38,14 @@ describe("auth", () => {
   it("rejects expired session tokens", () => {
     const expired = createSessionToken("user-1", Date.now() - 31 * 24 * 60 * 60 * 1000);
     expect(verifySessionToken(expired)).toBeNull();
+  });
+
+  it("reads remember-login checkbox from form data", () => {
+    const checked = new FormData();
+    checked.set("remember", "on");
+    expect(parseRememberLoginFlag(checked)).toBe(true);
+
+    const unchecked = new FormData();
+    expect(parseRememberLoginFlag(unchecked)).toBe(false);
   });
 });
