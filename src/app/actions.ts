@@ -902,6 +902,44 @@ export async function updateCriterionAction(
   revalidatePath(`/project/${c.group.projectId}`);
 }
 
+export async function deleteCriterionAction(criterionId: string) {
+  const user = await requireUser();
+  const c = await prisma.criterion.findUnique({
+    where: { id: criterionId },
+    include: { group: true },
+  });
+  if (!c) return;
+  const group = await assertCriterionGroupAccess(c.groupId, user);
+  if (!group) return;
+
+  await prisma.criterion.delete({ where: { id: criterionId } });
+  revalidatePath(`/project/${c.group.projectId}`);
+}
+
+export async function reorderCriteriaAction(groupId: string, orderedIds: string[]) {
+  const user = await requireUser();
+  const group = await assertCriterionGroupAccess(groupId, user);
+  if (!group || orderedIds.length === 0) return;
+
+  const existing = await prisma.criterion.findMany({
+    where: { groupId },
+    select: { id: true },
+  });
+  if (orderedIds.length !== existing.length) return;
+  const idSet = new Set(existing.map((c) => c.id));
+  if (!orderedIds.every((id) => idSet.has(id))) return;
+
+  await prisma.$transaction(
+    orderedIds.map((id, index) =>
+      prisma.criterion.update({
+        where: { id },
+        data: { sortOrder: index },
+      })
+    )
+  );
+  revalidatePath(`/project/${group.projectId}`);
+}
+
 export async function addProjectMemberAction(projectId: string, formData: FormData) {
   const user = await requireUser();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();

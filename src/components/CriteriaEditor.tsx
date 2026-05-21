@@ -4,7 +4,9 @@ import { useTransition } from "react";
 import {
   addCriterionAction,
   createCriterionGroupAction,
+  deleteCriterionAction,
   deleteCriterionGroupAction,
+  reorderCriteriaAction,
   reorderCriterionGroupsAction,
   updateCriterionAction,
   updateCriterionGroupAction,
@@ -36,6 +38,22 @@ export function CriteriaEditor({
     const next = [...ids];
     [next[index], next[target]] = [next[target], next[index]];
     startTransition(() => reorderCriterionGroupsAction(projectId, next));
+  }
+
+  function moveCriterion(
+    groupId: string,
+    criteria: Group["criteria"],
+    criterionId: string,
+    direction: "up" | "down"
+  ) {
+    const ids = criteria.map((c) => c.id);
+    const index = ids.indexOf(criterionId);
+    if (index < 0) return;
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= ids.length) return;
+    const next = [...ids];
+    [next[index], next[target]] = [next[target], next[index]];
+    startTransition(() => reorderCriteriaAction(groupId, next));
   }
 
   return (
@@ -141,9 +159,54 @@ export function CriteriaEditor({
           </div>
 
           <ul className="space-y-3">
-            {g.criteria.map((c) => (
+            {g.criteria.map((c, cIndex) => (
               <li key={c.id} className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
-                <span className="w-full sm:flex-1 sm:min-w-[140px] font-medium">{c.name}</span>
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    disabled={pending || cIndex === 0}
+                    onClick={() => moveCriterion(g.id, g.criteria, c.id, "up")}
+                    className="text-xs px-2 py-0.5 border border-pn-border rounded hover:bg-pn-bg-subtle disabled:opacity-30"
+                    title="Nach oben"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending || cIndex === g.criteria.length - 1}
+                    onClick={() => moveCriterion(g.id, g.criteria, c.id, "down")}
+                    className="text-xs px-2 py-0.5 border border-pn-border rounded hover:bg-pn-bg-subtle disabled:opacity-30"
+                    title="Nach unten"
+                  >
+                    ↓
+                  </button>
+                </div>
+
+                <form
+                  className="flex flex-wrap items-center gap-2 min-w-0 w-full sm:flex-1 sm:min-w-[140px]"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
+                    if (!name || name === c.name) return;
+                    startTransition(() => updateCriterionAction(c.id, { name }));
+                  }}
+                >
+                  <input
+                    name="name"
+                    defaultValue={c.name}
+                    key={`${c.id}-${c.name}`}
+                    className="font-medium border border-pn-border rounded-lg px-2 py-1 text-sm flex-1 min-w-0 w-full"
+                    disabled={pending}
+                  />
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="text-xs text-pn-accent font-medium hover:underline"
+                  >
+                    Umbenennen
+                  </button>
+                </form>
+
                 <span className="text-pn-text-tertiary">Gewicht:</span>
                 {[1, 2, 3, 4, 5].map((w) => (
                   <button
@@ -177,6 +240,24 @@ export function CriteriaEditor({
                   }`}
                 >
                   {c.isDealbreaker ? "Dealbreaker aktiv" : "Als Dealbreaker"}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    if (
+                      !confirm(
+                        `Kriterium „${c.name}" wirklich löschen? Alle Bewertungen dazu werden entfernt.`
+                      )
+                    ) {
+                      return;
+                    }
+                    startTransition(() => deleteCriterionAction(c.id));
+                  }}
+                  className="text-xs text-pn-score-low hover:underline disabled:opacity-50"
+                >
+                  Löschen
                 </button>
               </li>
             ))}

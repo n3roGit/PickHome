@@ -4,12 +4,15 @@ import {
   addCriterionAction,
   addProjectMemberAction,
   createCriterionGroupAction,
+  deleteCriterionAction,
   deleteCriterionGroupAction,
   removeProjectMemberAction,
+  reorderCriteriaAction,
   reorderCriterionGroupsAction,
   updateCriterionAction,
   updateCriterionGroupAction,
 } from "@/app/actions";
+import { toggleChecklistCriterionAction } from "@/app/checklist-actions";
 import {
   catchRedirect,
   clearMockAuth,
@@ -180,6 +183,109 @@ describe("members and criteria server actions", () => {
 
     await reorderCriterionGroupsAction(project.id, [g1.id, "fake-id"]);
     const row = await prisma.criterionGroup.findUniqueOrThrow({ where: { id: g1.id } });
+    expect(row.sortOrder).toBe(0);
+    await prisma.$disconnect();
+  });
+
+  it("deleteCriterionAction removes linked checklist items", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const group = await prisma.criterionGroup.create({
+      data: { projectId: project.id, name: "G", sortOrder: 0 },
+    });
+    const c = await prisma.criterion.create({
+      data: { groupId: group.id, name: "Checklist linked", sortOrder: 0 },
+    });
+
+    await toggleChecklistCriterionAction(project.id, c.id, true);
+    await deleteCriterionAction(c.id);
+
+    const item = await prisma.checklistItem.findUnique({ where: { criterionId: c.id } });
+    const criterion = await prisma.criterion.findUnique({ where: { id: c.id } });
+    expect(item).toBeNull();
+    expect(criterion).toBeNull();
+    await prisma.$disconnect();
+  });
+
+  it("updateCriterionAction rename is visible via checklist item relation", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const group = await prisma.criterionGroup.create({
+      data: { projectId: project.id, name: "G", sortOrder: 0 },
+    });
+    const c = await prisma.criterion.create({
+      data: { groupId: group.id, name: "Old name", sortOrder: 0 },
+    });
+
+    await toggleChecklistCriterionAction(project.id, c.id, true);
+    await updateCriterionAction(c.id, { name: "New name" });
+
+    const item = await prisma.checklistItem.findUnique({
+      where: { criterionId: c.id },
+      include: { criterion: true },
+    });
+    expect(item?.criterion?.name).toBe("New name");
+    await prisma.$disconnect();
+  });
+
+  it("deleteCriterionAction removes a single criterion", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const group = await prisma.criterionGroup.create({
+      data: { projectId: project.id, name: "G", sortOrder: 0 },
+    });
+    const c1 = await prisma.criterion.create({
+      data: { groupId: group.id, name: "Keep", sortOrder: 0 },
+    });
+    const c2 = await prisma.criterion.create({
+      data: { groupId: group.id, name: "Remove", sortOrder: 1 },
+    });
+
+    await deleteCriterionAction(c2.id);
+    const remaining = await prisma.criterion.findMany({ where: { groupId: group.id } });
+    expect(remaining.map((c) => c.id)).toEqual([c1.id]);
+    await prisma.$disconnect();
+  });
+
+  it("reorderCriteriaAction updates sortOrder within a group", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const group = await prisma.criterionGroup.create({
+      data: { projectId: project.id, name: "G", sortOrder: 0 },
+    });
+    const c1 = await prisma.criterion.create({
+      data: { groupId: group.id, name: "A", sortOrder: 0 },
+    });
+    const c2 = await prisma.criterion.create({
+      data: { groupId: group.id, name: "B", sortOrder: 1 },
+    });
+
+    await reorderCriteriaAction(group.id, [c2.id, c1.id]);
+    const ordered = await prisma.criterion.findMany({
+      where: { groupId: group.id },
+      orderBy: { sortOrder: "asc" },
+    });
+    expect(ordered.map((c) => c.id)).toEqual([c2.id, c1.id]);
+    await prisma.$disconnect();
+  });
+
+  it("reorderCriteriaAction ignores invalid id lists", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const group = await prisma.criterionGroup.create({
+      data: { projectId: project.id, name: "G", sortOrder: 0 },
+    });
+    const c1 = await prisma.criterion.create({
+      data: { groupId: group.id, name: "Only", sortOrder: 0 },
+    });
+
+    await reorderCriteriaAction(group.id, [c1.id, "fake-id"]);
+    const row = await prisma.criterion.findUniqueOrThrow({ where: { id: c1.id } });
     expect(row.sortOrder).toBe(0);
     await prisma.$disconnect();
   });
