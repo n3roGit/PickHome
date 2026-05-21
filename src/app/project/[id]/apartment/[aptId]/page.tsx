@@ -53,6 +53,7 @@ import { apartmentLlmHasSourceText } from "@/lib/apartment-llm-context";
 import { isLlmConfigured } from "@/lib/llm-client";
 import { ApartmentAutoFillButton } from "@/components/ApartmentAutoFillButton";
 import { ApartmentConflictBanner } from "@/components/ApartmentConflictBanner";
+import { ApartmentUnsavedGuard } from "@/components/ApartmentUnsavedGuard";
 import { ApartmentLlmChatButton } from "@/components/ApartmentLlmChatButton";
 import { ApartmentChecklistExtras } from "@/components/ApartmentChecklistExtras";
 import type { ChecklistCriterionHint } from "@/components/RatingSliders";
@@ -288,10 +289,21 @@ export default async function ApartmentPage({
       };
     });
 
+  const unsavedResetKey = [
+    resolvedSearchParams.title_saved,
+    resolvedSearchParams.listing_saved,
+    resolvedSearchParams.notes_saved,
+    resolvedSearchParams.description_saved,
+    resolvedSearchParams.basics_saved,
+    apartment.revision,
+  ].join("|");
+
   return (
     <>
       <Nav userName={user.name} isAdmin={admin} />
       <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
+        <ApartmentUnsavedGuard apartmentId={apartment.id} resetKey={unsavedResetKey}>
+        <div id={`apartment-page-${apartment.id}`}>
         <ApartmentScoreProvider initial={myScore}>
         <Link
           href={archived ? `/project/${project.id}?tab=archived` : `/project/${project.id}`}
@@ -458,6 +470,8 @@ export default async function ApartmentPage({
           />
         </CollapsibleSection>
         </ApartmentScoreProvider>
+        </div>
+        </ApartmentUnsavedGuard>
       </main>
       <Footer />
     </>

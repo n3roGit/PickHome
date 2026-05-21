@@ -1,6 +1,7 @@
 import { updateApartmentNotesAction } from "@/app/actions";
 import { ApartmentRevisionField } from "@/components/ApartmentRevisionField";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { apartmentNotesFormId } from "@/lib/listing-import-form";
 
 export function ApartmentNotesForm({
   apartmentId,
@@ -24,7 +25,12 @@ export function ApartmentNotesForm({
           Notizen gespeichert.
         </p>
       )}
-      <form action={updateApartmentNotesAction.bind(null, apartmentId)}>
+      <form
+        id={apartmentNotesFormId(apartmentId)}
+        action={updateApartmentNotesAction.bind(null, apartmentId)}
+        data-unsaved-track
+        data-unsaved-label="Notizen"
+      >
         <ApartmentRevisionField revision={revision} />
         <textarea
           name="notes"

@@ -45,4 +45,12 @@ body {
     @apply w-6 h-6 rounded-full bg-pn-accent shadow-md;
     border: 2px solid #fff;
   }
+
+  .pn-field-prefilled {
+    @apply ring-2 ring-pn-accent/50 border-pn-accent bg-pn-score-high-bg/40;
+  }
+
+  .pn-section-unsaved {
+    @apply ring-2 ring-amber-500/60 border-amber-500/50;
+  }
 }

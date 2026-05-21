@@ -20,6 +20,8 @@ export function ApartmentTitleForm({
       id={apartmentTitleFormId(apartmentId)}
       action={updateApartmentTitleAction.bind(null, apartmentId)}
       className="w-full min-w-0"
+      data-unsaved-track
+      data-unsaved-label="Anzeigename"
     >
       <ApartmentRevisionField revision={revision} />
       {saved && (

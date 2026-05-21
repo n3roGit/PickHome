@@ -94,8 +94,10 @@ export async function enrichApartmentAddressInBackground(apartmentId: string): P
       await invalidateCommuteCacheForApartment(apartmentId);
     }
 
-    revalidatePath(`/project/${apt.projectId}`);
     revalidatePath(`/project/${apt.projectId}/apartment/${apartmentId}`);
+    if (result.coordsChanged) {
+      revalidatePath(`/project/${apt.projectId}`);
+    }
   } catch (error) {
     console.error("[pickhome] Background apartment address enrichment failed:", error);
   } finally {

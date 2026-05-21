@@ -231,6 +231,8 @@ export function ApartmentPurchaseCosts({
             id={apartmentBrokerFormId(apartmentId)}
             action={updateApartmentBrokerAction.bind(null, apartmentId)}
             className="flex flex-wrap items-center gap-3 mb-4"
+            data-unsaved-track
+            data-unsaved-label="Makler (Kaufnebenkosten)"
           >
             <ApartmentRevisionField revision={revision} />
             <label className="flex items-center gap-2 text-sm cursor-pointer">

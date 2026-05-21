@@ -40,3 +40,11 @@ vi.mock("@/lib/geocode", async (importOriginal) => {
     reverseGeocodeAddress: vi.fn(async () => mockGeocodeAddress("reverse")),
   };
 });
+
+vi.mock("@/lib/apartment-address-enrichment", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/apartment-address-enrichment")>();
+  return {
+    ...actual,
+    scheduleApartmentAddressEnrichment: vi.fn(),
+  };
+});

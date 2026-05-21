@@ -33,6 +33,8 @@ export const TEST_FAKE_STREET = "Exampleweg";
 export const TEST_FAKE_CITY = "Teststadt";
 export const TEST_FAKE_RAW_LOOSE = "exampleweg 2 teststadt";
 export const TEST_FAKE_DISTRICT = "Nordstadt";
+/** District + PLZ + city without street (listing import style). */
+export const TEST_ADDRESS_DISTRICT_PLZ_RAW = `${TEST_FAKE_DISTRICT}, 99999 ${TEST_FAKE_CITY}`;
 export const TEST_FAKE_POSTCODE = "99999";
 
 /** Kiel — Holstenstraße (public); typo pair for similarity / pickBestHouseHit tests. */

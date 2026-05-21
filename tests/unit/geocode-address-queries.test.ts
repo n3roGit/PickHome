@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   buildGeocodeQueryVariants,
+  isDistrictPlzGermanAddress,
   parseLooseGermanAddress,
   pickBestHouseHit,
   streetSimilarity,
 } from "@/lib/geocode-address-queries";
 import {
+  TEST_ADDRESS_DISTRICT_PLZ_RAW,
   TEST_ADDRESS_KIEL_CITY,
+  TEST_FAKE_CITY,
+  TEST_FAKE_DISTRICT,
   TEST_ADDRESS_KIEL_DECOY_CITY,
   TEST_ADDRESS_KIEL_DISTRICT,
   TEST_ADDRESS_KIEL_HOUSE,
@@ -35,6 +39,14 @@ describe("parseLooseGermanAddress", () => {
       city: TEST_FAKE_CITY,
     });
   });
+
+  it("parses district, PLZ and city", () => {
+    expect(parseLooseGermanAddress(TEST_ADDRESS_DISTRICT_PLZ_RAW)).toEqual({
+      streetLine: TEST_FAKE_DISTRICT,
+      houseNumber: null,
+      city: "99999 Teststadt",
+    });
+  });
 });
 
 describe("buildGeocodeQueryVariants", () => {
@@ -43,6 +55,15 @@ describe("buildGeocodeQueryVariants", () => {
     expect(variants[0]).toBe(TEST_FAKE_RAW_LOOSE);
     expect(variants).toContain(`exampleweg 2, ${TEST_FAKE_CITY}`);
     expect(variants).toContain(`exampleweg 2, ${TEST_FAKE_CITY}, Deutschland`);
+  });
+
+  it("uses fewer variants for district + PLZ lines", () => {
+    expect(isDistrictPlzGermanAddress(TEST_ADDRESS_DISTRICT_PLZ_RAW)).toBe(true);
+    const variants = buildGeocodeQueryVariants(TEST_ADDRESS_DISTRICT_PLZ_RAW);
+    expect(variants).toEqual([
+      TEST_ADDRESS_DISTRICT_PLZ_RAW,
+      `${TEST_ADDRESS_DISTRICT_PLZ_RAW}, Deutschland`,
+    ]);
   });
 });
 

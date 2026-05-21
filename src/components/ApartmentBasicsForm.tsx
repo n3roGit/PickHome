@@ -85,6 +85,8 @@ export function ApartmentBasicsForm({
         id={apartmentBasicsFormId(apartmentId)}
         action={updateApartmentBasicsAction.bind(null, apartmentId)}
         className="space-y-3 max-w-lg"
+        data-unsaved-track
+        data-unsaved-label="Preis & Adresse"
       >
         <ApartmentRevisionField revision={revision} />
         <div className="block">

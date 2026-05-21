@@ -39,6 +39,8 @@ export function ApartmentListingUrlForm({
         id={apartmentListingUrlFormId(apartmentId)}
         action={updateApartmentListingUrlAction.bind(null, apartmentId)}
         className="flex flex-wrap gap-2"
+        data-unsaved-track
+        data-unsaved-label="Inserat-Link"
       >
         <ApartmentRevisionField revision={revision} />
         <input

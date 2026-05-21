@@ -1,5 +1,27 @@
 import type { ListingPreviewFields } from "@/lib/listing-import";
 
+export type ListingPreviewFieldKey =
+  | "title"
+  | "price"
+  | "address"
+  | "sizeSqm"
+  | "energyClass"
+  | "description"
+  | "brokerInvolved";
+
+export const LISTING_PREVIEW_FIELD_LABELS: Record<ListingPreviewFieldKey, string> = {
+  title: "Anzeigename",
+  price: "Preis",
+  address: "Adresse",
+  sizeSqm: "Wohnfläche",
+  energyClass: "Energieklasse",
+  description: "Beschreibung",
+  brokerInvolved: "Makler",
+};
+
+export const PREFILLED_FIELD_CLASS = "pn-field-prefilled";
+export const UNSAVED_SECTION_CLASS = "pn-section-unsaved";
+
 export function apartmentBasicsFormId(apartmentId: string) {
   return `apartment-basics-${apartmentId}`;
 }
@@ -16,6 +38,10 @@ export function apartmentDescriptionFormId(apartmentId: string) {
   return `apartment-description-${apartmentId}`;
 }
 
+export function apartmentNotesFormId(apartmentId: string) {
+  return `apartment-notes-${apartmentId}`;
+}
+
 export function apartmentBrokerFormId(apartmentId: string) {
   return `apartment-broker-${apartmentId}`;
 }
@@ -25,59 +51,132 @@ function setNamedField(
   name: string,
   value: string | number | undefined,
   onlyEmpty: boolean
-) {
-  if (value == null || value === "") return;
+): boolean {
+  if (value == null || value === "") return false;
   const el = root.querySelector(`[name="${name}"]`) as
     | HTMLInputElement
     | HTMLTextAreaElement
     | null;
-  if (!el) return;
-  if (onlyEmpty && el.value.trim() !== "") return;
+  if (!el) return false;
+  if (onlyEmpty && el.value.trim() !== "") return false;
   el.value = String(value);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
 }
 
 function setBrokerCheckbox(
   root: ParentNode,
   value: boolean | undefined,
   onlyEmpty: boolean
-) {
-  if (value == null) return;
+): boolean {
+  if (value == null) return false;
   const el = root.querySelector('[name="brokerInvolved"]') as HTMLInputElement | null;
-  if (!el || el.type !== "checkbox") return;
-  if (onlyEmpty && el.checked) return;
+  if (!el || el.type !== "checkbox") return false;
+  if (onlyEmpty && el.checked) return false;
   el.checked = value;
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+  return true;
+}
+
+function highlightField(root: ParentNode, name: string) {
+  const el = root.querySelector(`[name="${name}"]`) as HTMLElement | null;
+  if (el) el.classList.add(PREFILLED_FIELD_CLASS);
+}
+
+function highlightBrokerCheckbox(root: ParentNode) {
+  const el = root.querySelector('[name="brokerInvolved"]') as HTMLElement | null;
+  if (el) el.classList.add(PREFILLED_FIELD_CLASS);
+}
+
+export function clearPrefilledHighlights(root: ParentNode = document) {
+  root.querySelectorAll(`.${PREFILLED_FIELD_CLASS}`).forEach((el) => {
+    el.classList.remove(PREFILLED_FIELD_CLASS);
+  });
+}
+
+export function highlightPrefilledFields(root: ParentNode, fields: ListingPreviewFieldKey[]) {
+  clearPrefilledHighlights(root);
+  for (const key of fields) {
+    if (key === "brokerInvolved") {
+      highlightBrokerCheckbox(root);
+    } else {
+      highlightField(root, key);
+    }
+  }
+  const first = root.querySelector(`.${PREFILLED_FIELD_CLASS}`);
+  if (first instanceof HTMLElement) {
+    first.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+export function formatPrefilledFieldLabels(fields: ListingPreviewFieldKey[]): string {
+  return fields.map((k) => LISTING_PREVIEW_FIELD_LABELS[k]).join(", ");
 }
 
 export function applyListingPreviewFields(
   form: HTMLFormElement,
   fields: ListingPreviewFields,
   options?: { onlyEmpty?: boolean }
-) {
+): ListingPreviewFieldKey[] {
   const onlyEmpty = options?.onlyEmpty !== false;
-  setNamedField(form, "title", fields.title, onlyEmpty);
-  setNamedField(form, "price", fields.price, onlyEmpty);
-  setNamedField(form, "address", fields.address, onlyEmpty);
-  setNamedField(form, "sizeSqm", fields.sizeSqm, onlyEmpty);
-  setNamedField(form, "energyClass", fields.energyClass, onlyEmpty);
-  setNamedField(form, "description", fields.description, onlyEmpty);
-  setBrokerCheckbox(form, fields.brokerInvolved, onlyEmpty);
+  const filled: ListingPreviewFieldKey[] = [];
+
+  if (setNamedField(form, "title", fields.title, onlyEmpty)) filled.push("title");
+  if (setNamedField(form, "price", fields.price, onlyEmpty)) filled.push("price");
+  if (setNamedField(form, "address", fields.address, onlyEmpty)) filled.push("address");
+  if (setNamedField(form, "sizeSqm", fields.sizeSqm, onlyEmpty)) filled.push("sizeSqm");
+  if (setNamedField(form, "energyClass", fields.energyClass, onlyEmpty))
+    filled.push("energyClass");
+  if (setNamedField(form, "description", fields.description, onlyEmpty))
+    filled.push("description");
+  if (setBrokerCheckbox(form, fields.brokerInvolved, onlyEmpty)) filled.push("brokerInvolved");
+
+  if (filled.length > 0) {
+    highlightPrefilledFields(form, filled);
+  }
+
+  return filled;
 }
 
-/** Fill basics, title, and description blocks on the apartment detail page. */
+/** Fill basics, title, description, and broker blocks on the apartment detail page. */
 export function applyListingPreviewToApartment(
   apartmentId: string,
   fields: ListingPreviewFields,
   options?: { onlyEmpty?: boolean }
-) {
-  const onlyEmpty = options?.onlyEmpty !== false;
+): ListingPreviewFieldKey[] {
+  const filled: ListingPreviewFieldKey[] = [];
+
   const basicsForm = document.getElementById(apartmentBasicsFormId(apartmentId));
   if (basicsForm instanceof HTMLFormElement) {
-    applyListingPreviewFields(basicsForm, fields, options);
+    filled.push(...applyListingPreviewFields(basicsForm, fields, options));
   }
+
   const titleRoot = document.getElementById(apartmentTitleFormId(apartmentId));
-  if (titleRoot) setNamedField(titleRoot, "title", fields.title, onlyEmpty);
+  if (titleRoot) {
+    const onlyEmpty = options?.onlyEmpty !== false;
+    if (setNamedField(titleRoot, "title", fields.title, onlyEmpty)) {
+      filled.push("title");
+      highlightField(titleRoot, "title");
+    }
+  }
+
   const descRoot = document.getElementById(apartmentDescriptionFormId(apartmentId));
-  if (descRoot) setNamedField(descRoot, "description", fields.description, onlyEmpty);
+  if (descRoot) {
+    const onlyEmpty = options?.onlyEmpty !== false;
+    if (setNamedField(descRoot, "description", fields.description, onlyEmpty)) {
+      filled.push("description");
+      highlightField(descRoot, "description");
+    }
+  }
+
   const brokerRoot = document.getElementById(apartmentBrokerFormId(apartmentId));
-  if (brokerRoot) setBrokerCheckbox(brokerRoot, fields.brokerInvolved, onlyEmpty);
+  if (brokerRoot) {
+    const onlyEmpty = options?.onlyEmpty !== false;
+    if (setBrokerCheckbox(brokerRoot, fields.brokerInvolved, onlyEmpty)) {
+      filled.push("brokerInvolved");
+      highlightBrokerCheckbox(brokerRoot);
+    }
+  }
+
+  return [...new Set(filled)];
 }

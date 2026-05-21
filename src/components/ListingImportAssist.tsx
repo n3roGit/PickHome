@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { createApartmentAction } from "@/app/actions";
-import { applyListingPreviewFields } from "@/lib/listing-import-form";
+import { applyListingPreviewFields, formatPrefilledFieldLabels } from "@/lib/listing-import-form";
 import type { ListingPreviewFields } from "@/lib/listing-import";
 
 export function ListingImportAssist({ projectId }: { projectId: string }) {
@@ -44,8 +44,12 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
         return false;
       }
 
-      applyListingPreviewFields(form, data.fields, { onlyEmpty: true });
-      setMessage("Leere Felder übernommen — bitte prüfen und „Immobilie hinzufügen“.");
+      const filled = applyListingPreviewFields(form, data.fields, { onlyEmpty: true });
+      const fieldHint =
+        filled.length > 0
+          ? ` Markiert: ${formatPrefilledFieldLabels(filled)}.`
+          : "";
+      setMessage(`Leere Felder übernommen — bitte prüfen und „Immobilie hinzufügen“.${fieldHint}`);
       const w = [...(data.warnings ?? [])];
       if (data.highlights && !data.fields.description) {
         w.push(`Besonderheiten: ${data.highlights}`);

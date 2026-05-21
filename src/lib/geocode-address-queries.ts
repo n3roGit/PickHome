@@ -48,7 +48,18 @@ export function parseLooseGermanAddress(address: string): LooseGermanAddress | n
 
   const commaParts = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
   if (commaParts.length >= 2) {
-    const city = commaParts[commaParts.length - 1]!;
+    const last = commaParts[commaParts.length - 1]!;
+    const plzCity = last.match(/^(\d{5})\s+(.+)$/i);
+    if (plzCity) {
+      const district = commaParts.slice(0, -1).join(", ");
+      return {
+        streetLine: district,
+        houseNumber: null,
+        city: `${plzCity[1]} ${capitalizeWord(plzCity[2]!)}`,
+      };
+    }
+
+    const city = last;
     const streetPart = commaParts.slice(0, -1).join(", ");
     const numMatch = streetPart.match(/^(.+?)\s+(\d+[a-zA-Z]?)$/);
     if (numMatch) {
@@ -89,17 +100,22 @@ export function buildGeocodeQueryVariants(address: string): string[] {
   if (normalized !== trimmed) add(normalized);
 
   const parsed = parseLooseGermanAddress(trimmed);
+  const districtPlzOnly =
+    parsed != null && !parsed.houseNumber && /^\d{5}\s/.test(parsed.city);
+
   if (parsed) {
     const streetWithNum = parsed.houseNumber
       ? `${parsed.streetLine} ${parsed.houseNumber}`
       : parsed.streetLine;
     add(`${streetWithNum}, ${parsed.city}`);
-    add(`${streetWithNum}, ${parsed.city}, Deutschland`);
+    if (!districtPlzOnly) {
+      add(`${streetWithNum}, ${parsed.city}, Deutschland`);
+    }
   }
 
   if (!/\b(deutschland|germany)\b/i.test(trimmed)) {
     add(`${normalized}, Deutschland`);
-    if (parsed) {
+    if (parsed && !districtPlzOnly) {
       const streetWithNum = parsed.houseNumber
         ? `${parsed.streetLine} ${parsed.houseNumber}`
         : parsed.streetLine;
@@ -108,6 +124,12 @@ export function buildGeocodeQueryVariants(address: string): string[] {
   }
 
   return [...seen];
+}
+
+/** District + PLZ city lines (no street number), e.g. «Nordstadt, 99999 Teststadt». */
+export function isDistrictPlzGermanAddress(address: string): boolean {
+  const parsed = parseLooseGermanAddress(address.trim());
+  return parsed != null && !parsed.houseNumber && /^\d{5}\s/.test(parsed.city);
 }
 
 function levenshtein(a: string, b: string): number {
@@ -187,6 +209,58 @@ export function pickBestHouseHit(
   }
 
   return best?.hit;
+}
+
+/** Suburb-level hit when the user only gave district + PLZ + city. */
+export function pickBestDistrictPlzHit(
+  hits: NominatimSearchHit[],
+  parsed: LooseGermanAddress
+): NominatimSearchHit | undefined {
+  const plzMatch = parsed.city.match(/^(\d{5})\s+(.+)$/i);
+  if (!plzMatch) return undefined;
+  const targetPlz = plzMatch[1]!;
+  const targetCity = plzMatch[2]!;
+  const districtNeedle = normalizeToken(parsed.streetLine);
+
+  let best: { hit: NominatimSearchHit; score: number } | undefined;
+
+  for (const hit of hits) {
+    if (!hit.lat || !hit.lon || !hit.address) continue;
+    const postcode = hit.address.postcode?.trim();
+    if (postcode !== targetPlz) continue;
+    if (!cityMatches(targetCity, hit)) continue;
+
+    const district = districtFromHit(hit);
+    const districtSim =
+      district && districtNeedle
+        ? normalizeToken(district) === districtNeedle
+          ? 1
+          : normalizeToken(district).includes(districtNeedle) ||
+              districtNeedle.includes(normalizeToken(district))
+            ? 0.85
+            : 0
+        : 0.4;
+
+    const rankBonus =
+      hit.type === "suburb" || hit.type === "neighbourhood" || hit.class === "place" ? 0.2 : 0;
+    const score = districtSim + rankBonus;
+
+    if (!best || score > best.score) {
+      best = { hit, score };
+    }
+  }
+
+  return best?.hit;
+}
+
+function districtFromHit(hit: NominatimSearchHit): string | null {
+  const addr = hit.address;
+  if (!addr) return null;
+  for (const key of ["suburb", "city_district", "borough", "neighbourhood", "quarter"] as const) {
+    const value = addr[key]?.trim();
+    if (value) return value;
+  }
+  return null;
 }
 
 /** Relaxed forward-search query for typo-tolerant matching. */

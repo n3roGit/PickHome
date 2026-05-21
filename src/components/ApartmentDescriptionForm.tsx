@@ -28,6 +28,8 @@ export function ApartmentDescriptionForm({
       <form
         id={apartmentDescriptionFormId(apartmentId)}
         action={updateApartmentDescriptionAction.bind(null, apartmentId)}
+        data-unsaved-track
+        data-unsaved-label="Beschreibung"
       >
         <ApartmentRevisionField revision={revision} />
         <textarea

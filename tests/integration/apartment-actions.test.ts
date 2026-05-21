@@ -134,7 +134,8 @@ describe("apartment server actions", () => {
 
     const updated = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
     expect(updated.price).toBe(400000);
-    expect(updated.latitude).toBe(53.08);
+    expect(updated.address).toBe("Neue Adresse");
+    expect(updated.latitude).toBe(53.0);
     const cacheCount = await prisma.commuteCache.count({ where: { apartmentId: apt.id } });
     expect(cacheCount).toBe(0);
     await prisma.$disconnect();

@@ -1,8 +1,10 @@
 import { fetchExternal } from "@/lib/external-fetch";
 import {
   buildGeocodeQueryVariants,
+  isDistrictPlzGermanAddress,
   looseGermanSearchQuery,
   parseLooseGermanAddress,
+  pickBestDistrictPlzHit,
   pickBestHouseHit,
   type NominatimSearchHit,
 } from "@/lib/geocode-address-queries";
@@ -154,7 +156,10 @@ async function geocodeLooseGermanAddress(
 ): Promise<GeocodeResult | null> {
   if (!parsed) return null;
   const hits = await nominatimForwardSearch(looseGermanSearchQuery(parsed), 8);
-  const picked = parseNominatimHit(pickBestHouseHit(hits, parsed));
+  const districtPlzOnly = !parsed.houseNumber && /^\d{5}\s/.test(parsed.city);
+  const picked = parseNominatimHit(
+    districtPlzOnly ? pickBestDistrictPlzHit(hits, parsed) : pickBestHouseHit(hits, parsed)
+  );
   if (picked) return picked;
 
   if (parsed.houseNumber) {
@@ -173,9 +178,16 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
   const q = address.trim();
   if (!q) return null;
 
-  for (const variant of buildGeocodeQueryVariants(q)) {
-    const hits = await nominatimForwardSearch(variant, 1);
-    const result = parseNominatimHit(hits[0]);
+  const districtPlzLine = isDistrictPlzGermanAddress(q);
+  const variants = buildGeocodeQueryVariants(q);
+
+  for (const variant of variants) {
+    const hits = await nominatimForwardSearch(variant, districtPlzLine ? 5 : 1);
+    const result = districtPlzLine
+      ? parseNominatimHit(
+          pickBestDistrictPlzHit(hits, parseLooseGermanAddress(q)!) ?? hits[0]
+        )
+      : parseNominatimHit(hits[0]);
     if (result) return result;
   }
 

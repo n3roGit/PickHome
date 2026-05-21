@@ -648,12 +648,9 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   const priceRaw = String(formData.get("price") ?? "").trim();
   const price = priceRaw ? parseInt(priceRaw.replace(/\D/g, ""), 10) : null;
   const addressRaw = String(formData.get("address") ?? "").trim();
-  const geocoded = addressRaw
-    ? await geocodeApartmentAddressFields(addressRaw, {
-        latitude: apt.latitude,
-        longitude: apt.longitude,
-      })
-    : { address: null, latitude: null, longitude: null, resolved: true };
+  const storedAddress = addressRaw || null;
+  const previousAddress = apt.address?.trim() ?? "";
+  const addressChanged = (storedAddress?.trim() ?? "") !== previousAddress;
   const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
   const sizeSqmRaw = String(formData.get("sizeSqm") ?? "").trim();
   const energyClassRaw = String(formData.get("energyClass") ?? "").trim();
@@ -669,9 +666,10 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
 
   const ok = await updateApartmentIfRevisionMatches(apartmentId, expectedRevision, {
     price: resolvedPrice,
-    address: geocoded.address,
-    latitude: geocoded.latitude,
-    longitude: geocoded.longitude,
+    address: storedAddress,
+    ...(addressChanged && !storedAddress
+      ? { latitude: null as number | null, longitude: null as number | null }
+      : {}),
     sizeSqm: sizeSqmParsed != null && Number.isFinite(sizeSqmParsed) ? sizeSqmParsed : null,
     energyClass: energyClassRaw ? parseEnergyClassInput(energyClassRaw) : null,
   });
@@ -685,14 +683,15 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
       PRICE_HISTORY_SOURCE_MANUAL
     );
   }
-  await invalidateCommuteCacheForApartment(apartmentId);
+  if (addressChanged) {
+    await invalidateCommuteCacheForApartment(apartmentId);
+    if (storedAddress) {
+      scheduleApartmentAddressEnrichment(apartmentId);
+    }
+  }
   revalidateApartment(apt.projectId, apartmentId);
   revalidatePath(`/project/${apt.projectId}`);
-  const redirectParams = new URLSearchParams({ basics_saved: "1" });
-  if (addressRaw && !geocoded.resolved) {
-    redirectParams.set("address_unresolved", "1");
-  }
-  redirect(`${base}?${redirectParams.toString()}`);
+  redirect(`${base}?basics_saved=1`);
 }
 
 export async function updateApartmentNotesAction(apartmentId: string, formData: FormData) {

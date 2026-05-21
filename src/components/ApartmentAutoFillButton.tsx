@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   apartmentListingUrlFormId,
   applyListingPreviewToApartment,
+  formatPrefilledFieldLabels,
 } from "@/lib/listing-import-form";
 import type { ListingPreviewFields } from "@/lib/listing-import";
 
@@ -53,9 +54,15 @@ export function ApartmentAutoFillButton({
         return;
       }
 
-      applyListingPreviewToApartment(apartmentId, data.fields, { onlyEmpty: true });
+      const filled = applyListingPreviewToApartment(apartmentId, data.fields, {
+        onlyEmpty: true,
+      });
+      const fieldHint =
+        filled.length > 0
+          ? ` Übernommen und markiert: ${formatPrefilledFieldLabels(filled)}.`
+          : "";
       setMessage(
-        "Leere Felder übernommen — bitte prüfen und speichern (Preis & Adresse, Titel, Beschreibung; Makler unter Kaufnebenkosten mit „Übernehmen“)."
+        `Leere Felder übernommen — bitte prüfen und speichern (Preis & Adresse, Titel, Beschreibung; Makler unter Kaufnebenkosten mit „Übernehmen“).${fieldHint}`
       );
       const w = [...(data.warnings ?? [])];
       if (data.highlights) w.push(`Besonderheiten: ${data.highlights}`);
