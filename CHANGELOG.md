@@ -4,6 +4,7 @@
 
 ### Features
 
+- Project checklist: enable scoring criteria for viewing notes, custom extra points, team assignee, fill on `/apartment/.../checklist`; filled info shows on rating sliders; custom points in a separate section.
 - Map tab: instant Wunschgebiet PLZ circles from static PLZ centroids in `plz-de.json` (8158 PLZ).
 - Map tab: toggle to show/hide Wunschgebiet circles; pins always colored by score.
 

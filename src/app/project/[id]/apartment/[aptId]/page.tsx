@@ -30,6 +30,7 @@ import {
   apartmentScore,
   flattenCriteria,
   getApartmentForUser,
+  getProjectChecklistItems,
   getProjectMetaForUser,
 } from "@/lib/project-data";
 import { PartnerDivergencePanel } from "@/components/PartnerDivergencePanel";
@@ -53,6 +54,12 @@ import { isLlmConfigured } from "@/lib/llm-client";
 import { ApartmentAutoFillButton } from "@/components/ApartmentAutoFillButton";
 import { ApartmentConflictBanner } from "@/components/ApartmentConflictBanner";
 import { ApartmentLlmChatButton } from "@/components/ApartmentLlmChatButton";
+import { ApartmentChecklistExtras } from "@/components/ApartmentChecklistExtras";
+import type { ChecklistCriterionHint } from "@/components/RatingSliders";
+import {
+  hasChecklistInfo,
+  userCanFillChecklistItem,
+} from "@/lib/checklist-display";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -229,6 +236,38 @@ export default async function ApartmentPage({
     })),
   });
 
+  const checklistItems = await getProjectChecklistItems(project.id);
+  const entryByItemId = new Map(
+    apartment.checklistEntries.map((e) => [e.itemId, e])
+  );
+  const checklistEditHref = `/project/${project.id}/apartment/${apartment.id}/checklist`;
+
+  const checklistByCriterionId: Record<string, ChecklistCriterionHint> = {};
+  for (const item of checklistItems) {
+    if (!item.criterionId) continue;
+    const entry = entryByItemId.get(item.id);
+    if (!entry || !hasChecklistInfo(entry)) continue;
+    checklistByCriterionId[item.criterionId] = {
+      status: entry.status,
+      note: entry.note,
+      canEdit: userCanFillChecklistItem(item.assigneeUserId, user.id),
+    };
+  }
+
+  const extraEntries = checklistItems
+    .filter((item) => !item.criterionId)
+    .map((item) => {
+      const entry = entryByItemId.get(item.id);
+      return {
+        itemId: item.id,
+        name: item.name?.trim() ?? "",
+        groupName: item.criterionGroup.name,
+        status: entry?.status ?? "unset",
+        note: entry?.note ?? null,
+      };
+    })
+    .filter((e) => e.name);
+
   const partners = project.members
     .filter((m) => m.userId !== user.id)
     .map((m) => {
@@ -300,6 +339,12 @@ export default async function ApartmentPage({
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />
             <ApartmentDeleteButton apartmentId={apartment.id} />
             <ApartmentLiveScoreBadge />
+            <Link
+              href={checklistEditHref}
+              className="text-sm font-semibold px-3 py-2 rounded-lg border border-pn-border bg-pn-bg-surface hover:bg-pn-bg-subtle text-pn-text-primary"
+            >
+              Checkliste
+            </Link>
           </div>
         </div>
         <ApartmentLiveScoreSummary userName={user.name} viewedAt={apartment.viewedAt} />
@@ -392,6 +437,14 @@ export default async function ApartmentPage({
           }))}
         />
         <PartnerDivergencePanel comparisons={divergenceComparisons} />
+        {extraEntries.some((e) => hasChecklistInfo(e)) && (
+          <CollapsibleSection title="Checkliste · Zusatzpunkte" defaultOpen={false}>
+            <ApartmentChecklistExtras
+              entries={extraEntries}
+              checklistHref={checklistEditHref}
+            />
+          </CollapsibleSection>
+        )}
         <CollapsibleSection title="Kriterien bewerten" defaultOpen>
           <RatingSliders
             apartmentId={apartment.id}
@@ -400,6 +453,8 @@ export default async function ApartmentPage({
             criteriaFlat={criteria}
             myUserId={user.id}
             dealbreakerThreshold={dealbreakerThreshold}
+            checklistByCriterionId={checklistByCriterionId}
+            checklistEditHref={checklistEditHref}
           />
         </CollapsibleSection>
         </ApartmentScoreProvider>

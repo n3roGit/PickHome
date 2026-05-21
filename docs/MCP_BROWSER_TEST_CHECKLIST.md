@@ -32,7 +32,7 @@ Walk steps in this sequence so auth and project context stay consistent:
 2. Account settings (admin account)
 3. Admin tabs (users → backup → timezone → **KI**)
 4. Dashboard (admin, then user after logout/login)
-5. One project — tabs in order: **immobilien → archiv → team → settings → criteria → compare → map → calendar**
+5. One project — tabs in order: **immobilien → archiv → team → settings → criteria → checklist → compare → map → calendar**
 6. Apartment detail (from immobilien list)
 7. Optional: mobile viewport, backup download, TOTP full activation
 
@@ -98,7 +98,7 @@ Tabs: **Benutzer**, **Sicherung**, **Zeitzone**, **KI**.
 
 ## Project — all tabs
 
-URL pattern: `/project/<projectId>?tab=<tab>`. Tabs: default (immobilien), `archived`, `team`, `settings`, `criteria`, `compare`, `map`, `calendar`.
+URL pattern: `/project/<projectId>?tab=<tab>`. Tabs: default (immobilien), `archived`, `team`, `settings`, `criteria`, `checklist`, `compare`, `map`, `calendar`.
 
 Project header: name, budget, «Projekt löschen» (if permitted).
 
@@ -106,7 +106,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 
 - Score legend: Grün / Gelb / Rot / DB.
 - Sortierung (Score, Preis, €/Punkt, Datum) + Reihenfolge; search «Immobilien durchsuchen».
-- Per row: title link, optional «Inserat öffnen ↗», address, budget hint («unter/über Budget»), score, criteria count.
+- Per row: title link, optional «Inserat öffnen ↗», address, budget hint («unter/über Budget»), score, criteria count; if checklist configured: second progress bar labelled **Checkliste** (link to fill page).
 - «Immobilie hinzufügen» + Inserat-URL «Daten laden» (optional).
 - If area filter configured: badges «Im Wunschgebiet» / «Außerhalb …» or NoGo variants («In NoGo-Zone» / «Außerhalb NoGo-Zone»).
 - Open one apartment → detail page.
@@ -114,6 +114,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 ### Archiv (`?tab=archived`)
 
 - Empty state or archived listings; restore/delete if entries exist (optional).
+- Same checklist progress bar on rows when project has checklist points (as immobilien tab).
 
 ### Team (`?tab=team`)
 
@@ -130,6 +131,14 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 
 - Dealbreaker hint with threshold from project settings.
 - Groups with weights, dealbreaker toggles, reorder, «Gruppe anlegen», per-group «Neues Kriterium».
+
+### Checkliste (`?tab=checklist`)
+
+- Summary: point count, criterion vs custom split.
+- Per criterion: checkbox to include; when checked, **Zuordnung** radios (Beide / per member).
+- Per group: optional **Makler-Fragen** textarea (saved on blur).
+- **Zusätzliche Punkte:** add custom item (name + group); assignee like criteria.
+- Tab label «Checkliste (N)» matches enabled point count.
 
 ### Vergleich (`?tab=compare`)
 
@@ -172,6 +181,8 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 - Besichtigungstermine: list, add form (optional).
 - **Meinungsunterschiede** (when team ratings exist): per-user scores vs «Noch keine gemeinsam bewerteten Kriterien».
 - **Kriterien bewerten:** sliders; optional: move one slider, reload page, value persisted.
+- **Checkliste:** link/button near score; under each criterion that is on the checklist: read-only **CHECKLISTE** block (status + note + «In Checkliste bearbeiten»); custom checklist-only items in separate section if any.
+- Fill page `/project/<id>/apartment/<aptId>/checklist`: status buttons (— / OK / ? / n. a.), «Fakt notieren…» per point; counter «X von Y»; only points assigned to current user or «Beide»; optional **Makler-Fragen (Spickzettel)** details block.
 
 ### Archivieren
 
@@ -199,6 +210,8 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 
 ## Changelog (agent notes, no real data)
 
+- **2026-05-21 (port 3000, checklist retest):** Admin: config tab 4 points, archiv **4/4 Checkliste 100%**, fill page legend bottom + Partner-Ansicht (Jasmin read-only). Criteria tab **Checkliste (4)** stable. List **Inserat öffnen** below price/viewing. No runtime console errors (a11y form-id hints only). Vitest 428 pass.
+- **2026-05-21 (port 3000, checklist full + dual user):** Auth admin; tab label **Checkliste (4)** stable on criteria/map/compare/calendar (count-query fix). Config: 4 points, assignees Christoph/Jasmin/Beide, custom item. **Christoph** fill: Kaufpreis OK+note, Heizung ?+note, Zusatz OK (3/3 visible). **Jasmin** fill: Wohnfläche OK+note (3/3, no Kaufpreis). Apartment detail (Jasmin): CHECKLISTE under Kaufpreis/Wohnfläche/Heizung with team notes; Zusatz accordion; score **0/100** unchanged vs Christoph **42/100** (checklist does not affect scoring). Archiv list **4/4 Checkliste 100%**. Map/calendar/compare OK. No console errors. Skipped: bad password, account/admin backup/KI deep, TOTP, mobile, compare 2-select tables.
 - **2026-05-21 (port 3000, auto-fill + Makler):** Detail: extract 200, Makler-Checkbox nach Auto-Fill gesetzt (landingpage.immobilien); Beschreibung aus PDF/KI. Create: fp-Immofinanz preview → Makler checked, Titel/Preis/Beschreibung; IS24 preview fetch_failed. Keine Console-Errors.
 - **2026-05-21 (port 3000, KI retest):** Admin KI: Speichern `auto-fastest` + Verbindung testen OK (`PUT`/`POST` llm settings 200). Apartment: KI-Chat 200 (95 m² / Bj. 1910 aus Beschreibung); PDF-Exposé-Extraktion 200, Highlights + leere Felder. Keine Console-Errors. Extract-Button nur mit PDF, nicht nur Inserat-URL.
 - **2026-05-21 (port 3000, Inserat-Link merge):** Admin login; Apartment mit PDF+URL: kein «Aus Exposé (KI)»; «Daten laden» → `POST …/llm/extract` 200, «Leere Felder übernommen»; Hinweis «PDF ohne KI» wenn LLM nicht konfiguriert. Keine Console-Errors.

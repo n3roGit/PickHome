@@ -21,6 +21,12 @@ export async function getProjectMetaForUser(projectId: string, user: ProjectAcce
         orderBy: { sortOrder: "asc" },
         include: { criteria: { orderBy: { sortOrder: "asc" } } },
       },
+      checklistItems: {
+        orderBy: [{ criterionGroup: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+        include: {
+          criterion: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 }
@@ -47,6 +53,7 @@ export async function getProjectForUser(
           photos: { orderBy: { sortOrder: "asc" } },
           documents: { orderBy: { sortOrder: "asc" }, select: { fileName: true, extractedText: true } },
           viewings: { orderBy: { scheduledAt: "asc" } },
+          checklistEntries: { select: { itemId: true, status: true, note: true } },
         },
       },
     },
@@ -65,6 +72,16 @@ export async function getApartmentForUser(
       photos: { orderBy: { sortOrder: "asc" } },
       documents: { orderBy: { sortOrder: "asc" } },
       viewings: { orderBy: { scheduledAt: "desc" } },
+      checklistEntries: {
+        include: {
+          item: {
+            include: {
+              criterion: { select: { id: true, name: true } },
+              criterionGroup: { select: { id: true, name: true, sortOrder: true } },
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -116,4 +133,53 @@ export async function seedProjectCriteria(projectId: string) {
       });
     }
   }
+  await seedProjectChecklistFromCriteria(projectId);
+}
+
+export async function seedProjectChecklistFromCriteria(projectId: string) {
+  const { DEFAULT_CHECKLIST_CRITERION_NAMES } = await import("./defaults");
+  const groups = await prisma.criterionGroup.findMany({
+    where: { projectId },
+    include: { criteria: true },
+  });
+  let sortOrder = 0;
+  for (const group of groups) {
+    for (const criterion of group.criteria) {
+      if (!DEFAULT_CHECKLIST_CRITERION_NAMES.has(criterion.name)) continue;
+      await prisma.checklistItem.create({
+        data: {
+          projectId,
+          criterionGroupId: group.id,
+          criterionId: criterion.id,
+          assigneeUserId: null,
+          sortOrder: sortOrder++,
+        },
+      });
+    }
+  }
+}
+
+export async function getProjectChecklistItems(projectId: string) {
+  return prisma.checklistItem.findMany({
+    where: { projectId },
+    orderBy: [{ criterionGroup: { sortOrder: "asc" } }, { sortOrder: "asc" }],
+    include: {
+      criterion: { select: { id: true, name: true, weight: true, isDealbreaker: true } },
+      criterionGroup: { select: { id: true, name: true, sortOrder: true, brokerQuestions: true } },
+    },
+  });
+}
+
+export async function getApartmentChecklistEntries(apartmentId: string) {
+  return prisma.checklistEntry.findMany({
+    where: { apartmentId },
+    include: {
+      item: {
+        include: {
+          criterion: { select: { id: true, name: true } },
+          criterionGroup: { select: { id: true, name: true, sortOrder: true, brokerQuestions: true } },
+        },
+      },
+    },
+  });
 }

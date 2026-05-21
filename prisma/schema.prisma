@@ -86,8 +86,9 @@ model Project {
   archivedAt  DateTime?
   members     ProjectMember[]
   apartments  Apartment[]
-  groups      CriterionGroup[]
-  areaDistricts ProjectAreaDistrict[]
+  groups          CriterionGroup[]
+  checklistItems  ChecklistItem[]
+  areaDistricts   ProjectAreaDistrict[]
 }
 
 model ProjectAreaDistrict {
@@ -113,12 +114,14 @@ model ProjectMember {
 }
 
 model CriterionGroup {
-  id        String      @id @default(uuid())
-  projectId String
-  name      String
-  sortOrder Int         @default(0)
-  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  criteria  Criterion[]
+  id               String          @id @default(uuid())
+  projectId        String
+  name             String
+  brokerQuestions  String?
+  sortOrder        Int             @default(0)
+  project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  criteria         Criterion[]
+  checklistItems   ChecklistItem[]
 }
 
 model Criterion {
@@ -130,6 +133,7 @@ model Criterion {
   sortOrder     Int            @default(0)
   group         CriterionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   ratings       Rating[]
+  checklistItem ChecklistItem?
 }
 
 model Apartment {
@@ -161,7 +165,39 @@ model Apartment {
   documents   ApartmentDocument[]
   viewings      ViewingAppointment[]
   commuteCaches CommuteCache[]
-  priceHistory  ApartmentPriceHistory[]
+  priceHistory      ApartmentPriceHistory[]
+  checklistEntries  ChecklistEntry[]
+}
+
+model ChecklistItem {
+  id               String          @id @default(uuid())
+  projectId        String
+  criterionGroupId String
+  criterionId      String?         @unique
+  name             String?
+  assigneeUserId   String?
+  sortOrder        Int             @default(0)
+  project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  criterionGroup   CriterionGroup  @relation(fields: [criterionGroupId], references: [id], onDelete: Cascade)
+  criterion        Criterion?      @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  entries          ChecklistEntry[]
+
+  @@index([projectId])
+  @@index([criterionGroupId])
+}
+
+model ChecklistEntry {
+  id          String        @id @default(uuid())
+  apartmentId String
+  itemId      String
+  status      String        @default("unset")
+  note        String?
+  updatedAt   DateTime      @updatedAt
+  apartment   Apartment     @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  item        ChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([apartmentId, itemId])
+  @@index([apartmentId])
 }
 
 model ApartmentPriceHistory {

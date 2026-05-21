@@ -74,3 +74,23 @@ export const DEFAULT_CRITERIA_GROUPS: DefaultGroup[] = [
     ],
   },
 ];
+
+/** Criterion names to enable on the viewing checklist when a project is created. */
+export const DEFAULT_CHECKLIST_CRITERION_NAMES = new Set([
+  "Kaufpreis",
+  "Wohnfläche",
+  "Zustand",
+  "Haus oder Wohnung",
+  "Stadtteil",
+  "Arbeitsweg",
+  "ÖPNV",
+  "Heizung",
+  "Energieklasse",
+  "Elektrik",
+  "Schlafzimmer",
+  "Wohnzimmer",
+  "Küche",
+  "Badezimmer",
+  "Garten / Balkon",
+  "Garage / Stellplatz",
+]);

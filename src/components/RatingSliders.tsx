@@ -4,9 +4,16 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { saveRatingAction } from "@/app/actions";
 import { useOptionalApartmentLiveScore } from "@/components/ApartmentScoreProvider";
+import { ChecklistEntryInfo } from "@/components/ChecklistEntryInfo";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { apartmentScore, type CriterionInput } from "@/lib/scoring";
+
+export type ChecklistCriterionHint = {
+  status: string;
+  note: string | null;
+  canEdit: boolean;
+};
 type Criterion = {
   id: string;
   name: string;
@@ -40,6 +47,8 @@ export function RatingSliders({
   criteriaFlat,
   myUserId,
   dealbreakerThreshold,
+  checklistByCriterionId = {},
+  checklistEditHref,
 }: {
   apartmentId: string;
   groups: Group[];
@@ -47,6 +56,8 @@ export function RatingSliders({
   criteriaFlat: CriterionInput[];
   myUserId: string;
   dealbreakerThreshold: number;
+  checklistByCriterionId?: Record<string, ChecklistCriterionHint>;
+  checklistEditHref?: string;
 }) {
   const [scores, setScores] = useState<Record<string, number | null>>(() => {
     const init: Record<string, number | null> = {};
@@ -222,6 +233,18 @@ export function RatingSliders({
                       onBlur={() => onNoteBlur(c.id)}
                       className="mt-2 w-full border border-pn-border rounded-lg px-3 py-1.5 text-sm"
                     />
+                    {checklistByCriterionId[c.id] && (
+                      <ChecklistEntryInfo
+                        status={checklistByCriterionId[c.id].status}
+                        note={checklistByCriterionId[c.id].note}
+                        editHref={
+                          checklistByCriterionId[c.id].canEdit
+                            ? checklistEditHref
+                            : undefined
+                        }
+                        canEdit={checklistByCriterionId[c.id].canEdit}
+                      />
+                    )}
                   </div>
 
                   {partners.map((p) => {

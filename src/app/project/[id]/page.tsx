@@ -10,6 +10,8 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { CriteriaEditor } from "@/components/CriteriaEditor";
+import { ChecklistConfigEditor } from "@/components/ChecklistConfigEditor";
+import { ChecklistProgressBar } from "@/components/ChecklistProgressBar";
 import { ProjectMembersPanel } from "@/components/ProjectMembersPanel";
 import { ProjectSettingsPanel } from "@/components/ProjectSettingsPanel";
 import { ProjectAreaFilterPanel } from "@/components/ProjectAreaFilterPanel";
@@ -24,6 +26,7 @@ import { nestedProjectAccessFilter } from "@/lib/project-access";
 import {
   apartmentScore,
   flattenCriteria,
+  getProjectChecklistItems,
   getProjectForUser,
 } from "@/lib/project-data";
 import { prisma } from "@/lib/prisma";
@@ -59,6 +62,7 @@ import { findOrtByKey, getPlzReferenceData } from "@/lib/plz-reference";
 import { mergeDistrictsByPlz } from "@/lib/ortsteile-reference";
 import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { countFilledChecklistEntries } from "@/lib/checklist-progress";
 
 export default async function ProjectPage({
   params,
@@ -141,6 +145,14 @@ export default async function ProjectPage({
   ]);
 
   const criteria = flattenCriteria(project.groups);
+  const loadChecklistItems =
+    tab === "checklist" || tab === "apartments" || tab === "archived";
+  const checklistItemsForProject = loadChecklistItems
+    ? await getProjectChecklistItems(projectId)
+    : [];
+  const checklistTotal = loadChecklistItems
+    ? checklistItemsForProject.length
+    : await prisma.checklistItem.count({ where: { projectId } });
   const criteriaWithName = project.groups.flatMap((g) =>
     g.criteria.map((c) => ({ ...c, name: c.name }))
   );
@@ -213,6 +225,8 @@ export default async function ProjectPage({
       duplicateMatches: duplicateIndex.get(a.id) ?? [],
       areaMatch,
       priceHistoryCount: priceHistoryCountByApartment.get(a.id) ?? 0,
+      checklistFilled: countFilledChecklistEntries(a.checklistEntries),
+      checklistTotal,
     };
   });
 
@@ -291,6 +305,9 @@ export default async function ProjectPage({
           <TabLink href={`/project/${project.id}?tab=criteria`} active={tab === "criteria"}>
             Kriterien ({criteria.length})
           </TabLink>
+          <TabLink href={`/project/${project.id}?tab=checklist`} active={tab === "checklist"}>
+            Checkliste ({checklistTotal})
+          </TabLink>
           <TabLink href={`/project/${project.id}?tab=compare`} active={tab === "compare"}>
             Vergleich
           </TabLink>
@@ -359,17 +376,7 @@ export default async function ProjectPage({
                       <Link href={`/project/${project.id}/apartment/${a.id}`} className="font-semibold hover:text-pn-accent">
                         {a.title}
                       </Link>
-                      {a.listingUrl && (
-                        <a
-                          href={a.listingUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-pn-accent hover:underline block mt-0.5"
-                        >
-                          Inserat öffnen ↗
-                        </a>
-                      )}
-                      {a.address && <p className="text-sm text-pn-text-secondary">{a.address}</p>}
+                      {a.address && <p className="text-sm text-pn-text-secondary mt-0.5">{a.address}</p>}
                       {areaFilterEnabled && (
                         <DesiredAreaBadge
                           status={a.areaMatch.status}
@@ -429,6 +436,16 @@ export default async function ProjectPage({
                         }
                         return null;
                       })()}
+                      {a.listingUrl && (
+                        <a
+                          href={a.listingUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-pn-text-tertiary hover:text-pn-accent hover:underline inline-block mt-2"
+                        >
+                          Inserat öffnen ↗
+                        </a>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto sm:min-w-[140px] shrink-0">
@@ -448,6 +465,18 @@ export default async function ProjectPage({
                     )}
                     </div>
                     <RatingProgressBar rated={a.rated} total={a.total} className="w-full" />
+                    {a.checklistTotal > 0 && (
+                      <Link
+                        href={`/project/${project.id}/apartment/${a.id}/checklist`}
+                        className="block"
+                      >
+                        <ChecklistProgressBar
+                          filled={a.checklistFilled}
+                          total={a.checklistTotal}
+                          className="w-full"
+                        />
+                      </Link>
+                    )}
                     {pricePerPoint(a.price, a.displayScore) && (
                       <span className="text-xs text-pn-text-tertiary">
                         {pricePerPoint(a.price, a.displayScore)}/Pkt
@@ -507,6 +536,35 @@ export default async function ProjectPage({
             projectId={project.id}
             groups={project.groups}
             dealbreakerThreshold={dealbreakerThreshold}
+          />
+        )}
+
+        {tab === "checklist" && (
+          <ChecklistConfigEditor
+            projectId={project.id}
+            groups={project.groups.map((g) => ({
+              id: g.id,
+              name: g.name,
+              brokerQuestions: g.brokerQuestions,
+              criteria: g.criteria.map((c) => ({
+                id: c.id,
+                name: c.name,
+                weight: c.weight,
+                isDealbreaker: c.isDealbreaker,
+              })),
+            }))}
+            members={project.members.map((m) => ({
+              userId: m.userId,
+              name: m.user.name,
+            }))}
+            checklistItems={checklistItemsForProject.map((item) => ({
+              id: item.id,
+              criterionId: item.criterionId,
+              name: item.name,
+              assigneeUserId: item.assigneeUserId,
+              criterionGroupId: item.criterionGroupId,
+              criterion: item.criterion,
+            }))}
           />
         )}
 

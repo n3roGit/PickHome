@@ -2,17 +2,19 @@ export function RatingProgressBar({
   rated,
   total,
   className = "",
+  label = "Kriterien",
 }: {
   rated: number;
   total: number;
   className?: string;
+  label?: string;
 }) {
   const pct = total > 0 ? Math.round((rated / total) * 100) : 0;
   return (
     <div className={`w-full min-w-[120px] ${className}`}>
       <div className="flex justify-between text-xs text-pn-text-tertiary mb-1 tabular-nums">
         <span>
-          {rated}/{total} Kriterien
+          {rated}/{total} {label}
         </span>
         <span>{pct}%</span>
       </div>

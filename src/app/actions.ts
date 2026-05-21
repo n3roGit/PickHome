@@ -83,6 +83,7 @@ import {
 function revalidateApartment(projectId: string, apartmentId: string) {
   revalidatePath(`/project/${projectId}`);
   revalidatePath(`/project/${projectId}/apartment/${apartmentId}`);
+  revalidatePath(`/project/${projectId}/apartment/${apartmentId}/checklist`);
 }
 
 export async function logoutAction() {
