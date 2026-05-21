@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { constants, existsSync, readFileSync } from "node:fs";
-import { access, mkdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 
 const RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
@@ -53,21 +53,10 @@ async function ensureDataDirs() {
   await mkdir(join(dataDir, "uploads", "apartments"), { recursive: true });
 }
 
-async function assertDatabaseWritable(dbPath) {
-  if (typeof process.getuid === "function" && process.getuid() === 0) {
-    return;
-  }
-  const dataDir = dirname(dbPath);
-  try {
-    await access(dataDir, constants.W_OK);
-  } catch {
-    console.error(`[pickhome] Data directory is not writable: ${dataDir}`);
-    console.error(
-      "[pickhome] Docker: ./data must be writable. On the host run: chown -R 1000:1000 ./data " +
-        "(Linux) or ensure the bind mount is not read-only. The entrypoint runs db-autoupdate as root when possible."
-    );
-    throw new Error("database directory not writable");
-  }
+function logRuntimeIdentity() {
+  const uid = typeof process.getuid === "function" ? String(process.getuid()) : "unknown";
+  const gid = typeof process.getgid === "function" ? String(process.getgid()) : "unknown";
+  console.log(`[pickhome] db-autoupdate process uid=${uid} gid=${gid}`);
 }
 
 async function pushSchemaWithRetry() {
@@ -93,11 +82,11 @@ async function pushSchemaWithRetry() {
 
 async function main() {
   console.log(`[pickhome] db-autoupdate v${appVersion()} (${PRISMA_PUSH_ARGS})`);
+  logRuntimeIdentity();
 
   await ensureDataDirs();
 
   const dbPath = resolveDbFilePath();
-  await assertDatabaseWritable(dbPath);
   const isNewDatabase = !existsSync(dbPath);
   if (isNewDatabase) {
     console.log("[pickhome] No database file yet — will create and seed.");

@@ -143,7 +143,9 @@ All runtime data lives in **`./data/`** (gitignored). Docker bind-mounts the sam
 | `data/uploads/` | Apartment photos and documents |
 | `data/backups/` | Manual and scheduled backup ZIPs |
 
-The entrypoint runs **database migrations as root** (so `prisma db push` works on root-owned bind mounts), then starts the app as `node` when `./data` is writable. If you see `readonly database` or `database directory not writable`, fix ownership on the host:
+The bundled `docker-compose.yml` sets `user: "0:0"` so the entrypoint can migrate SQLite on bind-mounted `./data`, then drops to `node` for the web app when possible. **Do not** add `user: "1000:1000"` — that skips root and breaks `db-autoupdate`.
+
+If the container still restarts, check logs for `entrypoint uid=`. It must be `0` on start. Then fix host permissions:
 
 ```bash
 sudo chown -R 1000:1000 ./data
@@ -151,7 +153,7 @@ docker compose pull
 docker compose up -d
 ```
 
-On Synology/NAS, set folder permissions for the Docker user or add `user: "<uid>:<gid>"` to `docker-compose.yml` matching the owner of `./data`.
+Ensure the volume is not read-only (`:ro`). On Synology/NAS, grant the Docker folder write access or keep `user: "0:0"`.
 
 Stop / start:
 

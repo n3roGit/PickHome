@@ -1,6 +1,8 @@
 services:
   pickhome:
     image: n3ro88/pickhome:latest
+    # Required for SQLite on bind-mounted ./data — do not set user: 1000 (breaks migrations).
+    user: "0:0"
     container_name: pickhome
     ports:
       - "127.0.0.1:${PICKHOME_PORT:-3000}:3000"
