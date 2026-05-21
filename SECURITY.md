@@ -39,7 +39,8 @@ the internet:
 - Change default admin credentials immediately after first login
 - Enable TOTP for accounts where possible
 - Restrict network access (VPN, firewall, allowlists)
-- Keep Docker images and dependencies updated
+- Keep Docker images and dependencies updated (production image uses multi-stage
+  build, Next.js standalone, and `node:22-alpine`; check Docker Scout on Hub)
 
 Uploaded files are stored under `data/uploads/` and served from `/uploads/…`.
 Treat backups (`data:export`) as sensitive — they contain user data and hashes.
