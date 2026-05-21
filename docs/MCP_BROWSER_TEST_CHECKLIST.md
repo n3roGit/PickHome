@@ -116,7 +116,8 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 ### Einstellungen (`?tab=settings`)
 
 - Projekt name/budget; Kaufnebenkosten; Finanzierung; Dealbreaker-Schwelle.
-- «PDFs neu einlesen», «Koordinaten neu indizieren» buttons present.
+- «PDFs neu einlesen», **«Adressen jetzt anreichern»** (Wunschgebiet/OSM), «Koordinaten neu indizieren» buttons present.
+- «Adressen jetzt anreichern»: status while running; after completion message with count (e.g. «N Adresse(n) angereichert»); apartment detail links here via «Alle Adressen im Projekt anreichern».
 
 ### Kriterien (`?tab=criteria`)
 
@@ -150,7 +151,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 
 - «← Zurück» to project; header title, optional «Inserat öffnen ↗», area badge (Wunschgebiet/NoGo).
 - Score legend + «angemeldet als …»; Archivieren, Löschen.
-- Preis & Adresse: fields + Speichern.
+- Preis & Adresse: Adressfeld + **GetGeo** (nur diese Adresse); Speichern für alle Felder; Hinweis bei nicht auflösbarer Adresse.
 - **Inserat-Link** (expand): URL + «Daten laden» + Speichern.
 - **Anfahrt** (expand): per-member rows; lines containing «Route:» or mode/duration (admin may see all members).
 - **Kaufnebenkosten & Finanzierung** (expand): project financing reflected.

@@ -37,6 +37,7 @@ Path alias: `@/*` → `src/*`.
 - Uploads: `src/lib/pickhome-data.ts`, `src/lib/apartment-media.ts`, served at `/uploads/...`.
 - Never commit: `data/`, `.env*`, secrets, `node_modules/`, `.next/`, user databases or backup ZIPs.
 - **Never put real data in the repo** — no production data, no exports, no backups, no local test/play databases or fixtures. Local dev data stays in `data/` (gitignored) only. For seeds, tests, docs, or examples: use invented/synthetic data only (fake names, addresses, URLs, listing IDs).
+- **Test addresses:** import only from `tests/helpers/synthetic-addresses.ts` (public OSM places or fictional `Teststadt`/`Exampleweg`). Never paste addresses from local dev DB, house-hunt notes, MCP sessions, or conversation context into tests. No inline street/city/PLZ literals in `tests/**/*.ts` except in that helper file.
 
 ## Database auto-update (production)
 

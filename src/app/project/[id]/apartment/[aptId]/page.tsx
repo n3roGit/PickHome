@@ -59,6 +59,9 @@ export default async function ApartmentPage({
     notes_saved?: string;
     description_saved?: string;
     basics_saved?: string;
+    address_unresolved?: string;
+    address_geocoded?: string;
+    address_geocode_failed?: string;
   }>;
 }) {
   const resolvedParams = await params;
@@ -245,6 +248,7 @@ export default async function ApartmentPage({
         <ApartmentLiveScoreSummary userName={user.name} viewedAt={apartment.viewedAt} />
         <ScoreLegend className="mb-6" />
         <ApartmentBasicsForm
+          projectId={project.id}
           apartmentId={apartment.id}
           address={apartment.address}
           price={apartment.price}
@@ -252,6 +256,15 @@ export default async function ApartmentPage({
           energyClass={apartment.energyClass}
           budget={project.budget}
           saved={resolvedSearchParams.basics_saved === "1"}
+          addressUnresolved={resolvedSearchParams.address_unresolved === "1"}
+          addressGeocoded={resolvedSearchParams.address_geocoded === "1"}
+          addressGeocodeFailed={
+            resolvedSearchParams.address_geocode_failed === "empty"
+              ? "empty"
+              : resolvedSearchParams.address_geocode_failed === "1"
+                ? "unresolved"
+                : undefined
+          }
         />
         <ApartmentListingUrlForm
           apartmentId={apartment.id}

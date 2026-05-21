@@ -126,7 +126,7 @@ export async function reindexProjectAddresses(
       latitude: true,
       longitude: true,
     },
-    orderBy: { updatedAt: "asc" },
+    orderBy: [{ latitude: "asc" }, { createdAt: "asc" }],
   });
 
   let processed = 0;
@@ -179,7 +179,7 @@ export async function runAddressEnrichmentBackfillTick(
       latitude: true,
       longitude: true,
     },
-    orderBy: { updatedAt: "asc" },
+    orderBy: [{ latitude: "asc" }, { createdAt: "asc" }],
     take: Math.max(maxPerTick * 15, maxPerTick),
   });
 

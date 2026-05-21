@@ -89,9 +89,23 @@ describe("plz-map-overlays", () => {
     vi.mocked(geocodeAddress).mockClear();
     vi.mocked(geocodeAddress).mockImplementation(async (address: string) => {
       if (address.startsWith("28203"))
-        return { latitude: 53.078, longitude: 8.825, district: null, displayName: null };
+        return {
+          latitude: 53.078,
+          longitude: 8.825,
+          district: null,
+          postcode: null,
+          canonicalAddress: null,
+          displayName: null,
+        };
       if (address.startsWith("28209"))
-        return { latitude: 53.067, longitude: 8.845, district: null, displayName: null };
+        return {
+          latitude: 53.067,
+          longitude: 8.845,
+          district: null,
+          postcode: null,
+          canonicalAddress: null,
+          displayName: null,
+        };
       return null;
     });
 

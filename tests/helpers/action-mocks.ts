@@ -6,6 +6,8 @@ export const DEFAULT_MOCK_GEOCODE = {
   latitude: 53.08,
   longitude: 8.8,
   district: null as string | null,
+  postcode: null as string | null,
+  canonicalAddress: null as string | null,
   displayName: null as string | null,
 };
 

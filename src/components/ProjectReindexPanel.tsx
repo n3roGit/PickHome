@@ -109,8 +109,9 @@ export function ProjectReindexPanel({
   useEffect(() => {
     const documentsRunning = jobs?.documents?.status === "running";
     const commuteRunning = jobs?.commute?.status === "running";
+    const addressesRunning = jobs?.addresses?.status === "running";
     const pending = jobs?.commutePendingLegs ?? 0;
-    if (!documentsRunning && !commuteRunning && pending === 0) return;
+    if (!documentsRunning && !commuteRunning && !addressesRunning && pending === 0) return;
 
     const timer = window.setInterval(() => {
       void loadJobs();
@@ -161,7 +162,10 @@ export function ProjectReindexPanel({
         </form>
       </section>
 
-      <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 max-w-lg space-y-4">
+      <section
+        id="addresses-reindex"
+        className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 max-w-lg space-y-4"
+      >
         <div>
           <h2 className="font-semibold mb-1">Adressen (Wunschgebiet)</h2>
           <p className="text-sm text-pn-text-secondary">

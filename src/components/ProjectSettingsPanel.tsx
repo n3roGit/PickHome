@@ -40,7 +40,7 @@ export function ProjectSettingsPanel({
   dealbreakerThreshold: number;
   saved?: boolean;
   error?: string;
-  reindexStartedKind?: "documents" | "commute";
+  reindexStartedKind?: "documents" | "commute" | "addresses";
   reindexError?: string;
 }) {
   return (

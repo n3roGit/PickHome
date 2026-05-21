@@ -538,7 +538,12 @@ async function geocodeApartmentAddressFields(
 ) {
   const trimmed = address.trim();
   if (!trimmed) {
-    return { address: null as string | null, latitude: null as number | null, longitude: null as number | null };
+    return {
+      address: null as string | null,
+      latitude: null as number | null,
+      longitude: null as number | null,
+      resolved: true,
+    };
   }
   const geocoded = await resolveApartmentGeocode(trimmed, existing);
   const applied = applyGeocodeToStoredAddress(trimmed, geocoded);
@@ -546,7 +551,46 @@ async function geocodeApartmentAddressFields(
     address: applied.address || null,
     latitude: applied.latitude,
     longitude: applied.longitude,
+    resolved: geocoded != null,
   };
+}
+
+export async function geocodeApartmentAddressAction(apartmentId: string, formData: FormData) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user);
+  if (!apt) redirect("/dashboard");
+
+  const addressRaw = String(formData.get("address") ?? "").trim();
+  const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
+
+  if (!addressRaw) {
+    redirect(`${base}?address_geocode_failed=empty`);
+  }
+
+  const geocoded = await geocodeApartmentAddressFields(addressRaw, {
+    latitude: apt.latitude,
+    longitude: apt.longitude,
+  });
+
+  await prisma.apartment.update({
+    where: { id: apartmentId },
+    data: {
+      address: geocoded.address,
+      latitude: geocoded.latitude,
+      longitude: geocoded.longitude,
+    },
+  });
+  await invalidateCommuteCacheForApartment(apartmentId);
+  revalidateApartment(apt.projectId, apartmentId);
+  revalidatePath(`/project/${apt.projectId}`);
+
+  const redirectParams = new URLSearchParams();
+  if (geocoded.resolved) {
+    redirectParams.set("address_geocoded", "1");
+  } else {
+    redirectParams.set("address_geocode_failed", "1");
+  }
+  redirect(`${base}?${redirectParams.toString()}`);
 }
 
 export async function updateApartmentBasicsAction(apartmentId: string, formData: FormData) {
@@ -562,7 +606,7 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
         latitude: apt.latitude,
         longitude: apt.longitude,
       })
-    : { address: null, latitude: null, longitude: null };
+    : { address: null, latitude: null, longitude: null, resolved: true };
   const base = `/project/${apt.projectId}/apartment/${apartmentId}`;
   const sizeSqmRaw = String(formData.get("sizeSqm") ?? "").trim();
   const energyClassRaw = String(formData.get("energyClass") ?? "").trim();
@@ -583,7 +627,11 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   await invalidateCommuteCacheForApartment(apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   revalidatePath(`/project/${apt.projectId}`);
-  redirect(`${base}?basics_saved=1`);
+  const redirectParams = new URLSearchParams({ basics_saved: "1" });
+  if (addressRaw && !geocoded.resolved) {
+    redirectParams.set("address_unresolved", "1");
+  }
+  redirect(`${base}?${redirectParams.toString()}`);
 }
 
 export async function updateApartmentNotesAction(apartmentId: string, formData: FormData) {
