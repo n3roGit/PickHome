@@ -255,6 +255,8 @@ export default async function ApartmentPage({
           projectId={project.id}
           apartmentId={apartment.id}
           address={apartment.address}
+          latitude={apartment.latitude}
+          longitude={apartment.longitude}
           price={apartment.price}
           priceHistoryCount={priceHistoryCount}
           timeZone={appTimeZone}

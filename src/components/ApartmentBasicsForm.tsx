@@ -5,12 +5,15 @@ import {
 } from "@/app/actions";
 import { ApartmentPriceHistoryButton } from "@/components/ApartmentPriceHistoryButton";
 import { apartmentBasicsFormId } from "@/lib/listing-import-form";
+import { GoogleMapsStreetViewLink } from "@/components/GoogleMapsStreetViewLink";
 import { formatBudgetHint, formatPrice } from "@/lib/scoring";
 
 export function ApartmentBasicsForm({
   projectId,
   apartmentId,
   address,
+  latitude,
+  longitude,
   price,
   priceHistoryCount,
   timeZone,
@@ -25,6 +28,8 @@ export function ApartmentBasicsForm({
   projectId: string;
   apartmentId: string;
   address: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   price: number | null;
   priceHistoryCount: number;
   timeZone: string;
@@ -96,6 +101,14 @@ export function ApartmentBasicsForm({
               GetGeo
             </button>
           </div>
+          {(address?.trim() || latitude != null) && (
+            <GoogleMapsStreetViewLink
+              latitude={latitude}
+              longitude={longitude}
+              address={address}
+              className="text-sm text-pn-accent hover:underline inline-block mt-1"
+            />
+          )}
         </div>
         <p className="text-xs text-pn-text-tertiary">
           <Link

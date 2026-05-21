@@ -7,6 +7,7 @@ import Link from "next/link";
 import { createRoot, type Root } from "react-dom/client";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { DesiredAreaBadge } from "@/components/DesiredAreaBadge";
+import { GoogleMapsStreetViewLink } from "@/components/GoogleMapsStreetViewLink";
 import { markerColorForScore } from "@/lib/scoring";
 import type { MappedApartment, PlzMapOverlay } from "@/components/ProjectMap";
 import type { AreaFilterMode } from "@/lib/area-filter";
@@ -57,6 +58,15 @@ function PopupContent({
     <div>
       <p className="font-semibold text-sm">{apartment.title}</p>
       {apartment.address && <p className="text-xs mt-1">{apartment.address}</p>}
+      {(apartment.address || apartment.latitude != null) && (
+        <div className="mt-1">
+          <GoogleMapsStreetViewLink
+            latitude={apartment.latitude}
+            longitude={apartment.longitude}
+            address={apartment.address}
+          />
+        </div>
+      )}
       {apartment.areaMatchStatus && apartment.areaMatchStatus !== "unset" && (
         <div className="mt-1">
           <DesiredAreaBadge status={apartment.areaMatchStatus} mode={areaFilterMode} />

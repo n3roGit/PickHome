@@ -132,6 +132,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 ### Karte (`?tab=map`)
 
 - Leaflet map; «Adressen auf Karte laden»; coordinate count increases when addresses geocoded.
+- Marker popup: «Street View öffnen ↗» → `google.com/maps` with `map_action=pano` and stored coordinates (`target=_blank`).
 - Layer control (top-right): **OpenStreetMap** (default) ↔ **Luftbild** (Esri World Imagery).
 - Overlay toggle: «Wunschgebiete ausblenden» or «NoGo-Zonen ausblenden» when areas configured.
 - Collapsible area panel: Modus (Wunschgebiet / NoGo), **Kartenradius** (km + «Standard»), add PLZ per city.
@@ -152,7 +153,7 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 
 - «← Zurück» to project; header title, optional «Inserat öffnen ↗», area badge (Wunschgebiet/NoGo).
 - Score legend + «angemeldet als …»; Archivieren, Löschen.
-- Preis & Adresse: Adressfeld + **GetGeo** (nur diese Adresse); Speichern für alle Felder; Hinweis bei nicht auflösbarer Adresse.
+- Preis & Adresse: Adressfeld + **GetGeo** (nur diese Adresse); **Street View öffnen ↗** under address when coords/address present; Speichern für alle Felder; Hinweis bei nicht auflösbarer Adresse.
 - **Inserat-Link** (expand): URL + «Daten laden» + Speichern.
 - **Anfahrt** (expand): per-member rows; lines containing «Route:» or mode/duration (admin may see all members).
 - **Kaufnebenkosten & Finanzierung** (expand): project financing reflected.
@@ -188,6 +189,8 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 
 ## Changelog (agent notes, no real data)
 
+- **2026-05-21 (port 3000, full pass):** Recommended order end-to-end after Street View feature. OK: auth, account (2FA start/Abbrechen), admin users/backup/timezone, dashboard user+admin roles, all project tabs, compare (2 selected), map (Street View popup, overlays API `radiusM` 2200), calendar (iCal `localhost:3000`), apartment detail (Street View, Anfahrt km/min), mobile 390×844 no overflow. Skipped optional: backup download/import, TOTP activation, archivieren, slider reload, remember-login cookie.
+- **2026-05-21 (port 3000):** Street View links on map popup + apartment «Preis & Adresse»; pano URL with `viewpoint=` from geocoded coords; no console errors.
 - **2026-05-21 (port 3001, expanded guide):** Ran recommended order end-to-end. OK: bad password, remember-login `Max-Age=2592000`, admin nav (Verwaltung), account (Firmenwagen, 2FA start), admin backup (auto + list + Jetzt sichern), timezone, dashboard both roles, all project tabs, compare (2 selected), map (leaflet, ausblenden, overlays API), apartment (NoGo badge, Route:, Meinungsunterschiede), user `/admin`→dashboard, mobile 390×844 no overflow. **Fail/known:** iCal URL still `localhost:3000` (env unset). Ortsteile UI not verified (panel collapsed). Optional skipped: backup download/import, TOTP activation, archivieren, slider reload.
 - **2026-05-21 (port 3001):** Full MCP pass: auth (bad password, admin/user login, logout, `/admin` redirect for user), account settings (Verkehrsmittel Rad, 2FA setup QR + Abbrechen), admin users/backup/timezone (auto-backup loads; backup list visible), dashboard both roles, all project tabs (immobilien, archiv, team, settings, criteria, compare, map, calendar), apartment detail (Anfahrt routes, panels, criteria), NoGo badges + map overlays API `radiusM` 4000. Kalender OK after `appTimeZone` fix. Not exercised: backup import/download, remember-login cookie check, mobile viewport, completing TOTP activation.
 - **2026-05-21:** Kalender tab crashed (`appTimeZone is not defined` in `CalendarSection`); fixed by passing prop from `ProjectCalendar`. Area map: Kartenradius + plz-overlays API. Earlier runs missed `?tab=calendar` — always walk every project tab explicitly.
