@@ -46,6 +46,7 @@ import { archiveReasonLabel } from "@/lib/archive-reasons";
 import { buildDuplicateIndex } from "@/lib/apartment-duplicates";
 import { maxNotableDivergence, partnerComparisons } from "@/lib/rating-divergence";
 import {
+  areaFilterCircleRadiusM,
   areaFilterMode,
   areaFilterOrtKeys,
   areaFilterSectionTitle,
@@ -524,6 +525,9 @@ export default async function ProjectPage({
               projectId={project.id}
               areaFilterEnabled={areaFilterEnabled}
               areaFilterMode={areaFilterModeValue}
+              areaFilterCircleRadiusM={
+                areaFilterEnabled ? areaFilterCircleRadiusM(areaFilterConfig) : undefined
+              }
               apartments={activeProject.apartments.map((a) => {
                 const scored = apartmentScore(
                   criteria,

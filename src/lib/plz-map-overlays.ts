@@ -1,8 +1,12 @@
+import {
+  PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M,
+  normalizePlzMapCircleRadiusM,
+} from "@/lib/area-filter";
 import { extractGermanPlz } from "@/lib/federal-state-from-address";
 import { geocodeAddress } from "@/lib/geocode";
 import { plzCentroid } from "@/lib/plz-reference";
 
-export const DEFAULT_PLZ_OVERLAY_RADIUS_M = 2200;
+export const DEFAULT_PLZ_OVERLAY_RADIUS_M = PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M;
 /** Merge circles when center distance is below this factor × radius (strong overlap). */
 export const PLZ_OVERLAY_MERGE_WITHIN_FACTOR = 1.35;
 
@@ -142,6 +146,8 @@ export type ResolvePlzMapOverlaysOptions = {
   geocode?: boolean;
   /** When false, keep one circle per PLZ instead of merging overlaps. */
   merge?: boolean;
+  /** Circle radius in meters (defaults to project standard). */
+  radiusM?: number;
 };
 
 export async function resolvePlzMapOverlays(
@@ -151,6 +157,7 @@ export async function resolvePlzMapOverlays(
 ): Promise<PlzMapOverlay[]> {
   const geocode = options.geocode ?? true;
   const merge = options.merge ?? true;
+  const radiusM = normalizePlzMapCircleRadiusM(options.radiusM);
   if (selectedPlz.length === 0) return [];
 
   const fromApartments = averageApartmentCentroids(selectedPlz, apartments);
@@ -184,8 +191,8 @@ export async function resolvePlzMapOverlays(
   if (!merge) {
     return sorted.map((overlay) => ({
       ...overlay,
-      radiusM: overlay.radiusM ?? DEFAULT_PLZ_OVERLAY_RADIUS_M,
+      radiusM: overlay.radiusM ?? radiusM,
     }));
   }
-  return mergeOverlappingPlzOverlays(sorted);
+  return mergeOverlappingPlzOverlays(sorted, radiusM);
 }

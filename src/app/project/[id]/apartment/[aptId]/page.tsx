@@ -259,7 +259,11 @@ export default async function ApartmentPage({
           saved={resolvedSearchParams.listing_saved === "1"}
           invalid={resolvedSearchParams.listing_error === "invalid"}
         />
-        <ApartmentCommutePanel people={commutePeople} settingsHref="/account/settings" />
+        <ApartmentCommutePanel
+          people={commutePeople}
+          settingsHref="/account/settings"
+          viewerIsAdmin={admin}
+        />
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
           price={apartment.price}

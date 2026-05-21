@@ -83,3 +83,11 @@ Existing backfills: `sizeSqm` ← description/notes (`src/lib/backfill-size-sqm.
 | Settings | `/account/settings` — password, TOTP |
 
 Project access: always verify membership (`members: { some: { userId } }` or helpers in `src/lib/project-data.ts`).
+
+## Browser testing (MCP)
+
+After UI changes or before release, run a **Chrome DevTools MCP** click-through on local dev (`npm run dev`).
+
+- **Browser test guide:** [`docs/MCP_BROWSER_TEST_CHECKLIST.md`](../../docs/MCP_BROWSER_TEST_CHECKLIST.md) — run through it on local dev; discover projects/apartments from the UI, never hardcode real IDs or names.
+- After a session: extend the guide if new routes exist; optional one-line note in **Changelog** (no PII).
+- Goal: full tab-by-tab smoke via MCP (complement to Vitest, not a replacement).

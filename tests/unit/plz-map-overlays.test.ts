@@ -67,6 +67,23 @@ describe("plz-map-overlays", () => {
     expect(geocodeAddress).not.toHaveBeenCalled();
   });
 
+  it("applies custom radius when merge option is false", async () => {
+    const overlays = await resolvePlzMapOverlays(
+      ["28203"],
+      [
+        {
+          address: "Weg 1, 28203 Bremen",
+          latitude: 53.08,
+          longitude: 8.81,
+        },
+      ],
+      { geocode: false, merge: false, radiusM: 4000 }
+    );
+
+    expect(overlays).toHaveLength(1);
+    expect(overlays[0].radiusM).toBe(4000);
+  });
+
   it("keeps separate circles when merge option is false", async () => {
     const { geocodeAddress } = await import("@/lib/geocode");
     vi.mocked(geocodeAddress).mockClear();

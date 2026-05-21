@@ -10,11 +10,16 @@ import {
 } from "@/app/actions";
 import type { AreaFilterConfig, AreaFilterMode } from "@/lib/area-filter";
 import {
+  PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M,
+  PLZ_MAP_CIRCLE_RADIUS_MAX_M,
+  PLZ_MAP_CIRCLE_RADIUS_MIN_M,
+  areaFilterCircleRadiusM,
   areaFilterMode,
   areaFilterOrtKeys,
   areaFilterSectionTitle,
   defaultDistrictsForPlzSelection,
   districtsForPlzList,
+  normalizePlzMapCircleRadiusM,
 } from "@/lib/area-filter";
 import { serializeProjectAreaDistrictsImport } from "@/lib/location-catalog-import";
 import {
@@ -98,7 +103,15 @@ export function ProjectAreaFilterPanel({
     buildImportTablesByOrt(initialOrte, projectAreaDistricts)
   );
   const [denyMode, setDenyMode] = useState(() => areaFilterMode(initial.config) === "deny");
+  const [circleRadiusKm, setCircleRadiusKm] = useState(() => {
+    const meters = areaFilterCircleRadiusM(initial.config);
+    return Math.round(meters / 100) / 10;
+  });
   const [pending, startTransition] = useTransition();
+
+  const circleRadiusMinKm = PLZ_MAP_CIRCLE_RADIUS_MIN_M / 1000;
+  const circleRadiusMaxKm = PLZ_MAP_CIRCLE_RADIUS_MAX_M / 1000;
+  const circleRadiusDefaultKm = PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M / 1000;
 
   const filterMode: AreaFilterMode = denyMode ? "deny" : "allow";
   const filterSectionTitle = areaFilterSectionTitle(filterMode);
@@ -267,6 +280,10 @@ export function ProjectAreaFilterPanel({
     setSelectedDistricts(all ? availableDistricts : []);
   }
 
+  function circleRadiusMFromKm(km: number): number {
+    return normalizePlzMapCircleRadiusM(Math.round(km * 1000));
+  }
+
   function handleSave() {
     run(async () => {
       await updateProjectAreaFilterAction(projectId, {
@@ -274,6 +291,7 @@ export function ProjectAreaFilterPanel({
         selectedPlz,
         selectedDistricts,
         mode: filterMode,
+        circleRadiusM: circleRadiusMFromKm(circleRadiusKm),
       });
     });
   }
@@ -284,6 +302,7 @@ export function ProjectAreaFilterPanel({
     setOrtQuery("");
     setSelectedPlz([]);
     setSelectedDistricts([]);
+    setCircleRadiusKm(circleRadiusDefaultKm);
     setImportTablesByOrtKey({});
     run(async () => {
       await updateProjectAreaFilterAction(projectId, {
@@ -343,6 +362,46 @@ export function ProjectAreaFilterPanel({
             </span>
           </label>
         </div>
+      </section>
+
+      <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-3">
+        <div>
+          <h3 className="font-semibold mb-1">Kartenradius</h3>
+          <p className="text-sm text-pn-text-secondary">
+            Größe der Kreise auf der Karte für die gewählten PLZ. Standard: {circleRadiusDefaultKm}{" "}
+            km.
+          </p>
+        </div>
+        <label className="block">
+          <span className="text-sm font-medium text-pn-text-secondary">Radius</span>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="number"
+              min={circleRadiusMinKm}
+              max={circleRadiusMaxKm}
+              step={0.1}
+              value={circleRadiusKm}
+              onChange={(e) => {
+                const parsed = Number.parseFloat(e.target.value);
+                if (!Number.isFinite(parsed)) return;
+                setCircleRadiusKm(
+                  Math.min(circleRadiusMaxKm, Math.max(circleRadiusMinKm, parsed))
+                );
+              }}
+              disabled={pending}
+              className="w-28 border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+            <span className="text-sm text-pn-text-secondary">km</span>
+            <button
+              type="button"
+              disabled={pending || circleRadiusKm === circleRadiusDefaultKm}
+              onClick={() => setCircleRadiusKm(circleRadiusDefaultKm)}
+              className="text-xs px-2 py-1 border border-pn-border rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50"
+            >
+              Standard
+            </button>
+          </div>
+        </label>
       </section>
 
       <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">

@@ -5,11 +5,13 @@ import { useId, useState } from "react";
 export function CommuteTransitConnection({
   summary,
   detailLines,
+  defaultExpanded = false,
 }: {
   summary: string;
   detailLines: string[];
+  defaultExpanded?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultExpanded);
   const panelId = useId();
 
   if (detailLines.length === 0) {

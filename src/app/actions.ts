@@ -175,6 +175,7 @@ export async function updateProjectAreaFilterAction(
     selectedPlz: string[];
     selectedDistricts: string[];
     mode?: "allow" | "deny";
+    circleRadiusM?: number;
   }
 ) {
   const user = await requireUser();
@@ -206,11 +207,23 @@ export async function updateProjectAreaFilterAction(
     redirect(`${base}&areas_error=ort`);
   }
 
-  const { serializeAreaFilterConfig } = await import("@/lib/area-filter");
+  const { normalizePlzMapCircleRadiusM, serializeAreaFilterConfig } = await import(
+    "@/lib/area-filter"
+  );
   const mode = payload.mode === "deny" ? "deny" : "allow";
+  const circleRadiusM =
+    payload.circleRadiusM != null
+      ? normalizePlzMapCircleRadiusM(payload.circleRadiusM)
+      : undefined;
   const config =
     ortKeys.length > 0 && selectedPlz.length > 0
-      ? serializeAreaFilterConfig({ ortKeys, selectedPlz, selectedDistricts, mode })
+      ? serializeAreaFilterConfig({
+          ortKeys,
+          selectedPlz,
+          selectedDistricts,
+          mode,
+          ...(circleRadiusM != null ? { circleRadiusM } : {}),
+        })
       : null;
 
   await prisma.project.update({

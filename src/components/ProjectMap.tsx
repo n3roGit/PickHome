@@ -30,11 +30,13 @@ export function ProjectMap({
   apartments,
   areaFilterEnabled = false,
   areaFilterMode = "allow",
+  areaFilterCircleRadiusM,
 }: {
   projectId: string;
   apartments: MapApartment[];
   areaFilterEnabled?: boolean;
   areaFilterMode?: AreaFilterMode;
+  areaFilterCircleRadiusM?: number;
 }) {
   const [points, setPoints] = useState(apartments);
   const [loading, setLoading] = useState(false);
@@ -125,10 +127,14 @@ export function ProjectMap({
     (a): a is MappedApartment => a.latitude != null && a.longitude != null
   );
   const areaOverlayLabel = areaFilterMode === "deny" ? "NoGo-Zonen" : "Wunschgebiete";
+  const radiusKmLabel =
+    areaFilterCircleRadiusM != null
+      ? `${(areaFilterCircleRadiusM / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} km`
+      : null;
   const areaOverlayHint =
     areaFilterMode === "deny"
-      ? `${plzOverlays.length} rote Kreise markieren die ausgeschlossenen PLZ-Bereiche.`
-      : `${plzOverlays.length} grüne Kreise markieren die gewählten PLZ-Bereiche des Wunschgebiets.`;
+      ? `${plzOverlays.length} rote Kreise (Radius ${radiusKmLabel ?? "…"}) markieren die ausgeschlossenen PLZ-Bereiche.`
+      : `${plzOverlays.length} grüne Kreise (Radius ${radiusKmLabel ?? "…"}) markieren die gewählten PLZ-Bereiche des Wunschgebiets.`;
   const visiblePlzOverlays =
     areaFilterEnabled && showDesiredAreas ? plzOverlays : [];
 

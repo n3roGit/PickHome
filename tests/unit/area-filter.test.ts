@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M,
+  PLZ_MAP_CIRCLE_RADIUS_MAX_M,
+  PLZ_MAP_CIRCLE_RADIUS_MIN_M,
+  areaFilterCircleRadiusM,
   areaFilterLabel,
   areaFilterMode,
   areaFilterOrtKeys,
@@ -7,6 +11,7 @@ import {
   extractDistrictFromAddress,
   isAreaFilterActive,
   matchApartmentToAreaFilter,
+  normalizePlzMapCircleRadiusM,
   parseAreaFilterConfig,
   serializeAreaFilterConfig,
 } from "@/lib/area-filter";
@@ -195,5 +200,23 @@ describe("area-filter", () => {
     expect(areaFilterLabel("inside", "deny")).toBe("In NoGo-Zone");
     expect(areaFilterLabel("outside", "deny")).toBe("Außerhalb NoGo-Zone");
     expect(areaFilterLabel("inside", "allow")).toBe("Im Wunschgebiet");
+  });
+
+  it("parses and serializes map circle radius", () => {
+    const withRadius = { ...config, circleRadiusM: 3500 };
+    const raw = serializeAreaFilterConfig(withRadius);
+    expect(parseAreaFilterConfig(raw)).toEqual({
+      selectedPlz: ["28203", "28207"],
+      selectedDistricts: ["Fesenfeld", "Hastedt", "Ostertor"],
+      circleRadiusM: 3500,
+    });
+    expect(areaFilterCircleRadiusM(withRadius)).toBe(3500);
+    expect(areaFilterCircleRadiusM(config)).toBe(PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M);
+  });
+
+  it("clamps invalid map circle radius", () => {
+    expect(normalizePlzMapCircleRadiusM(100)).toBe(PLZ_MAP_CIRCLE_RADIUS_MIN_M);
+    expect(normalizePlzMapCircleRadiusM(99_999)).toBe(PLZ_MAP_CIRCLE_RADIUS_MAX_M);
+    expect(normalizePlzMapCircleRadiusM("x")).toBe(PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M);
   });
 });

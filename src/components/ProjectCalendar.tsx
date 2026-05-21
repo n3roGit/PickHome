@@ -49,12 +49,14 @@ export function ProjectCalendar({
         title="Kommende Termine"
         events={upcoming}
         projectId={projectId}
+        appTimeZone={appTimeZone}
         empty="Keine geplanten Besichtigungen."
       />
       <CalendarSection
         title="Vergangene Termine"
         events={past}
         projectId={projectId}
+        appTimeZone={appTimeZone}
         empty="Keine vergangenen Termine."
       />
     </div>
@@ -65,11 +67,13 @@ function CalendarSection({
   title,
   events,
   projectId,
+  appTimeZone,
   empty,
 }: {
   title: string;
   events: CalendarEvent[];
   projectId: string;
+  appTimeZone: string;
   empty: string;
 }) {
   return (

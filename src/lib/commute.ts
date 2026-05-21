@@ -43,6 +43,8 @@ export type CommuteLeg = {
   durationText: string | null;
   connectionSummary: string | null;
   transitDetailTooltip: string | null;
+  routeKind: string | null;
+  effectiveMode: string | null;
   routingNote: string | null;
   unavailableReason:
     | "missing_apartment_coords"
@@ -540,6 +542,8 @@ function legFromResolved(
     durationText: formatRouteDuration(resolved.durationSeconds),
     connectionSummary: resolved.connectionSummary,
     transitDetailTooltip: transitDetailTooltipFromResolved(resolved),
+    routeKind: resolved.routeKind,
+    effectiveMode: resolved.effectiveMode,
     routingNote: resolved.routingNote,
     unavailableReason: null,
     distanceKmOneWay: null,
@@ -634,6 +638,8 @@ function legTransitPending(addr: CommuteAddress, drivingDistanceText: string | n
     durationText: null,
     connectionSummary: null,
     transitDetailTooltip: null,
+    routeKind: null,
+    effectiveMode: null,
     routingNote: COMMUTE_PENDING_NOTE,
     unavailableReason: null,
     distanceKmOneWay: null,
@@ -664,6 +670,8 @@ function legReindexPending(
     durationText: null,
     connectionSummary: null,
     transitDetailTooltip: null,
+    routeKind: null,
+    effectiveMode: null,
     routingNote: COMMUTE_PENDING_NOTE,
     unavailableReason: null,
     distanceKmOneWay: null,
@@ -694,6 +702,8 @@ function legUnavailable(
     durationText: null,
     connectionSummary: null,
     transitDetailTooltip: null,
+    routeKind: null,
+    effectiveMode: null,
     routingNote: null,
     unavailableReason: reason,
     distanceKmOneWay: null,

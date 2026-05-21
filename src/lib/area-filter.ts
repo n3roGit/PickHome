@@ -3,12 +3,32 @@ import { staticDistrictsForPlz } from "@/lib/ortsteile-reference";
 
 export type AreaFilterMode = "allow" | "deny";
 
+/** Default radius for PLZ circles on the project map (meters). */
+export const PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M = 2200;
+export const PLZ_MAP_CIRCLE_RADIUS_MIN_M = 500;
+export const PLZ_MAP_CIRCLE_RADIUS_MAX_M = 15000;
+
 export type AreaFilterConfig = {
   ortKeys?: string[];
   selectedPlz: string[];
   selectedDistricts: string[];
   mode?: AreaFilterMode;
+  /** Radius of PLZ overlay circles on the map (meters). */
+  circleRadiusM?: number;
 };
+
+export function normalizePlzMapCircleRadiusM(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M;
+  return Math.min(
+    PLZ_MAP_CIRCLE_RADIUS_MAX_M,
+    Math.max(PLZ_MAP_CIRCLE_RADIUS_MIN_M, Math.round(n))
+  );
+}
+
+export function areaFilterCircleRadiusM(config: AreaFilterConfig | null | undefined): number {
+  return normalizePlzMapCircleRadiusM(config?.circleRadiusM);
+}
 
 export type AreaMatchStatus = "inside" | "outside" | "unknown" | "unset";
 
@@ -61,6 +81,8 @@ export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilte
       Array.isArray(data.ortKeys) ? data.ortKeys.map(String) : undefined
     );
     const mode: AreaFilterMode | undefined = data.mode === "deny" ? "deny" : undefined;
+    const circleRadiusM =
+      data.circleRadiusM != null ? normalizePlzMapCircleRadiusM(data.circleRadiusM) : undefined;
     return {
       ...(ortKeys.length > 0 ? { ortKeys } : {}),
       selectedPlz: [...new Set(data.selectedPlz.map(String))].sort(),
@@ -68,6 +90,7 @@ export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilte
         a.localeCompare(b, "de")
       ),
       ...(mode ? { mode } : {}),
+      ...(circleRadiusM != null ? { circleRadiusM } : {}),
     };
   } catch {
     return null;
@@ -77,11 +100,17 @@ export function parseAreaFilterConfig(raw: string | null | undefined): AreaFilte
 export function serializeAreaFilterConfig(config: AreaFilterConfig): string {
   const ortKeys = normalizeOrtKeys(config.ortKeys);
   const mode = areaFilterMode(config);
+  const circleRadiusM =
+    config.circleRadiusM != null ? normalizePlzMapCircleRadiusM(config.circleRadiusM) : undefined;
   return JSON.stringify({
     ...(ortKeys.length > 0 ? { ortKeys } : {}),
     selectedPlz: [...config.selectedPlz].sort(),
     selectedDistricts: [...config.selectedDistricts].sort((a, b) => a.localeCompare(b, "de")),
     ...(mode === "deny" ? { mode: "deny" as const } : {}),
+    ...(circleRadiusM != null &&
+    circleRadiusM !== PLZ_MAP_CIRCLE_RADIUS_DEFAULT_M
+      ? { circleRadiusM }
+      : {}),
   });
 }
 

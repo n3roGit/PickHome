@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { parseAreaFilterConfig, isAreaFilterActive } from "@/lib/area-filter";
+import {
+  areaFilterCircleRadiusM,
+  isAreaFilterActive,
+  parseAreaFilterConfig,
+} from "@/lib/area-filter";
 import { resolvePlzMapOverlays } from "@/lib/plz-map-overlays";
 import { projectAccessWhere } from "@/lib/project-access";
 import { prisma } from "@/lib/prisma";
@@ -39,7 +43,11 @@ export async function GET(
   const overlays = await resolvePlzMapOverlays(
     areaFilterConfig.selectedPlz,
     project.apartments,
-    { geocode: false, merge: false }
+    {
+      geocode: false,
+      merge: false,
+      radiusM: areaFilterCircleRadiusM(areaFilterConfig),
+    }
   );
 
   return NextResponse.json({ overlays });

@@ -61,10 +61,23 @@ function CommuteCompanyCarBenefit({ leg }: { leg: CommuteLeg }) {
   );
 }
 
-function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
+function CommuteLegList({
+  legs,
+  showAllDetails = false,
+}: {
+  legs: CommuteLeg[];
+  showAllDetails?: boolean;
+}) {
   return (
     <ul className="space-y-3">
-      {legs.map((leg) => (
+      {legs.map((leg) => {
+        const detailLines = leg.transitDetailTooltip
+          ? leg.transitDetailTooltip.split("\n").filter(Boolean)
+          : [];
+        const showTransitDetails =
+          Boolean(leg.connectionSummary) || detailLines.length > 0;
+
+        return (
         <li key={leg.addressId} className="border border-pn-border rounded-lg px-4 py-3">
           <p className="font-medium">
             {leg.label}
@@ -86,14 +99,11 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
                   ca. {leg.durationText}
                 </span>
               </p>
-              {leg.connectionSummary ? (
+              {showTransitDetails ? (
                 <CommuteTransitConnection
-                  summary={leg.connectionSummary}
-                  detailLines={
-                    leg.transitDetailTooltip
-                      ? leg.transitDetailTooltip.split("\n").filter(Boolean)
-                      : []
-                  }
+                  summary={leg.connectionSummary ?? "ÖPNV-Verbindung"}
+                  detailLines={detailLines}
+                  defaultExpanded={showAllDetails}
                 />
               ) : null}
               {leg.routingNote && (
@@ -118,8 +128,16 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
           {leg.commuteCostHint && (
             <p className="text-xs text-pn-text-tertiary mt-1">{leg.commuteCostHint}</p>
           )}
+          {showAllDetails && (leg.routeKind || leg.effectiveMode) ? (
+            <p className="text-xs text-pn-text-tertiary mt-2">
+              {leg.routeKind ? `Route: ${leg.routeKind}` : null}
+              {leg.routeKind && leg.effectiveMode ? " · " : null}
+              {leg.effectiveMode ? `Effektiv: ${leg.effectiveMode}` : null}
+            </p>
+          ) : null}
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }
@@ -127,9 +145,11 @@ function CommuteLegList({ legs }: { legs: CommuteLeg[] }) {
 export function ApartmentCommutePanel({
   people,
   settingsHref,
+  viewerIsAdmin = false,
 }: {
   people: CommutePersonEstimate[];
   settingsHref: string;
+  viewerIsAdmin?: boolean;
 }) {
   if (people.length === 1 && people[0].legs.length === 0) {
     return (
@@ -148,13 +168,17 @@ export function ApartmentCommutePanel({
   return (
     <CollapsibleSection
       title="Anfahrt"
-      subtitle="Geschätzte Anfahrt pro Person — Verkehrsmittel und Ziele aus den jeweiligen Kontoeinstellungen."
+      subtitle={
+        viewerIsAdmin
+          ? "Geschätzte Anfahrt aller Projektmitglieder inkl. Verbindungsdetails (Admin-Ansicht)."
+          : "Geschätzte Anfahrt pro Person — Verkehrsmittel und Ziele aus den jeweiligen Kontoeinstellungen."
+      }
     >
       <div className="space-y-6">
         {people.map((person) => (
           <div key={person.userId}>
             <h3 className="text-sm font-semibold mb-0.5">
-              {person.isCurrentUser ? "Du" : person.name}
+              {viewerIsAdmin || !person.isCurrentUser ? person.name : "Du"}
             </h3>
             <p className="text-xs text-pn-text-tertiary mb-3">
               {travelModeLabel(person.travelMode)}
@@ -174,7 +198,7 @@ export function ApartmentCommutePanel({
                 )}
               </p>
             ) : (
-              <CommuteLegList legs={person.legs} />
+              <CommuteLegList legs={person.legs} showAllDetails={viewerIsAdmin} />
             )}
           </div>
         ))}
