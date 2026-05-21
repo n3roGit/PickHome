@@ -12,6 +12,7 @@ import {
   type PurchaseCostEstimate,
 } from "@/lib/purchase-costs";
 import { formatPrice } from "@/lib/scoring";
+import { apartmentBrokerFormId } from "@/lib/listing-import-form";
 
 function CostTable({ estimate, price }: { estimate: PurchaseCostEstimate; price: number }) {
   return (
@@ -224,6 +225,7 @@ export function ApartmentPurchaseCosts({
       {canEstimateCosts && costEstimate && (
         <>
           <form
+            id={apartmentBrokerFormId(apartmentId)}
             action={updateApartmentBrokerAction.bind(null, apartmentId)}
             className="flex flex-wrap items-center gap-3 mb-4"
           >

@@ -2,6 +2,7 @@ import {
   getLlmClientConfig,
   normalizeLlmModelId,
   resolveLlmModel,
+  type LlmClientConfig,
 } from "@/lib/llm-settings";
 
 export { normalizeLlmModelId, resolveLlmModel } from "@/lib/llm-settings";
@@ -98,12 +99,9 @@ export async function callLlmChat(
   }
 }
 
-export async function testLlmConnection(): Promise<LlmConnectionTestResult> {
-  const config = await getLlmClientConfig();
-  if (!config) {
-    return { ok: false, error: "not_configured" };
-  }
-
+export async function testLlmConnectionWithConfig(
+  config: LlmClientConfig
+): Promise<LlmConnectionTestResult> {
   const url = llmModelsUrl(config.baseUrl);
   try {
     const res = await fetch(url, {
@@ -127,4 +125,12 @@ export async function testLlmConnection(): Promise<LlmConnectionTestResult> {
     const message = err instanceof Error ? err.message : "fetch_failed";
     return { ok: false, error: "fetch_failed", detail: message };
   }
+}
+
+export async function testLlmConnection(): Promise<LlmConnectionTestResult> {
+  const config = await getLlmClientConfig();
+  if (!config) {
+    return { ok: false, error: "not_configured" };
+  }
+  return testLlmConnectionWithConfig(config);
 }

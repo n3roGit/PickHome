@@ -1,4 +1,5 @@
 import { updateApartmentTitleAction } from "@/app/actions";
+import { apartmentTitleFormId } from "@/lib/listing-import-form";
 
 export function ApartmentTitleForm({
   apartmentId,
@@ -12,7 +13,11 @@ export function ApartmentTitleForm({
   empty?: boolean;
 }) {
   return (
-    <form action={updateApartmentTitleAction.bind(null, apartmentId)} className="w-full min-w-0">
+    <form
+      id={apartmentTitleFormId(apartmentId)}
+      action={updateApartmentTitleAction.bind(null, apartmentId)}
+      className="w-full min-w-0"
+    >
       {saved && (
         <p className="text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg mb-2">
           Anzeigename gespeichert.

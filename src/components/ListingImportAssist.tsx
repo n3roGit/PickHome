@@ -11,14 +11,14 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
 
-  async function loadFromListing() {
+  async function loadFromListing(): Promise<boolean> {
     const form = formRef.current;
-    if (!form) return;
+    if (!form) return false;
     const urlInput = form.elements.namedItem("listingUrl") as HTMLInputElement | null;
     const url = urlInput?.value?.trim();
     if (!url) {
       setMessage("Bitte zuerst eine Inserat-URL eintragen.");
-      return;
+      return false;
     }
 
     setLoading(true);
@@ -41,18 +41,51 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
       if (!res.ok || !data.fields) {
         setMessage("Daten konnten nicht geladen werden — Felder manuell ausfüllen.");
         setWarnings(data.warnings ?? []);
-        return;
+        return false;
       }
 
       applyListingPreviewFields(form, data.fields, { onlyEmpty: true });
-      setMessage("Leere Felder übernommen — bitte prüfen und dann speichern.");
+      setMessage("Leere Felder übernommen — bitte prüfen und „Immobilie hinzufügen“.");
       const w = [...(data.warnings ?? [])];
-      if (data.highlights) w.push(`Besonderheiten: ${data.highlights}`);
+      if (data.highlights && !data.fields.description) {
+        w.push(`Besonderheiten: ${data.highlights}`);
+      }
       setWarnings(w);
+      return true;
     } catch {
       setMessage("Netzwerkfehler beim Laden der Inserat-Seite.");
+      return false;
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const form = formRef.current;
+    if (!form) return;
+
+    const titleInput = form.elements.namedItem("title") as HTMLInputElement | null;
+    const urlInput = form.elements.namedItem("listingUrl") as HTMLInputElement | null;
+    const title = titleInput?.value?.trim() ?? "";
+    const url = urlInput?.value?.trim() ?? "";
+
+    if (!title && url) {
+      e.preventDefault();
+      const ok = await loadFromListing();
+      const titleAfter = titleInput?.value?.trim() ?? "";
+      if (!ok || !titleAfter) {
+        setMessage(
+          "Ohne Titel keine Anlage möglich — „Daten automatisch füllen“ nutzen oder Titel eintragen."
+        );
+        return;
+      }
+      form.requestSubmit();
+      return;
+    }
+
+    if (!title) {
+      e.preventDefault();
+      setMessage("Bitte einen Titel eintragen oder zuerst „Daten automatisch füllen“.");
     }
   }
 
@@ -60,6 +93,8 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
     <form
       ref={formRef}
       action={createApartmentAction.bind(null, projectId)}
+      onSubmit={(e) => void handleSubmit(e)}
+      noValidate
       className="flex flex-col gap-3 mb-6"
     >
       <div className="flex flex-wrap gap-2 items-stretch sm:items-center">
@@ -71,11 +106,11 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
         />
         <button
           type="button"
-          onClick={loadFromListing}
+          onClick={() => void loadFromListing()}
           disabled={loading}
           className="border border-pn-border font-medium px-4 py-2 rounded-lg text-sm w-full sm:w-auto hover:bg-pn-bg-subtle disabled:opacity-50"
         >
-          {loading ? "Lädt…" : "Daten laden"}
+          {loading ? "Wird ausgewertet…" : "Daten automatisch füllen"}
         </button>
       </div>
       {message && (
@@ -92,7 +127,6 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
         <input
           name="title"
           placeholder="Titel / Adresse"
-          required
           className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[200px]"
         />
         <input
@@ -126,6 +160,12 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
           Immobilie hinzufügen
         </button>
       </div>
+      <textarea
+        name="description"
+        rows={3}
+        placeholder="Beschreibung (optional, z. B. aus Inserat)"
+        className="w-full border border-pn-border rounded-lg px-3 py-2 text-sm resize-y min-h-[72px]"
+      />
     </form>
   );
 }

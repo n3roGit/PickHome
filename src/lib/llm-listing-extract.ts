@@ -15,6 +15,7 @@ export type LlmListingExtractRaw = {
   address?: string;
   energyClass?: string;
   highlights?: string;
+  brokerInvolved?: boolean | null;
 };
 
 export function htmlToListingSourceText(html: string): string {
@@ -42,6 +43,9 @@ export function mergeListingPreviewFields(
   if (merged.sizeSqm == null && extra.sizeSqm != null) merged.sizeSqm = extra.sizeSqm;
   if (!merged.address && extra.address) merged.address = extra.address;
   if (!merged.energyClass && extra.energyClass) merged.energyClass = extra.energyClass;
+  if (merged.brokerInvolved == null && extra.brokerInvolved != null) {
+    merged.brokerInvolved = extra.brokerInvolved;
+  }
   return merged;
 }
 
@@ -78,6 +82,9 @@ export function normalizeLlmListingExtract(raw: LlmListingExtractRaw): ListingPr
     const ec = parseEnergyClassInput(raw.energyClass);
     if (ec) fields.energyClass = ec;
   }
+  if (typeof raw.brokerInvolved === "boolean") {
+    fields.brokerInvolved = raw.brokerInvolved;
+  }
   return fields;
 }
 
@@ -108,12 +115,14 @@ Antworte NUR mit einem JSON-Objekt (kein Markdown), Schema:
   "sizeSqm": number | null,
   "address": string | null,
   "energyClass": string | null,
-  "highlights": string | null
+  "highlights": string | null,
+  "brokerInvolved": boolean | null
 }
 Regeln:
 - price: Kaufpreis oder Kaltmiete in Euro als Ganzzahl ohne Cent
 - sizeSqm: Wohnfläche in m² als Ganzzahl
 - energyClass: nur A+ bis H
+- brokerInvolved: true bei Maklerprovision/Käuferprovision/provisionspflichtig; false bei provisionsfrei/von privat/ohne Makler; sonst null
 - Nur Felder setzen, die im Text klar vorkommen; sonst null
 - highlights: max. 3 kurze Stichpunkte zu Besonderheiten/Risiken (ein String)`;
 

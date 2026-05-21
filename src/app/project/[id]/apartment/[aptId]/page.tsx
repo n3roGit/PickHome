@@ -49,10 +49,9 @@ import {
 import { mergeDistrictsByPlz } from "@/lib/ortsteile-reference";
 import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
 import { apartmentLlmHasSourceText } from "@/lib/apartment-llm-context";
-import { isPdfDocument } from "@/lib/pdf-reindex";
 import { isLlmConfigured } from "@/lib/llm-client";
+import { ApartmentAutoFillButton } from "@/components/ApartmentAutoFillButton";
 import { ApartmentLlmChatButton } from "@/components/ApartmentLlmChatButton";
-import { ApartmentLlmExtractButton } from "@/components/ApartmentLlmExtractButton";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -135,9 +134,6 @@ export default async function ApartmentPage({
     })),
   };
   const llmHasSourceText = apartmentLlmHasSourceText(llmContext);
-  const hasPdfDocument = apartment.documents.some((d) =>
-    isPdfDocument(d.mimeType, d.url)
-  );
 
   const areaFilterConfig = parseAreaFilterConfig(project.areaFilterConfig);
   const projectAreaDistricts = await fetchProjectAreaDistricts(resolvedParams.id);
@@ -287,7 +283,11 @@ export default async function ApartmentPage({
               </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-start justify-end gap-2 sm:gap-3">
+            <ApartmentAutoFillButton
+              apartmentId={apartment.id}
+              listingUrl={apartment.listingUrl}
+            />
             {llmEnabled && (
               <ApartmentLlmChatButton
                 apartmentId={apartment.id}
@@ -329,15 +329,6 @@ export default async function ApartmentPage({
           listingUrl={apartment.listingUrl}
           saved={resolvedSearchParams.listing_saved === "1"}
           invalid={resolvedSearchParams.listing_error === "invalid"}
-          llmExtractSlot={
-            llmEnabled ? (
-              <ApartmentLlmExtractButton
-                apartmentId={apartment.id}
-                hasPdfText={hasPdfDocument}
-                hasListingUrl={Boolean(apartment.listingUrl?.trim())}
-              />
-            ) : undefined
-          }
         />
         <ApartmentCommutePanel
           people={commutePeople}

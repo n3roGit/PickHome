@@ -1,4 +1,7 @@
-const CHECK_INTERVAL_MS = 120_000;
+import { getAppTimeZone } from "@/lib/app-settings";
+
+/** Poll at most hourly; actual price fetch runs once per day (see isListingPriceSyncDue). */
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 90_000;
 
 let schedulerStarted = false;
@@ -13,7 +16,21 @@ export function startListingPriceSyncScheduler() {
     if (tickInProgress) return;
     tickInProgress = true;
     try {
-      const { runListingPriceSyncTick } = await import("@/lib/listing-price-sync");
+      const {
+        runListingPriceSyncTick,
+        isListingPriceSyncDue,
+        countApartmentsDueForListingPriceCheck,
+        getOrCreateListingPriceSyncJobSettings,
+      } = await import("@/lib/listing-price-sync");
+
+      const settings = await getOrCreateListingPriceSyncJobSettings();
+      const timeZone = await getAppTimeZone();
+      const now = new Date();
+      const due = isListingPriceSyncDue(settings, now, timeZone);
+      const pending = await countApartmentsDueForListingPriceCheck(settings, now, timeZone);
+
+      if (!due && pending === 0) return;
+
       const result = await runListingPriceSyncTick();
       if (result.updated > 0) {
         console.log(

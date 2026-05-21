@@ -1,78 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { updateApartmentListingUrlAction } from "@/app/actions";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { apartmentBasicsFormId, applyListingPreviewFields } from "@/lib/listing-import-form";
-import type { ListingPreviewFields } from "@/lib/listing-import";
+import { apartmentListingUrlFormId } from "@/lib/listing-import-form";
 
 export function ApartmentListingUrlForm({
   apartmentId,
   listingUrl,
   saved,
   invalid,
-  llmExtractSlot,
 }: {
   apartmentId: string;
   listingUrl: string | null;
   saved?: boolean;
   invalid?: boolean;
-  llmExtractSlot?: React.ReactNode;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [warnings, setWarnings] = useState<string[]>([]);
-
-  async function loadFromListing() {
-    const urlInput = formRef.current?.elements.namedItem("listingUrl") as HTMLInputElement | null;
-    const url = urlInput?.value?.trim();
-    if (!url) {
-      setMessage("Bitte zuerst eine Inserat-URL eintragen.");
-      return;
-    }
-
-    const basicsForm = document.getElementById(apartmentBasicsFormId(apartmentId)) as HTMLFormElement | null;
-    if (!basicsForm) {
-      setMessage("Stammdaten-Formular nicht gefunden.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-    setWarnings([]);
-    try {
-      const res = await fetch("/api/listing/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      const data = (await res.json()) as {
-        ok?: boolean;
-        fields?: ListingPreviewFields;
-        warnings?: string[];
-        highlights?: string;
-        error?: string;
-      };
-
-      if (!res.ok || !data.fields) {
-        setMessage("Daten konnten nicht geladen werden — Felder manuell ausfüllen.");
-        setWarnings(data.warnings ?? []);
-        return;
-      }
-
-      applyListingPreviewFields(basicsForm, data.fields, { onlyEmpty: true });
-      setMessage("Leere Felder übernommen — bitte prüfen und unter „Preis & Adresse“ speichern.");
-      const w = [...(data.warnings ?? [])];
-      if (data.highlights) w.push(`Besonderheiten: ${data.highlights}`);
-      setWarnings(w);
-    } catch {
-      setMessage("Netzwerkfehler beim Laden der Inserat-Seite.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <CollapsibleSection
       title="Inserat-Link"
@@ -91,7 +33,7 @@ export function ApartmentListingUrlForm({
         </p>
       )}
       <form
-        ref={formRef}
+        id={apartmentListingUrlFormId(apartmentId)}
         action={updateApartmentListingUrlAction.bind(null, apartmentId)}
         className="flex flex-wrap gap-2"
       >
@@ -102,29 +44,10 @@ export function ApartmentListingUrlForm({
           placeholder="https://…"
           className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]"
         />
-        <button
-          type="button"
-          onClick={loadFromListing}
-          disabled={loading}
-          className="border border-pn-border font-medium px-4 py-2 rounded-lg text-sm hover:bg-pn-bg-subtle disabled:opacity-50"
-        >
-          {loading ? "Lädt…" : "Daten laden"}
-        </button>
         <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm">
           Speichern
         </button>
       </form>
-      {message && (
-        <p className="text-sm text-pn-text-secondary bg-pn-bg-subtle px-3 py-2 rounded-lg mt-3">
-          {message}
-        </p>
-      )}
-      {llmExtractSlot && <div className="mt-3">{llmExtractSlot}</div>}
-      {warnings.map((w) => (
-        <p key={w} className="text-xs text-pn-text-tertiary mt-1">
-          {w}
-        </p>
-      ))}
     </CollapsibleSection>
   );
 }

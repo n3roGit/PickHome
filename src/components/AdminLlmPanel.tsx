@@ -65,7 +65,10 @@ export function AdminLlmPanel() {
   }, [load]);
 
   function formatError(code: string | undefined, detail?: string) {
-    const base = (code && ERROR_MESSAGES[code]) || "Aktion fehlgeschlagen.";
+    if (code?.includes("Unknown argument `llmSystemPrompt`")) {
+      return "Datenbank-Client veraltet — Dev-Server stoppen, `npm run db:push` ausführen, dann neu starten.";
+    }
+    const base = (code && ERROR_MESSAGES[code]) || (code ? code.slice(0, 200) : "Aktion fehlgeschlagen.");
     if (detail && code !== "not_configured") {
       return `${base} (${detail.slice(0, 120)})`;
     }
@@ -127,8 +130,22 @@ export function AdminLlmPanel() {
     setMessage(null);
     setError(null);
 
+    const testPayload: { baseUrl?: string; apiKey?: string } = {};
+    if (baseUrl.trim()) testPayload.baseUrl = baseUrl.trim();
+    if (apiKey.trim()) testPayload.apiKey = apiKey.trim();
+
     try {
-      const res = await fetch("/api/admin/settings/llm/test", { method: "POST" });
+      const res = await fetch("/api/admin/settings/llm/test", {
+        method: "POST",
+        headers:
+          testPayload.baseUrl && testPayload.apiKey
+            ? { "Content-Type": "application/json" }
+            : undefined,
+        body:
+          testPayload.baseUrl && testPayload.apiKey
+            ? JSON.stringify(testPayload)
+            : undefined,
+      });
       const data = (await res.json()) as { ok?: boolean; error?: string; detail?: string };
       if (!res.ok || !data.ok) {
         setError(formatError(data.error, data.detail));

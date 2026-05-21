@@ -16,6 +16,11 @@ describe("mergeListingPreviewFields", () => {
     expect(merged.price).toBe(200000);
     expect(merged.sizeSqm).toBe(90);
   });
+
+  it("fills broker when base has none", () => {
+    const merged = mergeListingPreviewFields({ price: 200000 }, { brokerInvolved: true });
+    expect(merged.brokerInvolved).toBe(true);
+  });
 });
 
 describe("parseLlmListingJson", () => {
@@ -37,6 +42,11 @@ describe("normalizeLlmListingExtract", () => {
     expect(fields.title).toBe("Wohnung Mitte");
     expect(fields.price).toBe(350000);
     expect(fields.energyClass).toBe("B");
+  });
+
+  it("normalizes brokerInvolved", () => {
+    const fields = normalizeLlmListingExtract({ brokerInvolved: false });
+    expect(fields.brokerInvolved).toBe(false);
   });
 });
 

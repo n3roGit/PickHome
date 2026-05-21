@@ -161,7 +161,9 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 - «← Zurück» to project; header title, optional «Inserat öffnen ↗», area badge (Wunschgebiet/NoGo).
 - Score legend + «angemeldet als …»; Archivieren, Löschen.
 - Preis & Adresse: Adressfeld + **GetGeo** (nur diese Adresse); **Street View öffnen ↗** under address when coords/address present; Speichern für alle Felder; Hinweis bei nicht auflösbarer Adresse.
-- **Inserat-Link** (expand): URL + «Daten laden» + Speichern; mit PDF: **«Aus Exposé (KI)»** → `POST …/llm/extract` → `200`, «Leere Felder übernommen» (nur bei hochgeladenem PDF sichtbar).
+- **Daten automatisch füllen** (Header neben Archivieren): → `POST …/llm/extract` (Inserat-URL aus Feld/gespeichert + indexiertes Exposé-PDF) → `200`, «Leere Felder übernommen»; Titel/Beschreibung/Preis; **Makler**-Checkbox unter Kaufnebenkosten (nur wenn Kaufpreis gesetzt) → «Übernehmen» zum Speichern.
+- Projekt «Immobilie hinzufügen»: «Daten automatisch füllen» oder URL + Hinzufügen → Felder + **Makler**-Checkbox; ImmoScout24-Abruf kann blockieren («Seite nicht lesbar»).
+- **Inserat-Link** (expand): nur URL + Speichern.
 - **KI-Assistent** (Header): Dialog «Exposé-Assistent», Frage senden → `POST …/llm/chat` → `200`, Antwort aus Beschreibung/Stammdaten/PDF-Kontext.
 - **Anfahrt** (expand): per-member rows; km/min; with Firmenwagen + Arbeitsstätte: «Firmenwagen: Brutto …» and «Pendlerpauschale (geschätzt, Steuererklärung)» under workplace leg.
 - **Kaufnebenkosten & Finanzierung** (expand): project financing reflected.
@@ -197,8 +199,10 @@ Project header: name, budget, «Projekt löschen» (if permitted).
 
 ## Changelog (agent notes, no real data)
 
+- **2026-05-21 (port 3000, auto-fill + Makler):** Detail: extract 200, Makler-Checkbox nach Auto-Fill gesetzt (landingpage.immobilien); Beschreibung aus PDF/KI. Create: fp-Immofinanz preview → Makler checked, Titel/Preis/Beschreibung; IS24 preview fetch_failed. Keine Console-Errors.
 - **2026-05-21 (port 3000, KI retest):** Admin KI: Speichern `auto-fastest` + Verbindung testen OK (`PUT`/`POST` llm settings 200). Apartment: KI-Chat 200 (95 m² / Bj. 1910 aus Beschreibung); PDF-Exposé-Extraktion 200, Highlights + leere Felder. Keine Console-Errors. Extract-Button nur mit PDF, nicht nur Inserat-URL.
-- **2026-05-21 (port 3002, KI):** Auth admin; Admin tab KI: Verbindung testen OK. Apartment detail: KI-Assistent chat 200 (Energieklasse F + Endenergie aus Kontext); Aus Exposé (KI) 200, Leere Felder übernommen + PDF-Highlights. Keine Console-Errors. Hinweis: Admin-KI-Hilfetext noch „keine KI-Funktionen“ (veraltet).
+- **2026-05-21 (port 3000, Inserat-Link merge):** Admin login; Apartment mit PDF+URL: kein «Aus Exposé (KI)»; «Daten laden» → `POST …/llm/extract` 200, «Leere Felder übernommen»; Hinweis «PDF ohne KI» wenn LLM nicht konfiguriert. Keine Console-Errors.
+- **2026-05-21 (port 3002, KI):** Auth admin; Admin tab KI: Verbindung testen OK. Apartment detail: KI-Assistent chat 200; Daten laden (Inserat-Link) 200 inkl. PDF-Merge. Keine Console-Errors.
 - **2026-05-21 (port 3000, Pendlerpauschale):** After schema change: `npx prisma generate` if apartment page throws Prisma validation on new user fields. Account: Firmenwagen + Pendlerpauschale fields; address **Arbeitsstätte** must be saved via «Aktualisieren» (not only Firmenwagen Speichern). Apartment Anfahrt OK: Firmenwagen Brutto/Netto + Pendlerpauschale/Jahr. Also: user `/admin`→dashboard, admin backup list + Download links, map mobile 390×844 (Menü), `plz-overlays` API 200 + `radiusM`. Skipped: backup download click, remember-login, TOTP activation.
 - **2026-05-21 (port 3000, full pass):** Recommended order end-to-end after Street View feature. OK: auth, account (2FA start/Abbrechen), admin users/backup/timezone, dashboard user+admin roles, all project tabs, compare (2 selected), map (Street View popup, overlays API `radiusM` 2200), calendar (iCal `localhost:3000`), apartment detail (Street View, Anfahrt km/min), mobile 390×844 no overflow. Skipped optional: backup download/import, TOTP activation, archivieren, slider reload, remember-login cookie.
 - **2026-05-21 (port 3000):** Street View links on map popup + apartment «Preis & Adresse»; pano URL with `viewpoint=` from geocoded coords; no console errors.

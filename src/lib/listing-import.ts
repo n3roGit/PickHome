@@ -9,7 +9,76 @@ export type ListingPreviewFields = {
   sizeSqm?: number;
   address?: string;
   energyClass?: string;
+  description?: string;
+  brokerInvolved?: boolean;
 };
+
+/** Infer Maklerprovision from listing text and optionally the portal URL. */
+export function inferBrokerInvolved(text: string, url?: string): boolean | undefined {
+  const blob = text.replace(/\s+/g, " ").toLowerCase();
+
+  const noBroker = [
+    /provisionsfrei/i,
+    /ohne\s+(?:makler|provision)/i,
+    /keine\s+provision/i,
+    /kein(?:er|e|en)?\s+makler/i,
+    /von\s+privat/i,
+    /privatverkauf/i,
+    /privat\s+angebot/i,
+    /eigennutzerangebot/i,
+    /direct\s+von\s+privat/i,
+  ];
+  if (noBroker.some((re) => re.test(blob))) return false;
+
+  const yesBroker = [
+    /provisionspflichtig/i,
+    /maklerprovision/i,
+    /maklercourtage/i,
+    /courtage\s+des\s+maklers/i,
+    /mit\s+(?:immobilien)?makler/i,
+    /käuferprovision/i,
+    /provision\s*:\s*[1-9]/i,
+    /provision\s+ist\s+fällig/i,
+    /immobilienmakler/i,
+  ];
+  if (yesBroker.some((re) => re.test(blob))) return true;
+
+  if (url) {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      if (
+        host.includes("immobilienscout24.") ||
+        host.includes("immowelt.") ||
+        host.includes("immonet.") ||
+        host.includes("immobilien.de") ||
+        host.includes("landingpage.immobilien")
+      ) {
+        return true;
+      }
+    } catch {
+      // ignore invalid URL
+    }
+  }
+
+  return undefined;
+}
+
+const LISTING_DESCRIPTION_MAX = 8_000;
+
+/** Use highlights as description when no dedicated description was parsed. */
+export function finalizeListingPreviewFields(
+  fields: ListingPreviewFields,
+  highlights?: string
+): ListingPreviewFields {
+  const out = { ...fields };
+  if (!out.description?.trim() && highlights?.trim()) {
+    out.description = highlights.trim().slice(0, LISTING_DESCRIPTION_MAX);
+  }
+  if (out.description) {
+    out.description = out.description.slice(0, LISTING_DESCRIPTION_MAX);
+  }
+  return out;
+}
 
 export type ListingPreviewResult =
   | { ok: true; fields: ListingPreviewFields; warnings: string[]; highlights?: string; llmUsed?: boolean }
@@ -100,24 +169,20 @@ function metaContent(html: string, property: string): string | undefined {
   return m?.[1]?.trim();
 }
 
-export function parseListingHtml(html: string): ListingPreviewFields {
+/** Heuristic field extraction from plain text (Exposé PDF, scraped page text). */
+export function parseListingPlainText(text: string): ListingPreviewFields {
   const fields: ListingPreviewFields = {};
-  collectFromJsonLd(extractJsonLdObjects(html), fields);
-
-  if (!fields.title) {
-    fields.title =
-      metaContent(html, "og:title") ??
-      html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
-  }
-
-  const ogDesc = metaContent(html, "og:description") ?? "";
-  const textBlob = `${ogDesc} ${html.replace(/<[^>]+>/g, " ")}`;
+  const textBlob = text.replace(/\s+/g, " ").trim();
 
   if (!fields.price) {
-    const priceMatch = textBlob.match(
-      /(\d{1,3}(?:\.\d{3})*|\d+)\s*(?:€|EUR|Euro)/i
-    );
+    const priceMatch = textBlob.match(/(\d{1,3}(?:\.\d{3})*|\d+)\s*(?:€|EUR|Euro)/i);
     if (priceMatch) fields.price = parseGermanPrice(priceMatch[1]);
+  }
+  if (!fields.price) {
+    const kaufpreisMatch = textBlob.match(
+      /kaufpreis[:\s]*(\d{1,3}(?:\.\d{3})*|\d+)/i
+    );
+    if (kaufpreisMatch) fields.price = parseGermanPrice(kaufpreisMatch[1]);
   }
 
   if (!fields.sizeSqm) {
@@ -141,8 +206,40 @@ export function parseListingHtml(html: string): ListingPreviewFields {
     if (plzStreet) fields.address = plzStreet[1].trim().slice(0, 200);
   }
 
-  if (fields.title) fields.title = fields.title.slice(0, 200);
   if (fields.address) fields.address = fields.address.slice(0, 300);
+
+  const broker = inferBrokerInvolved(textBlob);
+  if (broker != null) fields.brokerInvolved = broker;
+
+  return fields;
+}
+
+export function parseListingHtml(html: string, url?: string): ListingPreviewFields {
+  const fields: ListingPreviewFields = {};
+  collectFromJsonLd(extractJsonLdObjects(html), fields);
+
+  if (!fields.title) {
+    fields.title =
+      metaContent(html, "og:title") ??
+      html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
+  }
+
+  const ogDesc = metaContent(html, "og:description") ?? "";
+  if (ogDesc) fields.description = ogDesc.slice(0, LISTING_DESCRIPTION_MAX);
+  const textBlob = `${ogDesc} ${html.replace(/<[^>]+>/g, " ")}`;
+  const fromText = parseListingPlainText(textBlob);
+
+  if (!fields.price && fromText.price != null) fields.price = fromText.price;
+  if (!fields.sizeSqm && fromText.sizeSqm != null) fields.sizeSqm = fromText.sizeSqm;
+  if (!fields.energyClass && fromText.energyClass) fields.energyClass = fromText.energyClass;
+  if (!fields.address && fromText.address) fields.address = fromText.address;
+
+  if (fields.title) fields.title = fields.title.slice(0, 200);
+
+  if (fields.brokerInvolved == null) {
+    const broker = inferBrokerInvolved(textBlob, url);
+    if (broker != null) fields.brokerInvolved = broker;
+  }
 
   return fields;
 }
@@ -222,7 +319,7 @@ export async function fetchListingPreview(rawUrl: string): Promise<ListingPrevie
     };
   }
 
-  let fields = parseListingHtml(html);
+  let fields = parseListingHtml(html, url);
   let highlights: string | undefined;
   let llmUsed = false;
 
@@ -247,5 +344,11 @@ export async function fetchListingPreview(rawUrl: string): Promise<ListingPrevie
     warnings.push("Portal blockiert möglicherweise automatischen Abruf.");
   }
 
-  return { ok: true, fields, warnings, highlights, llmUsed };
+  return {
+    ok: true,
+    fields: finalizeListingPreviewFields(fields, highlights),
+    warnings,
+    highlights,
+    llmUsed,
+  };
 }

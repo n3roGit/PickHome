@@ -504,6 +504,8 @@ export async function createApartmentAction(projectId: string, formData: FormDat
       sizeSqm: parseInt(String(formData.get("sizeSqm") ?? ""), 10) || null,
       energyClass: parseEnergyClassInput(String(formData.get("energyClass") ?? "")),
       listingUrl: normalizeListingUrl(String(formData.get("listingUrl") ?? "")),
+      description:
+        String(formData.get("description") ?? "").trim().slice(0, 8000) || null,
     },
   });
   if (Number.isFinite(price) && price != null && price > 0) {

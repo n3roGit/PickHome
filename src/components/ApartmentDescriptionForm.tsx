@@ -1,5 +1,6 @@
 import { updateApartmentDescriptionAction } from "@/app/actions";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { apartmentDescriptionFormId } from "@/lib/listing-import-form";
 
 export function ApartmentDescriptionForm({
   apartmentId,
@@ -21,7 +22,10 @@ export function ApartmentDescriptionForm({
           Beschreibung gespeichert.
         </p>
       )}
-      <form action={updateApartmentDescriptionAction.bind(null, apartmentId)}>
+      <form
+        id={apartmentDescriptionFormId(apartmentId)}
+        action={updateApartmentDescriptionAction.bind(null, apartmentId)}
+      >
         <textarea
           name="description"
           rows={5}
