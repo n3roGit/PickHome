@@ -13,6 +13,7 @@ import {
   applyListingPreviewToApartment,
   clearPrefilledHighlightsForKeys,
 } from "@/lib/listing-import-form";
+import { syncListingFieldSuggestionsFromDraft } from "@/lib/listing-field-suggestions";
 
 export function ApartmentListingDraftRestore({
   apartmentId,
@@ -41,6 +42,8 @@ export function ApartmentListingDraftRestore({
       highlightKeys: pruned.pending,
       clearHighlights: false,
     });
+
+    syncListingFieldSuggestionsFromDraft(apartmentId);
 
     window.dispatchEvent(
       new CustomEvent(APARTMENT_DRAFT_RESTORED_EVENT, { detail: { apartmentId } })

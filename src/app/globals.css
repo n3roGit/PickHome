@@ -77,6 +77,10 @@ body {
     @apply ring-2 ring-pn-accent/50 border-pn-accent bg-pn-score-high-bg/40;
   }
 
+  .pn-listing-suggestion {
+    @apply rounded-md bg-pn-bg-subtle border border-pn-border/80 px-2 py-1.5;
+  }
+
   .pn-section-unsaved {
     @apply ring-2 ring-amber-500/60 border-amber-500/50;
   }

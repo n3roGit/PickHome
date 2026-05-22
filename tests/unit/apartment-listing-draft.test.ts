@@ -52,4 +52,16 @@ describe("apartment-listing-draft", () => {
     });
     expect(cleared).toBeNull();
   });
+
+  it("keeps draft while suggestion keys remain", () => {
+    const withSuggestions: ApartmentListingDraft = {
+      fields: { price: 400_000 },
+      pending: [],
+      suggestionKeys: ["price"],
+    };
+    expect(pruneApartmentListingDraft(withSuggestions, { title: true })).toEqual(
+      withSuggestions
+    );
+    expect(pruneApartmentListingDraft(withSuggestions, { basics: true })).toBeNull();
+  });
 });

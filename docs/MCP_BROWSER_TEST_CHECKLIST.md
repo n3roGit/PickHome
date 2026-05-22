@@ -674,6 +674,9 @@ calendar
 - While Auto-Fill runs in the toolbar: label **„wird verarbeitet“**, button keeps **minimum width** (~9.5rem), no extra status paragraph under the toolbar (status in `title` / tooltip only).
 - Auto-Fill calls `POST /api/apartments/<apartmentId>/llm/extract` with URL from the listing URL input (unsaved input counts) or saved DB URL.
 - Auto-Fill applies preview fields with **`onlyEmpty: true`** (does not overwrite user-edited or already filled inputs).
+- When KI extract **differs** from a non-empty field, a **`KI-Vorschlag:`** row appears under that field with **Übernehmen** / **Verwerfen** (single-field apply; does not change other inputs).
+- Toolbar `title` may list **„Abweichende KI-Vorschläge: …“** when suggestions exist.
+- Extract uses **narrative-only** supplemental context (notes, description, checklist) — not structured Stammdaten as LLM anchors (comparison is client-side).
 - After successful Auto-Fill, user must **save** each section: „Speichern“ under **Preis & Adresse** (redirect may include `?basics_saved=1`), separate save for **Beschreibung** and **Notizen** if changed.
 - Auto-Fill marks newly filled inputs with green highlight (`pn-field-prefilled`); after **Preis & Adresse** save, highlights are cleared (including Hausgeld/Heizkosten/Grundsteuer/Sanierung).
 - Auto-Fill does **not** persist to the database by itself.
@@ -792,11 +795,13 @@ Test **at least two** readable provider categories per release when LLM/listing 
 3. Expand **Inserat-Link** if URL is only in DB — confirm input matches expected host **category** (not a specific URL in this doc).
 4. Click toolbar **Auto-Fill**.
 5. Assert button shows **„wird verarbeitet“** then **Auto-Fill** again; toolbar layout does not jump.
-6. Hover or read `title`: should mention „Leere Felder übernommen“, listed fields, PDF/LLM warnings if any.
+6. Hover or read `title`: should mention „Leere Felder übernommen“, **„Abweichende KI-Vorschläge“** when applicable, listed fields, PDF/LLM warnings if any.
 7. Verify only previously empty inputs changed; filled price/address unchanged when already set.
-8. Click **Speichern** under Preis & Adresse; expect `?basics_saved=1` or visible success.
-9. Reload page; confirm saved fields persist.
-10. If description was filled, save **Beschreibung** separately and reload again.
+8. **KI-Vorschlag flow:** set one filled field to disagree with notes/PDF (e.g. Energieklasse **C** while extract expects **D**), run Auto-Fill — input stays **C**, **KI-Vorschlag: D** with **Übernehmen** / **Verwerfen** appears; **Übernehmen** updates only that field; **Verwerfen** removes the hint without changing the input.
+9. Click **Speichern** under Preis & Adresse; expect `?basics_saved=1` or visible success.
+10. Reload page; confirm saved fields persist.
+11. If description was filled, save **Beschreibung** separately and reload again.
+12. Reload without save after suggestion test — unsaved manual/accepted values must not persist.
 
 Optional: `evaluate_script` → `fetch('/api/apartments/<id>/llm/extract', { method:'POST', body: JSON.stringify({ url }) })` to compare API vs UI (no PII in session notes).
 

@@ -87,4 +87,22 @@ describe("buildApartmentListingExtractSupplement", () => {
     expect(ctx).toContain("Checkliste:");
     expect(ctx).not.toContain("should be omitted");
   });
+
+  it("narrativeOnly omits structured Stammdaten but keeps notes", () => {
+    const ctx = buildApartmentListingExtractSupplement(
+      {
+        projectName: "P",
+        title: "T",
+        address: "Exampleweg 1",
+        price: 500_000,
+        sizeSqm: 90,
+        notes: "Dach undicht",
+      },
+      { narrativeOnly: true, omitDocumentBodies: true }
+    );
+    expect(ctx).toContain("Freitext");
+    expect(ctx).toContain("Dach undicht");
+    expect(ctx).not.toContain("500");
+    expect(ctx).not.toContain("Exampleweg");
+  });
 });

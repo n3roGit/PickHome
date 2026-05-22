@@ -225,3 +225,19 @@ export function applyListingPreviewToApartment(
 
   return unique;
 }
+
+/** Apply a single preview field (e.g. KI suggestion accept) without touching other inputs. */
+export function applyListingPreviewFieldKey(
+  apartmentId: string,
+  key: ListingPreviewFieldKey,
+  fields: ListingPreviewFields,
+  options?: { highlight?: boolean }
+): boolean {
+  const slice: ListingPreviewFields = { [key]: fields[key] } as ListingPreviewFields;
+  const filled = applyListingPreviewToApartment(apartmentId, slice, {
+    onlyEmpty: false,
+    highlightKeys: options?.highlight !== false ? [key] : [],
+    clearHighlights: false,
+  });
+  return filled.includes(key);
+}

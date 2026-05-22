@@ -87,6 +87,11 @@ export type ApartmentListingExtractSupplementOptions = {
   checklistLines?: string[];
   /** Skip PDF bodies when PDF text is processed separately in listing import. */
   omitDocumentBodies?: boolean;
+  /**
+   * For listing extract only: omit structured Stammdaten (price, m², …) so the model
+   * does not anchor on current form values. Notes, description, and checklist stay.
+   */
+  narrativeOnly?: boolean;
 };
 
 /** Context from saved apartment data for detail-page Auto-Fill (not used on project quick-add). */
@@ -98,12 +103,37 @@ export function buildApartmentListingExtractSupplement(
     ? { ...apartment, documents: [] }
     : apartment;
 
+  const checklist = options?.checklistLines?.filter((l) => l.trim());
+
+  if (options?.narrativeOnly) {
+    const sections: string[] = [
+      "--- Bereits in PickHome (nur Freitext — keine Stammdaten als Vorgabe; bei Widerspruch Inserat/PDF bevorzugen) ---",
+      `Immobilie: ${apt.title}`,
+    ];
+    if (apt.description?.trim()) {
+      sections.push("", "Beschreibung:", apt.description.trim());
+    }
+    if (apt.notes?.trim()) {
+      sections.push("", "Eigene Notizen:", apt.notes.trim());
+    }
+    if (!options.omitDocumentBodies) {
+      for (const doc of apt.documents ?? []) {
+        const text = doc.extractedText?.trim();
+        if (!text) continue;
+        sections.push("", `--- ${doc.fileName} ---`, text);
+      }
+    }
+    if (checklist?.length) {
+      sections.push("", "Checkliste:", ...checklist);
+    }
+    return truncateApartmentLlmContext(sections.join("\n"));
+  }
+
   const sections: string[] = [
     "--- Bereits in PickHome erfasst (Notizen, Stammdaten, Checkliste; bei Widerspruch Inserat/PDF bevorzugen) ---",
     buildApartmentLlmContext(apt),
   ];
 
-  const checklist = options?.checklistLines?.filter((l) => l.trim());
   if (checklist?.length) {
     sections.push("", "Checkliste:", ...checklist);
   }

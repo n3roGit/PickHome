@@ -54,6 +54,7 @@ import { isLlmConfigured } from "@/lib/llm-client";
 import { ApartmentAutoFillButton } from "@/components/ApartmentAutoFillButton";
 import { ApartmentConflictBanner } from "@/components/ApartmentConflictBanner";
 import { ApartmentListingDraftRestore } from "@/components/ApartmentListingDraftRestore";
+import { ApartmentListingFieldSuggestions } from "@/components/ApartmentListingFieldSuggestions";
 import { ApartmentUnsavedGuard } from "@/components/ApartmentUnsavedGuard";
 import { ApartmentLlmChatButton } from "@/components/ApartmentLlmChatButton";
 import { ApartmentChecklistExtras } from "@/components/ApartmentChecklistExtras";
@@ -333,6 +334,10 @@ export default async function ApartmentPage({
           apartmentId={apartment.id}
           resetKey={unsavedResetKey}
           saved={listingDraftSaved}
+        />
+        <ApartmentListingFieldSuggestions
+          apartmentId={apartment.id}
+          resetKey={unsavedResetKey}
         />
         <div id={`apartment-page-${apartment.id}`}>
         <ApartmentScoreProvider initial={myScore}>

@@ -41,6 +41,7 @@ export async function POST(
   const supplementalContext = buildApartmentListingExtractSupplement(bundle.apartment, {
     checklistLines,
     omitDocumentBodies: pdfText.length >= 80,
+    narrativeOnly: true,
   });
   const result = await importApartmentListingFields({
     listingUrl,

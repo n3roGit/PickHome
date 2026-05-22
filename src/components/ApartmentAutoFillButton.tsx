@@ -3,9 +3,16 @@
 import { useState } from "react";
 import { mergeApartmentListingDraft } from "@/lib/apartment-listing-draft";
 import {
+  computeListingFieldSuggestions,
+  dispatchListingSuggestionsUpdated,
+  syncListingFieldSuggestionsFromDraft,
+} from "@/lib/listing-field-suggestions";
+import {
   apartmentListingUrlFormId,
   applyListingPreviewToApartment,
   formatPrefilledFieldLabels,
+  LISTING_PREVIEW_FIELD_LABELS,
+  type ListingPreviewFieldKey,
 } from "@/lib/listing-import-form";
 import type { ListingPreviewFields } from "@/lib/listing-import";
 import { APARTMENT_TOOLBAR_BTN_NEUTRAL } from "@/lib/apartment-toolbar-styles";
@@ -61,13 +68,24 @@ export function ApartmentAutoFillButton({
       const filled = applyListingPreviewToApartment(apartmentId, data.fields, {
         onlyEmpty: true,
       });
-      mergeApartmentListingDraft(apartmentId, data.fields, filled);
+      const suggestions = computeListingFieldSuggestions(apartmentId, data.fields);
+      const suggestionKeys = suggestions.map((s) => s.key);
+      mergeApartmentListingDraft(apartmentId, data.fields, filled, suggestionKeys);
+      syncListingFieldSuggestionsFromDraft(apartmentId);
+      dispatchListingSuggestionsUpdated(apartmentId);
+
       const fieldHint =
         filled.length > 0
           ? ` Übernommen und markiert: ${formatPrefilledFieldLabels(filled)}.`
           : "";
+      const altHint =
+        suggestionKeys.length > 0
+          ? ` Abweichende KI-Vorschläge: ${suggestionKeys
+              .map((k) => LISTING_PREVIEW_FIELD_LABELS[k])
+              .join(", ")} (einzeln übernehmen).`
+          : "";
       setMessage(
-        `Leere Felder übernommen — bitte prüfen und speichern (Preis & Adresse inkl. Kosten, Titel, Beschreibung; Makler unter Finanzen mit „Übernehmen“).${fieldHint}`
+        `Leere Felder übernommen — bitte prüfen und speichern (Preis & Adresse inkl. Kosten, Titel, Beschreibung; Makler unter Finanzen).${fieldHint}${altHint}`
       );
       const w = [...(data.warnings ?? [])];
       if (data.highlights) w.push(`Besonderheiten: ${data.highlights}`);
