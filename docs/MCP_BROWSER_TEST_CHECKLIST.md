@@ -83,7 +83,10 @@ For backup specific checks:
 ```bash
 npm run data:export
 npm run data:import -- data/backups/<synthetic-backup>.zip
+node scripts/set-dev-logins.mjs
 ```
+
+After a restored backup, run `set-dev-logins.mjs` so each account password equals its username (TOTP off). Admin seed login `admin` / `admin` remains available via `npm run db:seed` on an empty DB only.
 
 If Prisma schema or generated client behavior changed:
 
@@ -142,6 +145,8 @@ Discover targets dynamically:
 - **Apartment for Auto-Fill (empty fields):** Prefer an apartment with a saved listing URL and at least one empty field in „Preis & Adresse“ (for example Grundstück m² or Beschreibung) so `onlyEmpty` behavior is observable.
 - **Apartment for Auto-Fill (blocked portal):** Prefer an apartment whose listing URL points to a major portal known to block server-side fetch; expect controlled `fetch_failed` UI, not a crash.
 - **Apartment for PDF-only extract:** Prefer an apartment with an uploaded PDF exposé and no listing URL; note whether extract returns fields or `no_fields` (depends on PDF text quality).
+- **Apartment for KI-Vorschlag / draft restore:** Prefer an apartment with **already filled** title, price, or address (saved or visible in form) plus listing URL and/or PDF; after Auto-Fill, expect **KI-Vorschlag** rows on differing fields, not a full-form overwrite of saved values.
+- **Apartment for post-save draft stability:** Same as above; after **Preis & Adresse** save (`?basics_saved=1` or success message), reload must show **DB values only** — no flicker between old KI extract and current display.
 - **Two apartments with upcoming viewings same day:** Prefer two geocoded apartments with future viewing times less than travel gap apart to exercise schedule conflict warnings.
 
 Do not copy runtime IDs into this file. Session-specific notes may say "project with two apartments" or "apartment with viewings", but not UUIDs or real addresses.
@@ -226,12 +231,12 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Finanzen**, **KI** chat, rating (—/0–10), archive/delete, commute, checklist | Save or controlled no-op; chat shows **tippt…** and prose answers; no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Finanzen**, **KI** chat, Auto-Fill + **KI-Vorschlag**, draft restore, rating (—/0–10), archive/delete, commute, checklist | Save or controlled no-op; no flicker after save/reload; chat shows **tippt…** and prose answers; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status slider, notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
 | Calendar | Upcoming and past viewings, iCal URL | URL host/port correct, no crash |
-| LLM/listing | Configured and not configured states; project import + apartment Auto-Fill on ≥2 portal types | Controlled success/partial/failure; `onlyEmpty` respected; save persists after reload |
+| LLM/listing | Configured and not configured states; project import + apartment Auto-Fill on ≥2 portal types | Controlled success/partial/failure; `onlyEmpty` respected; **pending-only** session draft restore; save persists after reload |
 | Viewing conflicts | Two upcoming viewings same day, tight schedule | Warning on apartment detail (upcoming only) and project calendar (upcoming only); past section has no warnings |
 | Mobile | Narrow viewport navigation and one project flow | No unusable horizontal overflow |
 
@@ -677,6 +682,10 @@ calendar
 - When KI extract **differs** from a non-empty field, a **`KI-Vorschlag:`** row appears under that field with **Übernehmen** / **Verwerfen** (single-field apply; does not change other inputs).
 - Toolbar `title` may list **„Abweichende KI-Vorschläge: …“** when suggestions exist.
 - Extract uses **narrative-only** supplemental context (notes, description, checklist) — not structured Stammdaten as LLM anchors (comparison is client-side).
+- **Session draft** (`sessionStorage`, key `pickhome-listing-draft:<apartmentId>`): stores `pending` (empty fields filled by Auto-Fill), `suggestionKeys` (differing filled fields), and field values **only for those keys** — not the entire last extract blob.
+- **`ApartmentListingDraftRestore`** on page load: applies **pending** keys to the form only (`onlyEmpty: false` per key); **does not** re-apply saved or suggestion-only keys from stale extract data.
+- After redirect with `?title_saved=1`, `?description_saved=1`, `?basics_saved=1`, or `?broker_saved=1`, pruned draft must not bring back values for saved sections on reload or tab return.
+- **KI-Vorschlag** rows are UI-only until **Übernehmen**; reload without save must keep the user's manual values and still show suggestions if draft remains.
 - After successful Auto-Fill, user must **save** each section: „Speichern“ under **Preis & Adresse** (redirect may include `?basics_saved=1`), separate save for **Beschreibung** and **Notizen** if changed.
 - Auto-Fill marks newly filled inputs with green highlight (`pn-field-prefilled`); after **Preis & Adresse** save, highlights are cleared (including Hausgeld/Heizkosten/Grundsteuer/Sanierung).
 - Auto-Fill does **not** persist to the database by itself.
@@ -715,7 +724,25 @@ calendar
 - Save result or validation state
 - Reload after one persisted mutation on disposable data (for example empty Grundstück filled by Auto-Fill, then **Preis & Adresse** saved — value still present after reload)
 - Auto-Fill toolbar `title` includes field list and warnings when non-toolbar mode would show message text
+- After save + reload: no visible alternation between SSR/DB values and an older KI extract (no „flicker“ on title, price, address)
 - Console check
+
+#### Draft restore procedure (MCP, after Auto-Fill)
+
+Run on a disposable apartment with **mixed** empty and filled fields (for example saved title and price, empty plot or description).
+
+1. Note current **Anzeigename**, **Preis**, and **Adresse** from snapshot (DB-backed).
+2. Run toolbar **Auto-Fill** once — empty fields fill; filled fields that differ show **KI-Vorschlag** only.
+3. Click **Speichern** under **Preis & Adresse** (and **Beschreibung** if it was filled and should be kept).
+4. Expect redirect query `?basics_saved=1` and/or section success text; green prefilled highlights cleared on saved basics keys.
+5. **Reload** the apartment page (full navigation, not only client transition).
+6. Assert title, price, and address still match step 1 (or the values just saved) — **not** an older KI-only title or wrong price flash.
+7. Run **Auto-Fill** again — previously saved basics must not revert; new empty fields may fill; new **KI-Vorschlag** rows may appear on still-filled differing fields.
+8. Click **Verwerfen** on one suggestion — row disappears; input unchanged.
+9. Click **Übernehmen** on another — **only** that field changes; others unchanged.
+10. Navigate to project list and back to the same apartment — display remains stable (no alternating old/new values).
+
+**Blocker:** Any step where saved DB values are replaced on load by stale session draft data for fields that are not in `pending`.
 
 ### 12.16 Checklist fill page
 
@@ -753,7 +780,7 @@ URL pattern:
 
 ### 12.17 Listing import and LLM assisted extraction
 
-This section is the **browser contract** for listing/Auto-Fill behavior. API details live in `src/lib/apartment-listing-import.ts`, `src/lib/listing-import-form.ts`, and `POST /api/apartments/{id}/llm/extract`.
+This section is the **browser contract** for listing/Auto-Fill behavior. API and client draft logic live in `src/lib/apartment-listing-import.ts`, `src/lib/listing-import-form.ts`, `src/lib/apartment-listing-draft.ts`, `src/lib/listing-field-suggestions.ts`, `src/components/ApartmentListingDraftRestore.tsx`, `src/components/ApartmentAutoFillButton.tsx`, and `POST /api/apartments/{id}/llm/extract`.
 
 #### Data sources (priority)
 
@@ -802,8 +829,11 @@ Test **at least two** readable provider categories per release when LLM/listing 
 10. Reload page; confirm saved fields persist.
 11. If description was filled, save **Beschreibung** separately and reload again.
 12. Reload without save after suggestion test — unsaved manual/accepted values must not persist.
+13. **Draft restore:** save **Preis & Adresse**, reload — no flicker; optional second Auto-Fill does not overwrite saved basics (see §12.15 draft procedure).
 
 Optional: `evaluate_script` → `fetch('/api/apartments/<id>/llm/extract', { method:'POST', body: JSON.stringify({ url }) })` to compare API vs UI (no PII in session notes).
+
+Optional dev regression (no PII in notes): inject a stale `sessionStorage` draft with extra `fields` keys **not** in `pending` — after reload, non-pending inputs (title, price, address) must stay at SSR/DB values; only `pending` keys (e.g. description) may change.
 
 #### Project tab — quick-add import procedure (MCP)
 
@@ -817,7 +847,9 @@ Optional: `evaluate_script` → `fetch('/api/apartments/<id>/llm/extract', { met
 
 - Admin LLM settings can be saved when valid; connection test shows controlled success or failure.
 - If LLM is not configured, extract/chat show controlled **503** / not-configured UI (no uncaught error).
-- Listing import and Auto-Fill prefill **empty** fields only unless user uses explicit draft-restore with overwrite (separate flow).
+- Listing import and Auto-Fill prefill **empty** fields only on extract (`onlyEmpty: true`).
+- Session draft restore applies **pending** fields only on navigation/reload; **suggestionKeys** render as **KI-Vorschlag** UI, not silent overwrites.
+- Saved sections (`title_saved`, `basics_saved`, etc.) are removed from draft on restore — must not reappear on reload.
 - PDF context merges into preview; warnings distinguish LLM PDF success, regex fallback, and unreadable page.
 - Broker detection sets checkbox in quick-add or hints „Übernehmen“ on detail page.
 - Blocked portal: message **„Seite nicht lesbar“** or extract error in `title`; **no** Next.js overlay.
@@ -1019,6 +1051,9 @@ Keep these regression cases active. They are derived from previously observed is
 | PDF address regex weak | Incomplete address still editable; save persists corrected address |
 | Viewing conflict on past tab | Past calendar/viewing sections show no schedule warnings |
 | Project quick-add import | „Daten automatisch füllen“ fills add form; create still requires submit |
+| Session draft stale fields | After Auto-Fill + save + reload, no flicker; non-pending keys must not overwrite DB display |
+| KI-Vorschlag Übernehmen | Single-field apply only; other inputs unchanged |
+| Second Auto-Fill after partial save | Saved basics stay; suggestions only on still-differing filled fields |
 
 ## 16. Release smoke checklist
 
@@ -1045,6 +1080,8 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] KI chat passed if `ApartmentLlmChatButton`, `llm/chat`, or `llm-tools` changed (**tippt…**, no raw `web_search` JSON, web answer in prose)
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
 [ ] Auto-Fill save + reload verified on disposable apartment
+[ ] Draft restore: after basics save + reload, no flicker between old KI data and DB (if `apartment-listing-draft` or Auto-Fill changed)
+[ ] KI-Vorschlag: Übernehmen changes one field only; Verwerfen removes hint only
 [ ] Viewing schedule warnings checked if calendar/viewing code changed
 [ ] Backup UI passed if persistence, data path, upload, or admin code changed
 [ ] Mobile smoke passed for user-facing UI changes
@@ -1101,7 +1138,7 @@ Append short notes outside this guide. Do not paste IDs, real addresses, real na
 - App mode: dev | docker | production-like
 - Port: <port>
 - Data profile: empty | minimal | rich | map | calendar | llm | backup | mobile | custom
-- Tested areas: auth, admin, dashboard, project tabs, apartment detail, checklist, map, calendar, LLM/auto-fill, viewing conflicts, backup, mobile
+- Tested areas: auth, admin, dashboard, project tabs, apartment detail, checklist, map, calendar, LLM/auto-fill, draft restore / KI-Vorschlag, viewing conflicts, backup, mobile
 - Portal categories tested (no URLs in note): e.g. readable aggregator, landing-page host, bot-blocked major portal, PDF-only
 - Passed:
   - <short statement>
@@ -1201,8 +1238,9 @@ This skeleton is intentionally generic. Adapt tool names to the actual MCP host.
 22. open checklist fill page if configured
 23. if llm profile: on Immobilien tab, run listing import on add form (readable URL)
 24. open apartment with listing URL or PDF; run toolbar Auto-Fill; save Preis & Adresse; reload
-25. optional: apartment on blocked portal — Auto-Fill shows controlled failure, no data loss
-26. if calendar data: confirm upcoming viewing shows schedule warning when times are tight; past section has none
-27. switch to mobile viewport and repeat navigation smoke
-28. write short session note outside this guide
+25. draft restore: reload after save — confirm no flicker; optional second Auto-Fill + KI-Vorschlag Übernehmen/Verwerfen
+26. optional: apartment on blocked portal — Auto-Fill shows controlled failure, no data loss
+27. if calendar data: confirm upcoming viewing shows schedule warning when times are tight; past section has none
+28. switch to mobile viewport and repeat navigation smoke
+29. write short session note outside this guide
 ```

@@ -3,6 +3,16 @@ name: Release
 on:
   push:
     branches: [main]
+    # Skip release/Docker when only docs, editor config, tests, or workflow metadata changed.
+    paths-ignore:
+      - "**/*.md"
+      - ".cursor/**"
+      - "docs/**"
+      - "tests/**"
+      - ".github/**"
+      - ".gitignore"
+      - ".gitattributes"
+      - ".editorconfig"
 
 # Only one release at a time. Parallel pushes used to race on the same patch bump
 # (duplicate v1.3.x tags, failed "Commit, tag, and push", skipped GitHub Release).

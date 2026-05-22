@@ -37,7 +37,13 @@ export function ApartmentListingDraftRestore({
     writeApartmentListingDraft(apartmentId, pruned);
     if (!pruned) return;
 
-    applyListingPreviewToApartment(apartmentId, pruned.fields, {
+    const pendingFields = Object.fromEntries(
+      pruned.pending
+        .filter((key) => pruned.fields[key] !== undefined)
+        .map((key) => [key, pruned.fields[key]])
+    ) as typeof pruned.fields;
+
+    applyListingPreviewToApartment(apartmentId, pendingFields, {
       onlyEmpty: false,
       highlightKeys: pruned.pending,
       clearHighlights: false,

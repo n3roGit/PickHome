@@ -42,6 +42,17 @@ describe("apartment-listing-draft", () => {
     const afterTitle = pruneApartmentListingDraft(draft, { title: true });
     expect(afterTitle?.pending).toEqual(["description", "price"]);
     expect(afterTitle?.fields.description).toBe("Nice flat");
+    expect(afterTitle?.fields.title).toBeUndefined();
+  });
+
+  it("drops field values that are no longer pending or suggested", () => {
+    const stale: ApartmentListingDraft = {
+      fields: { title: "Old", price: 1, address: "Stale" },
+      pending: ["price"],
+      suggestionKeys: [],
+    };
+    const pruned = pruneApartmentListingDraft(stale, {});
+    expect(pruned?.fields).toEqual({ price: 1 });
   });
 
   it("returns null when all pending keys were saved", () => {

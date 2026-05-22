@@ -43,6 +43,17 @@ export function keysForSavedFlags(flags: ApartmentListingSavedFlags): ListingPre
   return keys;
 }
 
+function pickDraftFieldValues(
+  fields: ListingPreviewFields,
+  keys: ListingPreviewFieldKey[]
+): ListingPreviewFields {
+  const picked: ListingPreviewFields = {};
+  for (const key of keys) {
+    if (fields[key] !== undefined) picked[key] = fields[key];
+  }
+  return picked;
+}
+
 export function pruneApartmentListingDraft(
   draft: ApartmentListingDraft,
   flags: ApartmentListingSavedFlags
@@ -51,7 +62,12 @@ export function pruneApartmentListingDraft(
   const pending = draft.pending.filter((k) => !remove.has(k));
   const suggestionKeys = (draft.suggestionKeys ?? []).filter((k) => !remove.has(k));
   if (pending.length === 0 && suggestionKeys.length === 0) return null;
-  return { fields: draft.fields, pending, suggestionKeys };
+  const activeKeys = [...new Set([...pending, ...suggestionKeys])];
+  return {
+    fields: pickDraftFieldValues(draft.fields, activeKeys),
+    pending,
+    suggestionKeys,
+  };
 }
 
 export function readApartmentListingDraft(apartmentId: string): ApartmentListingDraft | null {
