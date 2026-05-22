@@ -201,9 +201,7 @@ export async function fetchDrivingMinutesBetween(
   from: GeoPoint,
   to: GeoPoint
 ): Promise<number | null> {
-  const route = await fetchRoute(from as RoutePoint, to as RoutePoint, "driving", {
-    timeoutMs: 8_000,
-  });
+  const route = await fetchRoute(from as RoutePoint, to as RoutePoint, "driving");
   if (!route) return estimateDrivingMinutes(from, to);
   return Math.max(1, Math.round(route.durationSeconds / 60));
 }

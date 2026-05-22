@@ -196,6 +196,8 @@ export function ApartmentPurchaseCosts({
   heatingCostMonthly: number | null;
   propertyTaxAnnual: number | null;
   renovationCost: number | null;
+  plotSizeSqm: number | null;
+  sizeSqm: number | null;
   equityAmount: number | null;
   loanTermYears: number | null;
   interestRate: number | null;

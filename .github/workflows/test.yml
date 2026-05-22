@@ -19,3 +19,7 @@ jobs:
       - run: npm test
         env:
           DATABASE_URL: file:./data/test-ci.db
+      - name: Production build (matches Docker release)
+        run: npm run build
+        env:
+          DATABASE_URL: file:./data/test-ci.db

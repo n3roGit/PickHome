@@ -17,6 +17,7 @@
     "db:reset": "prisma db push --force-reset && npm run db:seed",
     "data:export": "tsx scripts/backup-export.ts",
     "data:import": "tsx scripts/backup-import.ts",
+    "ci": "npm test && npm run build",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",

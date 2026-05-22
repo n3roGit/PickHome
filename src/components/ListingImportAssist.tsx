@@ -136,7 +136,7 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
       <div className="flex flex-wrap gap-2 items-stretch sm:items-center">
         <input
           name="title"
-          placeholder="Titel / Adresse"
+          placeholder="Titel"
           className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full min-w-0 sm:flex-1 sm:min-w-[200px]"
         />
         <input
