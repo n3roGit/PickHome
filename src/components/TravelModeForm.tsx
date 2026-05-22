@@ -82,7 +82,12 @@ export function TravelModeForm({
   );
 
   return (
-    <form action={action} className="space-y-4">
+    <form
+      action={action}
+      className="space-y-4"
+      data-unsaved-track
+      data-unsaved-label="Standard-Verkehrsmittel"
+    >
       <div className="flex flex-wrap gap-2 items-end">
         <label className="block flex-1 min-w-[180px]">
           <span className="text-sm font-medium text-pn-text-secondary">Verkehrsmittel</span>

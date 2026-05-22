@@ -185,10 +185,16 @@ export function AdminLlmPanel() {
       {loading ? (
         <p className="text-sm text-pn-text-secondary">Lade Einstellungen…</p>
       ) : (
-        <form onSubmit={handleSave} className="space-y-4 max-w-2xl">
+        <form
+          onSubmit={handleSave}
+          className="space-y-4 max-w-2xl"
+          data-unsaved-track
+          data-unsaved-label="KI-Einstellungen"
+        >
           <label className="block text-sm">
             <span className="block mb-1 text-pn-text-secondary">Basis-URL</span>
             <input
+              name="baseUrl"
               type="url"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
@@ -202,6 +208,7 @@ export function AdminLlmPanel() {
           <label className="block text-sm">
             <span className="block mb-1 text-pn-text-secondary">Modell</span>
             <input
+              name="model"
               type="text"
               value={model}
               onChange={(e) => setModel(e.target.value)}
@@ -219,6 +226,7 @@ export function AdminLlmPanel() {
           <label className="block text-sm">
             <span className="block mb-1 text-pn-text-secondary">System-Prompt</span>
             <textarea
+              name="systemPrompt"
               value={systemPrompt}
               onChange={(e) => {
                 setSystemPrompt(e.target.value);
@@ -251,6 +259,7 @@ export function AdminLlmPanel() {
           <label className="block text-sm">
             <span className="block mb-1 text-pn-text-secondary">API-Token</span>
             <input
+              name="apiKey"
               type="password"
               value={apiKey}
               onChange={(e) => {
@@ -267,6 +276,7 @@ export function AdminLlmPanel() {
             {apiKeyConfigured && (
               <label className="mt-2 flex items-center gap-2 text-pn-text-secondary">
                 <input
+                  name="clearApiKey"
                   type="checkbox"
                   checked={clearApiKey}
                   onChange={(e) => {

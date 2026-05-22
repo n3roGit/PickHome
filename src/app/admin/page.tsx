@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createUserAction, resetUserPasswordAction } from "@/app/actions";
+import { AdminUnsavedGuard } from "@/components/AdminUnsavedGuard";
 import { AdminBackupPanel } from "@/components/AdminBackupPanel";
 import { AdminScheduledBackupPanel } from "@/components/AdminScheduledBackupPanel";
 import { AdminLlmPanel } from "@/components/AdminLlmPanel";
@@ -75,6 +76,15 @@ export default async function AdminPage({
           </AdminTabLink>
         </nav>
 
+        <AdminUnsavedGuard
+          resetKey={[
+            tab,
+            resolvedSearchParams.created,
+            resolvedSearchParams.password_reset,
+            resolvedSearchParams.error,
+          ].join("|")}
+        >
+        <div id="admin-page">
         {tab === "backup" && (
           <>
             <AdminScheduledBackupPanel />
@@ -112,7 +122,12 @@ export default async function AdminPage({
 
             <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-8">
               <h2 className="font-semibold mb-4">Neuer Benutzer</h2>
-              <form action={createUserAction} className="grid sm:grid-cols-2 gap-3">
+              <form
+                action={createUserAction}
+                className="grid sm:grid-cols-2 gap-3"
+                data-unsaved-track
+                data-unsaved-label="Neuer Benutzer"
+              >
                 <input
                   name="username"
                   placeholder="Benutzername"
@@ -183,6 +198,8 @@ export default async function AdminPage({
                             <form
                               action={resetUserPasswordAction.bind(null, u.id)}
                               className="mt-2 flex flex-col gap-2 min-w-[12rem]"
+                              data-unsaved-track
+                              data-unsaved-label={`Passwort: ${u.username}`}
                             >
                               <input
                                 name="password"
@@ -217,6 +234,8 @@ export default async function AdminPage({
             </section>
           </>
         )}
+        </div>
+        </AdminUnsavedGuard>
       </main>
       <Footer />
     </>

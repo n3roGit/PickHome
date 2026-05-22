@@ -88,10 +88,16 @@ export function AdminTimezonePanel() {
       {loading ? (
         <p className="text-sm text-pn-text-secondary">Lade Einstellungen…</p>
       ) : (
-        <form onSubmit={handleSave} className="space-y-4 max-w-md">
+        <form
+          onSubmit={handleSave}
+          className="space-y-4 max-w-md"
+          data-unsaved-track
+          data-unsaved-label="Zeitzone"
+        >
           <label className="block text-sm">
             <span className="block mb-1 text-pn-text-secondary">Zeitzone (IANA)</span>
             <select
+              name="timeZone"
               value={timeZone}
               onChange={(e) => setTimeZone(e.target.value)}
               disabled={saving}

@@ -56,7 +56,12 @@ export function ProjectSettingsPanel({
         </p>
       )}
 
-      <form action={updateProjectAction.bind(null, projectId)} className="space-y-6 max-w-lg">
+      <form
+        action={updateProjectAction.bind(null, projectId)}
+        className="space-y-6 max-w-lg"
+        data-unsaved-track
+        data-unsaved-label="Projekteinstellungen"
+      >
         <section className="bg-pn-bg-surface border border-pn-border rounded-xl p-5 space-y-4">
           <div>
             <h2 className="font-semibold mb-1">Projekt</h2>

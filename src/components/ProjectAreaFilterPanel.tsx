@@ -631,6 +631,8 @@ export function ProjectAreaFilterPanel({
               </p>
               <form
                 className="space-y-3"
+                data-unsaved-track
+                data-unsaved-label={`Ortsteile ${activeOrt.name}`}
                 onSubmit={(e) => {
                   e.preventDefault();
                   run(async () => {
@@ -643,6 +645,7 @@ export function ProjectAreaFilterPanel({
                 }}
               >
                 <textarea
+                  name="importTable"
                   value={activeImportTable}
                   onChange={(e) => updateActiveImportTable(e.target.value)}
                   placeholder={`20095 | Hamburg | Altstadt, Neustadt\n20359 | Hamburg | St. Pauli, Sternschanze`}

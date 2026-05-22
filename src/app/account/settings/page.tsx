@@ -10,6 +10,7 @@ import {
 } from "@/app/totp-actions";
 import { Footer } from "@/components/Footer";
 import { Nav } from "@/components/Nav";
+import { AccountSettingsUnsavedGuard } from "@/components/AccountSettingsUnsavedGuard";
 import { UserCommuteSettings } from "@/components/UserCommuteSettings";
 import { isAdmin, requireUser } from "@/lib/auth";
 import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
@@ -82,6 +83,17 @@ export default async function SettingsPage({
         </Link>
         <h1 className="text-2xl font-bold mt-4 mb-6">Einstellungen</h1>
 
+        <AccountSettingsUnsavedGuard
+          resetKey={[
+            resolvedSearchParams.password_changed,
+            resolvedSearchParams.commute_saved,
+            resolvedSearchParams.address_saved,
+            resolvedSearchParams.address_deleted,
+            resolvedSearchParams.disabled,
+            resolvedSearchParams.step,
+          ].join("|")}
+        >
+        <div id="account-settings-page">
         {resolvedSearchParams.password_changed === "1" && (
           <p className="mb-4 text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg">
             Passwort wurde geändert.
@@ -135,7 +147,12 @@ export default async function SettingsPage({
           <p className="text-sm text-pn-text-secondary mb-4">
             Aktuelles Passwort eingeben und das neue Passwort zweimal bestätigen.
           </p>
-          <form action={changeOwnPasswordAction} className="space-y-3">
+          <form
+            action={changeOwnPasswordAction}
+            className="space-y-3"
+            data-unsaved-track
+            data-unsaved-label="Passwort"
+          >
             <label className="block">
               <span className="text-sm font-medium text-pn-text-secondary">Aktuelles Passwort</span>
               <input
@@ -314,6 +331,8 @@ export default async function SettingsPage({
             </section>
           </>
         )}
+        </div>
+        </AccountSettingsUnsavedGuard>
       </main>
       <Footer />
     </>

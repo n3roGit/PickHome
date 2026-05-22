@@ -137,7 +137,12 @@ export function UserCommuteSettings({
 
         {addresses.map((addr) => (
           <div key={addr.id} className="border border-pn-border rounded-lg p-4 space-y-3">
-            <form action={updateUserAddressAction.bind(null, addr.id)} className="space-y-3">
+            <form
+              action={updateUserAddressAction.bind(null, addr.id)}
+              className="space-y-3"
+              data-unsaved-track
+              data-unsaved-label={`Adresse: ${addr.label}`}
+            >
               <label className="block">
                 <span className="text-sm font-medium text-pn-text-secondary">Bezeichnung</span>
                 <input
@@ -184,7 +189,12 @@ export function UserCommuteSettings({
           </div>
         ))}
 
-        <form action={createUserAddressAction} className="border border-dashed border-pn-border rounded-lg p-4 space-y-3">
+        <form
+          action={createUserAddressAction}
+          className="border border-dashed border-pn-border rounded-lg p-4 space-y-3"
+          data-unsaved-track
+          data-unsaved-label="Neue Adresse"
+        >
           <p className="text-sm font-medium">Neue Adresse</p>
           <label className="block">
             <span className="text-sm font-medium text-pn-text-secondary">Bezeichnung</span>

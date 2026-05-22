@@ -115,6 +115,8 @@ export function CriteriaEditor({
 
             <form
               className="flex-1 flex flex-wrap items-center gap-2 min-w-0 w-full sm:min-w-[200px]"
+              data-unsaved-track
+              data-unsaved-label={`Kriteriengruppe: ${g.name}`}
               onSubmit={(e) => {
                 e.preventDefault();
                 const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
@@ -184,6 +186,8 @@ export function CriteriaEditor({
 
                 <form
                   className="flex flex-wrap items-center gap-2 min-w-0 w-full sm:flex-1 sm:min-w-[140px]"
+                  data-unsaved-track
+                  data-unsaved-label={`Kriterium: ${c.name}`}
                   onSubmit={(e) => {
                     e.preventDefault();
                     const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();

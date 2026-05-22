@@ -155,6 +155,8 @@ function ViewingList({
             <form
               action={(formData) => onUpdate(v.id, formData)}
               className="flex flex-wrap gap-2 items-end"
+              data-unsaved-track
+              data-unsaved-label={`Besichtigung ${formatDateTimeDe(v.date, timeZone)}`}
             >
               <label className="flex flex-col text-sm w-full min-w-0 sm:min-w-[190px] sm:flex-1">
                 <span className="text-pn-text-secondary mb-1">Datum & Uhrzeit</span>

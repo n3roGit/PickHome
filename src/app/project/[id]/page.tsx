@@ -62,6 +62,7 @@ import { findOrtByKey, getPlzReferenceData } from "@/lib/plz-reference";
 import { mergeDistrictsByPlz } from "@/lib/ortsteile-reference";
 import { fetchProjectAreaDistricts } from "@/lib/project-area-data";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { ProjectUnsavedGuard } from "@/components/ProjectUnsavedGuard";
 import { countFilledChecklistEntries } from "@/lib/checklist-progress";
 
 export default async function ProjectPage({
@@ -273,6 +274,16 @@ export default async function ProjectPage({
         })
       : [];
 
+  const unsavedResetKey = [
+    tab,
+    resolvedSearchParams.settings_saved,
+    resolvedSearchParams.areas_saved,
+    resolvedSearchParams.districts_saved,
+    resolvedSearchParams.districts_cleared,
+    resolvedSearchParams.member_added,
+    resolvedSearchParams.member_removed,
+  ].join("|");
+
   return (
     <>
       <Nav userName={user.name} isAdmin={admin} />
@@ -321,6 +332,8 @@ export default async function ProjectPage({
           </div>
         </div>
 
+        <ProjectUnsavedGuard projectId={project.id} resetKey={unsavedResetKey}>
+        <div id={`project-page-${project.id}`}>
         {(tab === "apartments" || tab === "archived") && (
           <>
             {tab === "archived" && archiveReasonStats.length > 0 && (
@@ -671,6 +684,8 @@ export default async function ProjectPage({
             events={calendarEvents}
           />
         )}
+        </div>
+        </ProjectUnsavedGuard>
       </main>
       <Footer />
     </>

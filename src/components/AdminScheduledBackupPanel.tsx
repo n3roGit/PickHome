@@ -211,9 +211,15 @@ export function AdminScheduledBackupPanel() {
         <p className="text-sm text-pn-text-secondary">Lade Einstellungen…</p>
       ) : (
         <>
-          <form onSubmit={handleSave} className="space-y-4 border-b border-pn-border pb-4 mb-4">
+          <form
+            onSubmit={handleSave}
+            className="space-y-4 border-b border-pn-border pb-4 mb-4"
+            data-unsaved-track
+            data-unsaved-label="Auto-Backup"
+          >
             <label className="flex items-center gap-2 text-sm">
               <input
+                name="enabled"
                 type="checkbox"
                 checked={settings.enabled}
                 onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })}
@@ -241,6 +247,7 @@ export function AdminScheduledBackupPanel() {
                   />
                   <span>:</span>
                   <input
+                    name="minute"
                     type="number"
                     min={0}
                     max={59}
@@ -257,6 +264,7 @@ export function AdminScheduledBackupPanel() {
               <label className="text-sm">
                 <span className="block mb-1 text-pn-text-secondary">Backups behalten</span>
                 <input
+                  name="retainCount"
                   type="number"
                   min={1}
                   max={365}
@@ -272,6 +280,7 @@ export function AdminScheduledBackupPanel() {
               <label className="text-sm sm:col-span-1">
                 <span className="block mb-1 text-pn-text-secondary">Unterverzeichnis (optional)</span>
                 <input
+                  name="directory"
                   type="text"
                   value={settings.directory}
                   placeholder="backups"

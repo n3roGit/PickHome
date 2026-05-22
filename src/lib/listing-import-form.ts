@@ -19,8 +19,10 @@ export const LISTING_PREVIEW_FIELD_LABELS: Record<ListingPreviewFieldKey, string
   brokerInvolved: "Makler",
 };
 
+import { UNSAVED_SECTION_CLASS } from "@/lib/unsaved-guard";
+
+export { UNSAVED_SECTION_CLASS };
 export const PREFILLED_FIELD_CLASS = "pn-field-prefilled";
-export const UNSAVED_SECTION_CLASS = "pn-section-unsaved";
 
 export function apartmentBasicsFormId(apartmentId: string) {
   return `apartment-basics-${apartmentId}`;
