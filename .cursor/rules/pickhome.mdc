@@ -61,7 +61,16 @@ Existing backfills: `sizeSqm` ← description/notes (`src/lib/backfill-size-sqm.
 
 ## Git workflow
 
-- Commit and push when the user asks or after completing a feature batch.
+- **Incremental commits:** After each completed logical unit of work, create one focused commit — do not batch unrelated changes. Typical split:
+  - `feat:` — new behavior or UI capability
+  - `fix:` — bug fix
+  - `refactor:` — behavior-preserving restructuring
+  - `test:` — tests only
+  - `docs:` — documentation / checklist only
+  - `chore:` — tooling, deps, CI, scripts without product behavior change
+- One concern per commit (e.g. schema + backfill + tests for one field can stay together; a separate fix in another area gets its own commit).
+- Commit messages in English; explain the *why* in one short sentence.
+- **Push** only when the user explicitly asks.
 - Do not force-push `main` unless explicitly requested.
 - Do not amend commits that were already pushed.
 
