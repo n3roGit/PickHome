@@ -115,6 +115,111 @@ describe("scoring integration", () => {
     await prisma.$disconnect();
   });
 
+  it("checklist status does not change apartment score", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const criteria = await seedScoringTestCriteria(prisma, project.id);
+    const apartment = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Checklist only" },
+    });
+
+    const group = await prisma.criterionGroup.findFirstOrThrow({ where: { projectId: project.id } });
+    const item = await prisma.checklistItem.create({
+      data: {
+        projectId: project.id,
+        criterionGroupId: group.id,
+        criterionId: criteria[0].id,
+        name: "Checklist probe",
+        sortOrder: 0,
+      },
+    });
+    await prisma.checklistEntry.create({
+      data: { apartmentId: apartment.id, itemId: item.id, status: "ok", note: "Fine" },
+    });
+
+    const loaded = await prisma.apartment.findUniqueOrThrow({
+      where: { id: apartment.id },
+      include: { ratings: true },
+    });
+    expect(apartmentScore([...criteria], loaded.ratings, user.id).rated).toBe(0);
+    expect(apartmentScore([...criteria], loaded.ratings, user.id).score).toBe(0);
+    await prisma.$disconnect();
+  });
+
+  it("null rating row is skipped like unrated", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const criteria = await seedScoringTestCriteria(prisma, project.id);
+    const [mustHave, nice] = criteria;
+    const apartment = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Null row" },
+    });
+
+    await prisma.rating.create({
+      data: {
+        apartmentId: apartment.id,
+        criterionId: mustHave.id,
+        userId: user.id,
+        score: null,
+      },
+    });
+    await prisma.rating.create({
+      data: {
+        apartmentId: apartment.id,
+        criterionId: nice.id,
+        userId: user.id,
+        score: 7,
+      },
+    });
+
+    const loaded = await prisma.apartment.findUniqueOrThrow({
+      where: { id: apartment.id },
+      include: { ratings: true },
+    });
+    const result = apartmentScore([...criteria], loaded.ratings, user.id);
+    expect(result.rated).toBe(1);
+    expect(result.score).toBe(70);
+    await prisma.$disconnect();
+  });
+
+  it("three members keep independent scores on one apartment", async () => {
+    const prisma = createTestPrisma();
+    const owner = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const p2 = await createTestPartner(prisma, "member2");
+    const p3 = await createTestPartner(prisma, "member3");
+    const project = await createTestProject(prisma, owner.id);
+    await addTestProjectMember(prisma, project.id, p2.id);
+    await addTestProjectMember(prisma, project.id, p3.id);
+    const criteria = await seedScoringTestCriteria(prisma, project.id);
+    const [mustHave, nice] = criteria;
+    const apartment = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Three voters" },
+    });
+
+    await prisma.rating.createMany({
+      data: [
+        { apartmentId: apartment.id, criterionId: mustHave.id, userId: owner.id, score: 10 },
+        { apartmentId: apartment.id, criterionId: nice.id, userId: owner.id, score: 10 },
+        { apartmentId: apartment.id, criterionId: mustHave.id, userId: p2.id, score: 3 },
+        { apartmentId: apartment.id, criterionId: nice.id, userId: p2.id, score: 10 },
+        { apartmentId: apartment.id, criterionId: nice.id, userId: p3.id, score: 5 },
+      ],
+    });
+
+    const loaded = await prisma.apartment.findUniqueOrThrow({
+      where: { id: apartment.id },
+      include: { ratings: true },
+    });
+
+    expect(apartmentScore([...criteria], loaded.ratings, owner.id).score).toBe(100);
+    expect(apartmentScore([...criteria], loaded.ratings, p2.id).dealbreaker).toBe(true);
+    expect(apartmentScore([...criteria], loaded.ratings, p3.id).rated).toBe(1);
+    expect(apartmentScore([...criteria], loaded.ratings, p3.id).score).toBe(50);
+    await prisma.$disconnect();
+  });
+
   it("scores two apartments with different ratings for ranking", async () => {
     const prisma = createTestPrisma();
     const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
