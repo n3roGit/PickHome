@@ -1,5 +1,8 @@
+import { searchDuckDuckGoWeb } from "@/lib/duckduckgo-web-search";
 import {
+  getEffectiveWebSearchProvider,
   getWebSearchClientConfig,
+  isWebSearchGloballyDisabled,
   type WebSearchProvider,
 } from "@/lib/web-search-settings";
 
@@ -103,17 +106,47 @@ async function searchBrave(apiKey: string, query: string): Promise<WebSearchResu
   }
 }
 
+async function searchDuckDuckGo(query: string): Promise<WebSearchResult> {
+  const result = await searchDuckDuckGoWeb(query, { maxResults: WEB_SEARCH_MAX_RESULTS });
+  if (!result.ok) {
+    return result;
+  }
+  const hits = result.hits.map((hit) => ({
+    ...hit,
+    snippet: truncateSnippet(hit.snippet),
+  }));
+  return { ok: true, hits, provider: "duckduckgo" };
+}
+
 export async function runWebSearch(query: string): Promise<WebSearchResult> {
   const trimmed = query.trim();
   if (!trimmed) {
     return { ok: false, error: "empty_query" };
   }
-  const config = await getWebSearchClientConfig();
-  if (!config) {
+  if (isWebSearchGloballyDisabled()) {
     return { ok: false, error: "not_configured" };
   }
-  if (config.provider === "brave") {
-    return searchBrave(config.apiKey, trimmed);
+
+  const provider = await getEffectiveWebSearchProvider();
+  if (provider === "duckduckgo") {
+    return searchDuckDuckGo(trimmed);
   }
-  return searchTavily(config.apiKey, trimmed);
+
+  const config = await getWebSearchClientConfig();
+  if (!config) {
+    return searchDuckDuckGo(trimmed);
+  }
+  if (config.provider === "brave") {
+    const paid = await searchBrave(config.apiKey, trimmed);
+    if (paid.ok) return paid;
+    const fallback = await searchDuckDuckGo(trimmed);
+    if (fallback.ok) return fallback;
+    return paid;
+  }
+
+  const paid = await searchTavily(config.apiKey, trimmed);
+  if (paid.ok) return paid;
+  const fallback = await searchDuckDuckGo(trimmed);
+  if (fallback.ok) return fallback;
+  return paid;
 }

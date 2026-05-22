@@ -24,7 +24,7 @@ export function AdminLlmPanel() {
   const [apiKey, setApiKey] = useState("");
   const [clearApiKey, setClearApiKey] = useState(false);
   const [webSearchApiKeyConfigured, setWebSearchApiKeyConfigured] = useState(false);
-  const [webSearchProvider, setWebSearchProvider] = useState("tavily");
+  const [webSearchProvider, setWebSearchProvider] = useState("duckduckgo");
   const [webSearchApiKey, setWebSearchApiKey] = useState("");
   const [clearWebSearchApiKey, setClearWebSearchApiKey] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,7 @@ export function AdminLlmPanel() {
       setApiKey("");
       setClearApiKey(false);
       setWebSearchApiKeyConfigured(Boolean(data.webSearchApiKeyConfigured));
-      setWebSearchProvider(data.webSearchProvider ?? "tavily");
+      setWebSearchProvider(data.webSearchProvider ?? "duckduckgo");
       setWebSearchApiKey("");
       setClearWebSearchApiKey(false);
     } catch {
@@ -142,7 +142,7 @@ export function AdminLlmPanel() {
       setApiKey("");
       setClearApiKey(false);
       setWebSearchApiKeyConfigured(Boolean(data.webSearchApiKeyConfigured));
-      setWebSearchProvider(data.webSearchProvider ?? "tavily");
+      setWebSearchProvider(data.webSearchProvider ?? "duckduckgo");
       setWebSearchApiKey("");
       setClearWebSearchApiKey(false);
       setMessage("KI-Anbindung gespeichert.");
@@ -319,18 +319,18 @@ export function AdminLlmPanel() {
           </label>
 
           <div className="border-t border-pn-border pt-4">
-            <h3 className="font-semibold text-sm mb-1">Web-Recherche (optional)</h3>
+            <h3 className="font-semibold text-sm mb-1">Web-Recherche</h3>
             <p className="text-xs text-pn-text-secondary mb-3">
-              Ermöglicht dem Exposé-Assistenten Internet-Recherche (z. B. Sanierungskosten).
-              Provider über Umgebungsvariable{" "}
-              <span className="font-mono">PICKHOME_WEB_SEARCH_PROVIDER</span> (
-              <span className="font-mono">tavily</span> oder <span className="font-mono">brave</span>
-              , Standard: tavily). Alternativ API-Schlüssel per{" "}
-              <span className="font-mono">PICKHOME_WEB_SEARCH_API_KEY</span> in der Umgebung.
+              Standard: DuckDuckGo (kein API-Schlüssel). Der Immobilien-Assistent kann damit
+              öffentliche Quellen nutzen (z. B. Sanierungskosten). Optional Tavily oder Brave über{" "}
+              <span className="font-mono">PICKHOME_WEB_SEARCH_PROVIDER</span> plus API-Schlüssel
+              unten oder <span className="font-mono">PICKHOME_WEB_SEARCH_API_KEY</span> in der
+              Umgebung. Deaktivieren: <span className="font-mono">PICKHOME_WEB_SEARCH=0</span>.
+              Aktuell: <span className="font-mono">{webSearchProvider}</span>.
             </p>
             <label className="block text-sm">
               <span className="block mb-1 text-pn-text-secondary">
-                Web-Recherche API-Schlüssel ({webSearchProvider})
+                Optional: API-Schlüssel für Tavily/Brave
               </span>
               <input
                 name="webSearchApiKey"

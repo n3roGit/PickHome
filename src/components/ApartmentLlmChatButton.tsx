@@ -107,8 +107,8 @@ export function ApartmentLlmChatButton({
                   Immobilien-Assistent
                 </h2>
                 <p className="text-xs text-pn-text-secondary mt-1">
-                  Nutzt Immobiliendaten und Dokumente; bei konfigurierter Web-Recherche auch
-                  öffentliche Quellen. Bei Unklarheiten fragt die KI nach — keine erfundenen Fakten.
+                  Nutzt Immobiliendaten und Dokumente; optional Web-Recherche (DuckDuckGo).
+                  Bei Unklarheiten fragt die KI nach — keine erfundenen Fakten.
                 </p>
               </div>
               <button

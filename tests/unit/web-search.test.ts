@@ -18,11 +18,12 @@ describe("formatWebSearchHitsForLlm", () => {
 });
 
 describe("parseWebSearchProvider", () => {
-  it("defaults to tavily", () => {
-    expect(parseWebSearchProvider(undefined)).toBe("tavily");
+  it("defaults to duckduckgo", () => {
+    expect(parseWebSearchProvider(undefined)).toBe("duckduckgo");
   });
 
-  it("accepts brave", () => {
+  it("accepts tavily and brave", () => {
+    expect(parseWebSearchProvider("tavily")).toBe("tavily");
     expect(parseWebSearchProvider("brave")).toBe("brave");
   });
 });
