@@ -318,6 +318,7 @@ Admin tabs currently expected:
 - Saved backup list shows available actions if backups exist.
 - Timezone selection shows a valid IANA timezone value.
 - LLM settings show base URL, model, system prompt, masked token handling, save action, restore default prompt action, and connection test where configured.
+- Web-Recherche section states **DuckDuckGo** as default (no API key required); optional Tavily/Brave API key field; current provider label visible (`duckduckgo`, `tavily`, or `brave` from env).
 
 #### Negative cases
 
@@ -802,6 +803,13 @@ Optional: `evaluate_script` → `fetch('/api/apartments/<id>/llm/extract', { met
 3. Wait for **Wird ausgewertet…** → enabled **Immobilie hinzufügen**.
 4. Confirm quick-add fields populated; message lists marked fields.
 5. Submit **Immobilie hinzufügen** on disposable project or cancel after snapshot.
+
+#### Web search (KI-Assistent tool `web_search`)
+
+- **Default:** DuckDuckGo HTML search — works without `PICKHOME_WEB_SEARCH_API_KEY`; disable with `PICKHOME_WEB_SEARCH=0`.
+- **Optional:** `PICKHOME_WEB_SEARCH_PROVIDER=tavily|brave` plus API key (admin or env); falls back to DuckDuckGo on API failure.
+- When LLM chat is configured, assistant modal mentions Web-Recherche (DuckDuckGo); `webSearchEnabled` true unless globally disabled.
+- MCP smoke (when LLM + disposable apartment with notes/URL): open **KI** on apartment detail, ask a question that needs external context (e.g. typical renovation cost range for a given size) — answer should cite web sources or state search failed; no uncaught error. Network: chat route 200; tool round may call DuckDuckGo (no third-party API key in admin).
 
 #### Must always hold
 
