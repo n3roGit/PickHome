@@ -47,11 +47,10 @@ function pickDraftFieldValues(
   fields: ListingPreviewFields,
   keys: ListingPreviewFieldKey[]
 ): ListingPreviewFields {
-  const picked: ListingPreviewFields = {};
-  for (const key of keys) {
-    if (fields[key] !== undefined) picked[key] = fields[key];
-  }
-  return picked;
+  return keys.reduce<ListingPreviewFields>((picked, key) => {
+    if (fields[key] === undefined) return picked;
+    return { ...picked, [key]: fields[key] } as ListingPreviewFields;
+  }, {});
 }
 
 export function pruneApartmentListingDraft(
