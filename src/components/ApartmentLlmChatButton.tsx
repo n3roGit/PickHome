@@ -144,7 +144,9 @@ export function ApartmentLlmChatButton({
                 </div>
               ))}
               {loading && (
-                <p className="text-sm text-pn-text-tertiary">Denkt nach…</p>
+                <p className="text-sm text-pn-text-tertiary italic" aria-live="polite">
+                  tippt…
+                </p>
               )}
             </div>
 

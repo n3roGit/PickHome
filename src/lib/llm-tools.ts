@@ -40,6 +40,33 @@ export function parseWebSearchToolArgs(raw: string): { query: string } | null {
   }
 }
 
+/** Some models emit tool intent as plain JSON in message content instead of tool_calls. */
+export function parseInlineWebSearchRequest(content: string): { query: string } | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("{")) return null;
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    const marker = String(parsed.type ?? parsed.name ?? parsed.function ?? "").toLowerCase();
+    if (marker === LLM_WEB_SEARCH_TOOL_NAME || marker === "web_search") {
+      const direct = typeof parsed.query === "string" ? parsed.query.trim() : "";
+      if (direct) return { query: direct };
+      const args = parsed.arguments;
+      if (args && typeof args === "object" && !Array.isArray(args)) {
+        const nested = (args as { query?: unknown }).query;
+        if (typeof nested === "string" && nested.trim()) return { query: nested.trim() };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function syntheticToolCallId(round: number): string {
+  return `inline-web-search-${round}`;
+}
+
 async function executeWebSearchTool(args: Record<string, unknown>): Promise<string> {
   const query = typeof args.query === "string" ? args.query.trim() : "";
   if (!query) {
@@ -90,11 +117,27 @@ export async function runLlmChatWithOptionalWebSearch(
     }
 
     const assistant = result.message;
-    const toolCalls = assistant.tool_calls ?? [];
+    let toolCalls = assistant.tool_calls ?? [];
+    const content = assistant.content?.trim() ?? "";
+
     if (toolCalls.length === 0) {
-      const content = assistant.content?.trim();
-      if (!content) return { ok: false, error: "empty_response" };
-      return { ok: true, content, webSearchUsed };
+      const inline = parseInlineWebSearchRequest(content);
+      if (inline) {
+        toolCalls = [
+          {
+            id: syntheticToolCallId(round),
+            type: "function",
+            function: {
+              name: LLM_WEB_SEARCH_TOOL_NAME,
+              arguments: JSON.stringify({ query: inline.query }),
+            },
+          },
+        ];
+      } else if (!content) {
+        return { ok: false, error: "empty_response" };
+      } else {
+        return { ok: true, content, webSearchUsed };
+      }
     }
 
     transcript.push({

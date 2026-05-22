@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Apartment KI chat: inline `web_search` JSON from the model is executed server-side; loading label **tippt…** instead of raw tool payloads in the bubble.
+
 ## [1.3.0](https://github.com/n3roGit/PickHome/releases/tag/v1.3.0) (2026-05-22)
 
 ### Features

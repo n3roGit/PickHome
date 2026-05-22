@@ -226,7 +226,7 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, rating, archive/delete controls, commute, checklist links | Save or controlled no-op, no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Finanzen**, **KI** chat, rating (—/0–10), archive/delete, commute, checklist | Save or controlled no-op; chat shows **tippt…** and prose answers; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status slider, notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
@@ -678,7 +678,7 @@ calendar
 - Auto-Fill marks newly filled inputs with green highlight (`pn-field-prefilled`); after **Preis & Adresse** save, highlights are cleared (including Hausgeld/Heizkosten/Grundsteuer/Sanierung).
 - Auto-Fill does **not** persist to the database by itself.
 - Notes and description sections can be expanded and saved.
-- Purchase cost and financing section reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set).
+- Collapsible section **Finanzen** (formerly „Kaufnebenkosten & Finanzierung“) reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set); Makler checkbox with **Übernehmen** lives here.
 - Commute section shows per-member travel data where account addresses exist.
 - Company car and commuter allowance information appears when configured.
 - Image, camera, and exposé upload inputs accept supported file types and reject unsupported file types.
@@ -687,8 +687,10 @@ calendar
 - Opinion differences appear when multiple members rated shared criteria.
 - Criteria sliders: leftmost **—** = not rated (slider `min=-1`, distinct from score **0**); scale labels `— · 0 · 5 · 10`; setting **—** clears the rating in the DB; value label shows **—** when unrated.
 - Criteria sliders can be changed (0–10) and persisted.
+- Toolbar **KI** (Immobilien-Assistent) visible only when Admin → KI is configured (`isLlmConfigured`); see §12.18.
 - Checklist blocks appear under criteria that are part of the checklist.
 - Custom checklist-only items appear in a separate checklist section where configured.
+- Toolbar **KI** opens Immobilien-Assistent (see §12.18).
 
 #### Negative cases
 
@@ -766,9 +768,9 @@ This section is the **browser contract** for listing/Auto-Fill behavior. API det
 | Price, address, size, plot, energy | Preis & Adresse | Yes |
 | Hausgeld, Heizkosten, Grundsteuer, Sanierung | Preis & Adresse (cost row) | Yes |
 | Description | Beschreibung section | Yes |
-| Broker involved | Kaufnebenkosten (checkbox); hint to use „Übernehmen“ there | Yes |
+| Broker involved | **Finanzen** (checkbox); hint to use „Übernehmen“ there | Yes |
 
-Makler is **not** auto-saved with Preis & Adresse — UI tells user to confirm under financing.
+Makler is **not** auto-saved with Preis & Adresse — UI tells user to confirm under **Finanzen**.
 
 #### Portal / provider expectations (browser)
 
@@ -806,13 +808,6 @@ Optional: `evaluate_script` → `fetch('/api/apartments/<id>/llm/extract', { met
 4. Confirm quick-add fields populated; message lists marked fields.
 5. Submit **Immobilie hinzufügen** on disposable project or cancel after snapshot.
 
-#### Web search (KI-Assistent tool `web_search`)
-
-- **Default:** DuckDuckGo HTML search — works without `PICKHOME_WEB_SEARCH_API_KEY`; disable with `PICKHOME_WEB_SEARCH=0`.
-- **Optional:** `PICKHOME_WEB_SEARCH_PROVIDER=tavily|brave` plus API key (admin or env); falls back to DuckDuckGo on API failure.
-- When LLM chat is configured, assistant modal mentions Web-Recherche (DuckDuckGo); `webSearchEnabled` true unless globally disabled.
-- MCP smoke (when LLM + disposable apartment with notes/URL): open **KI** on apartment detail, ask a question that needs external context (e.g. typical renovation cost range for a given size) — answer should cite web sources or state search failed; no uncaught error. Network: chat route 200; tool round may call DuckDuckGo (no third-party API key in admin).
-
 #### Must always hold
 
 - Admin LLM settings can be saved when valid; connection test shows controlled success or failure.
@@ -840,7 +835,57 @@ Optional: `evaluate_script` → `fetch('/api/apartments/<id>/llm/extract', { met
 - Snapshots: toolbar loading state, filled form, save redirect query, reload
 - No console errors
 
-### 12.18 Backup export and restore
+### 12.18 Immobilien-Assistent (KI chat)
+
+Toolbar button **KI** opens modal dialog (`ApartmentLlmChatButton`). API: `POST /api/apartments/<apartmentId>/llm/chat` with `{ message, history }`. Server uses `runLlmChatWithOptionalWebSearch` (DuckDuckGo default).
+
+#### Prerequisites (browser)
+
+- Admin → **KI**: Basis-URL, API-Token, and model saved; **Verbindung testen** succeeds.
+- Without configuration, toolbar **KI** is **not rendered** (not merely disabled) — skip chat steps and record `llm_not_configured` in session notes.
+- Disposable apartment with notes, description, and/or indexed PDF (`hasSourceText`).
+
+#### Must always hold
+
+- **KI** disabled when apartment has no source text (no PDF index / description / notes); enabled otherwise.
+- Modal title **Immobilien-Assistent**; subtitle mentions optional Web-Recherche (DuckDuckGo).
+- While request runs: visible **„tippt…“** in the message area (`aria-live="polite"`); input and **Senden** disabled.
+- After response: **„tippt…“** disappears; assistant reply is normal German prose (no raw tool JSON).
+- Answers must **not** show bare payloads like `{"type":"web_search","query":"…"}` — if the model emits that shape, server runs DuckDuckGo and returns a summarized answer instead.
+- Property-only questions (e.g. „Was steht in den Notizen zur Energieklasse?“) answer from apartment context without requiring web search.
+- Web-research questions (e.g. „Wie ist der Stadtteil …?“, „typische Sanierungskosten …?“) return a substantive answer **or** a controlled failure message (timeout, no results) — never an uncaught error or Next.js overlay.
+- `POST …/llm/chat` returns **200** with `{ ok: true, answer, webSearchEnabled, webSearchUsed }` when LLM is configured; `webSearchUsed` may be true after external questions.
+- Chat history in modal: last user + assistant turns visible; errors show in red banner without corrupting prior turns.
+
+#### MCP procedure
+
+1. Open disposable apartment with notes/description (or indexed PDF).
+2. Click toolbar **KI** — modal opens, no console errors.
+3. Ask a **property-only** question → answer references on-page data; **tippt…** visible during wait.
+4. Ask a **web** question (district quality, market norms) → wait for **tippt…** → answer in prose with sources/domains or explicit „keine Treffer“ / failure; **no** JSON tool bubble.
+5. Optional DevTools: `POST /api/apartments/<id>/llm/chat` status 200; response JSON has string `answer`, not a JSON object as the only content.
+6. Close modal with **×**; reopen — prior turns still visible in session until page reload.
+
+#### Negative cases
+
+- `llm_not_configured` → 503, German error in modal
+- `no_source_text` → **KI** button disabled
+- Empty message → no request
+- `PICKHOME_WEB_SEARCH=0` → answers from property data only (no web claims)
+
+#### Web search configuration (reference)
+
+- **Default:** DuckDuckGo HTML — no `PICKHOME_WEB_SEARCH_API_KEY`.
+- **Optional:** `PICKHOME_WEB_SEARCH_PROVIDER=tavily|brave` + API key; fallback to DuckDuckGo on API failure.
+- Admin **KI** tab documents DuckDuckGo default and optional paid providers.
+
+#### Evidence
+
+- Snapshot: modal with **tippt…** (mid-request) and with final assistant answer
+- Network: `llm/chat` 200
+- Console: no errors
+
+### 12.19 Backup export and restore
 
 #### Must always hold
 
@@ -867,7 +912,7 @@ Optional: `evaluate_script` → `fetch('/api/apartments/<id>/llm/extract', { met
 - Restore result on synthetic backup only
 - Console check
 
-### 12.19 Mobile viewport
+### 12.20 Mobile viewport
 
 Recommended viewport:
 
@@ -954,6 +999,7 @@ Keep these regression cases active. They are derived from previously observed is
 | Area mode mutation affects shared data | Wunschgebiet and NoGo mode changes must be reverted or performed only on disposable projects |
 | LLM not configured | LLM chat and extract actions must show controlled not-configured state |
 | LLM configured | Save, connection test, chat, and extraction must complete or fail with controlled UI feedback |
+| KI chat inline web_search JSON | Model must not leave `{"type":"web_search",…}` in the chat bubble; server parses and runs DuckDuckGo; user sees **tippt…** then prose |
 | Listing provider blocked | UI must show controlled provider failure, not crash |
 | Unsaved price or address edits | Navigation must warn about unsaved changes where implemented |
 | Prisma schema changed | `npx prisma generate`, `npm run db:push`, `npm test`, and browser apartment page must pass |
@@ -991,6 +1037,7 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] Map tab passed if address, PLZ, district, coordinate, or overlay code changed
 [ ] Calendar tab and iCal URL passed if viewing, timezone, env, or route code changed
 [ ] LLM/listing flow passed if import, PDF, or LLM code changed
+[ ] KI chat passed if `ApartmentLlmChatButton`, `llm/chat`, or `llm-tools` changed (**tippt…**, no raw `web_search` JSON, web answer in prose)
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
 [ ] Auto-Fill save + reload verified on disposable apartment
 [ ] Viewing schedule warnings checked if calendar/viewing code changed
