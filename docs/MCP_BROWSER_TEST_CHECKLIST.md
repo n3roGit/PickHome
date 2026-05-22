@@ -17,7 +17,8 @@ This guide verifies that the most important PickHome user journeys work in the b
 - Scoring, criteria, checklist, team ratings, compare view
 - Map, area filters, geocoding, overlays, and Street View links
 - Calendar and iCal feed URLs
-- Listing import, PDF context, and LLM assisted features
+- Listing import (project quick-add and apartment Auto-Fill), PDF context, portal-specific extract outcomes, and LLM assisted features
+- Viewing schedule conflict warnings (upcoming viewings)
 - Backup UI and synthetic restore paths
 - Mobile usability
 
@@ -121,7 +122,7 @@ Reliable regression testing requires predictable data. Use one of these profiles
 | `rich` | Main regression profile | Admin, two regular users, at least two projects, multiple apartments, criteria, team ratings, checklist points, notes, viewings, map data |
 | `map` | Area and geocoding regression | Project with apartments in and outside Wunschgebiet or NoGo zones, saved PLZ, district data, coordinates |
 | `calendar` | Calendar and iCal regression | Future and past viewings, at least two apartments, stable app timezone |
-| `llm` | Listing import and LLM regression | LLM settings, one listing URL, one PDF exposé, one apartment with empty fields, one apartment with existing fields |
+| `llm` | Listing import and LLM regression | LLM settings; apartments covering: (a) readable non-bot listing URL, (b) bot-blocked major portal URL with data already in DB, (c) broker landing-page URL, (d) PDF exposé only (no URL), (e) URL + PDF, (f) partially filled fields for `onlyEmpty` checks |
 | `backup` | Backup export and restore | Synthetic database, uploads, PDFs, backup ZIP, no real data |
 | `mobile` | Responsive UI smoke | Same as `minimal` or `rich`, tested at a narrow viewport |
 
@@ -138,6 +139,10 @@ Discover targets dynamically:
 - **Apartment for team ratings:** Prefer an apartment rated by more than one project member.
 - **Project with area filter:** Prefer a project with saved Wunschgebiet or NoGo PLZ entries.
 - **Project with LLM data:** Prefer a project containing one apartment with PDF or listing URL test data.
+- **Apartment for Auto-Fill (empty fields):** Prefer an apartment with a saved listing URL and at least one empty field in „Preis & Adresse“ (for example Grundstück m² or Beschreibung) so `onlyEmpty` behavior is observable.
+- **Apartment for Auto-Fill (blocked portal):** Prefer an apartment whose listing URL points to a major portal known to block server-side fetch; expect controlled `fetch_failed` UI, not a crash.
+- **Apartment for PDF-only extract:** Prefer an apartment with an uploaded PDF exposé and no listing URL; note whether extract returns fields or `no_fields` (depends on PDF text quality).
+- **Two apartments with upcoming viewings same day:** Prefer two geocoded apartments with future viewing times less than travel gap apart to exercise schedule conflict warnings.
 
 Do not copy runtime IDs into this file. Session-specific notes may say "project with two apartments" or "apartment with viewings", but not UUIDs or real addresses.
 
@@ -186,10 +191,11 @@ Use this sequence so authentication, project context, and data dependencies rema
 11. Mutating feature checks on disposable data
 12. Calendar and iCal
 13. Map and area filters
-14. LLM and listing import if configured
-15. Mobile viewport
-16. Optional backup export, restore, TOTP full activation
-17. Session note
+14. LLM and listing import if configured (project quick-add **and** apartment Auto-Fill; see §12.17)
+15. Viewing schedule conflict warnings if calendar or viewing code changed (see §12.14)
+16. Mobile viewport
+17. Optional backup export, restore, TOTP full activation
+18. Session note
 
 ## 10. Preflight checklist
 
@@ -225,7 +231,8 @@ Confirm:
 | Compare | Select 2 or more apartments | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
 | Calendar | Upcoming and past viewings, iCal URL | URL host/port correct, no crash |
-| LLM/listing | Configured and not configured states | Controlled 200, 4xx, or 503 behavior with user-friendly UI |
+| LLM/listing | Configured and not configured states; project import + apartment Auto-Fill on ≥2 portal types | Controlled success/partial/failure; `onlyEmpty` respected; save persists after reload |
+| Viewing conflicts | Two upcoming viewings same day, tight schedule | Warning on apartment detail (upcoming only) and project calendar (upcoming only); past section has no warnings |
 | Mobile | Narrow viewport navigation and one project flow | No unusable horizontal overflow |
 
 ## 12. Feature contracts
@@ -406,6 +413,9 @@ calendar
 - Area badges reflect Wunschgebiet or NoGo mode when configured.
 - Add-apartment form exists.
 - Listing preview/import handles success and controlled failure.
+- „Inserat-URL“ + „Daten automatisch füllen“ on the add form calls `POST /api/listing/preview` and prefills **empty** quick-add fields only (`onlyEmpty: true`): title, price, size, plot (if returned), energy class, address, broker checkbox; optional description textarea when returned.
+- While import runs, button shows „Wird ausgewertet…“ (or equivalent) and submit is disabled; after completion a short success line lists which fields were marked.
+- User must click „Immobilie hinzufügen“ to persist; import alone does not create an apartment.
 
 #### Negative cases
 
@@ -416,13 +426,16 @@ calendar
 - Invalid listing URL
 - Provider blocks listing read
 - Area filter configured but address has no coordinates
+- Import clicked without URL
+- Import on blocked portal URL (controlled failure message, form stays submittable manually)
 
 #### Evidence
 
 - Snapshot of list
 - Snapshot after search
 - Snapshot after sorting
-- Controlled listing import result if tested
+- Snapshot of add form after successful import (filled fields visible)
+- Optional: create apartment on disposable data and open detail to confirm listing URL saved
 - Console check
 
 ### 12.7 Archiv tab
@@ -627,11 +640,20 @@ calendar
 - Timezone changed in admin settings
 - Duplicate viewing rows in data
 
+#### Viewing schedule conflicts (when ≥2 upcoming viewings exist)
+
+- Warnings are computed per project day for **upcoming** viewings only (`onlyUpcoming` default).
+- Same-day pair with gap shorter than travel time + buffer (or overlap) shows German warning text referencing the other apartment title.
+- Warnings appear under **Kommende** / **Anstehend** viewings on apartment detail and under **Kommende Termine** on the project calendar tab.
+- **Vergangen** / past viewing lists must pass empty `scheduleWarnings` (no conflict banners on past appointments).
+- Warning kinds include overlap and „Anschluss zu knapp“ (tight connection); message mentions gap minutes and estimated travel when coordinates exist.
+
 #### Evidence
 
 - Snapshot
 - iCal URL text
 - Optional feed request status
+- Snapshot of calendar upcoming row with warning when test data allows
 - Console check
 
 ### 12.15 Apartment detail
@@ -646,7 +668,13 @@ calendar
 - Price and address section supports edit and save, including optional cost fields (Hausgeld, Heizkosten, Grundsteuer, Sanierung).
 - Geocoding action works for this address or returns a controlled failure.
 - Street View link is available when coordinates or a resolvable address exist.
-- Listing URL section can be expanded and saved.
+- Listing URL section can be expanded and saved; URL input uses full width of the section (same row as save button, `flex` layout).
+- Toolbar **Auto-Fill** button (`ApartmentAutoFillButton`) is visible when LLM/listing features are in scope.
+- While Auto-Fill runs in the toolbar: label **„wird verarbeitet“**, button keeps **minimum width** (~9.5rem), no extra status paragraph under the toolbar (status in `title` / tooltip only).
+- Auto-Fill calls `POST /api/apartments/<apartmentId>/llm/extract` with URL from the listing URL input (unsaved input counts) or saved DB URL.
+- Auto-Fill applies preview fields with **`onlyEmpty: true`** (does not overwrite user-edited or already filled inputs).
+- After successful Auto-Fill, user must **save** each section: „Speichern“ under **Preis & Adresse** (redirect may include `?basics_saved=1`), separate save for **Beschreibung** and **Notizen** if changed.
+- Auto-Fill does **not** persist to the database by itself.
 - Notes and description sections can be expanded and saved.
 - Purchase cost and financing section reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set).
 - Commute section shows per-member travel data where account addresses exist.
@@ -677,7 +705,8 @@ calendar
 - Snapshot at top of page
 - Snapshot of expanded critical sections
 - Save result or validation state
-- Reload after one persisted mutation on disposable data
+- Reload after one persisted mutation on disposable data (for example empty Grundstück filled by Auto-Fill, then **Preis & Adresse** saved — value still present after reload)
+- Auto-Fill toolbar `title` includes field list and warnings when non-toolbar mode would show message text
 - Console check
 
 ### 12.16 Checklist fill page
@@ -716,34 +745,88 @@ URL pattern:
 
 ### 12.17 Listing import and LLM assisted extraction
 
+This section is the **browser contract** for listing/Auto-Fill behavior. API details live in `src/lib/apartment-listing-import.ts`, `src/lib/listing-import-form.ts`, and `POST /api/apartments/{id}/llm/extract`.
+
+#### Data sources (priority)
+
+1. **Listing URL** — `fetchListingPreview` (HTML scrape + optional LLM).
+2. **PDF exposé** on the apartment — text from uploaded documents; merged when URL fails or to enrich fields.
+3. If URL fetch fails **and** PDF text is shorter than ~80 characters → controlled error (no crash).
+4. If URL is missing: extract may still run from PDF alone when enough text is present; otherwise `no_source` / `no_fields`.
+
+#### Fields touched by import / Auto-Fill
+
+| Field / area | Form location | `onlyEmpty` on Auto-Fill |
+|---|---|---|
+| Title | Anzeigename | Yes |
+| Price, address, size, plot, energy | Preis & Adresse | Yes |
+| Hausgeld, Heizkosten, Grundsteuer, Sanierung | Preis & Adresse (cost row) | Yes |
+| Description | Beschreibung section | Yes |
+| Broker involved | Kaufnebenkosten (checkbox); hint to use „Übernehmen“ there | Yes |
+
+Makler is **not** auto-saved with Preis & Adresse — UI tells user to confirm under financing.
+
+#### Portal / provider expectations (browser)
+
+Test **at least two** readable provider categories per release when LLM/listing code changes. Do not document real URLs in session notes; use UI-discovered links.
+
+| Provider category | Typical browser outcome | Notes |
+|---|---|---|
+| Readable aggregator / classifieds (e.g. immobilien.de-style) | Extract OK; price, size, energy often filled | Address may be incomplete (Ort/PLZ only) — user should correct before save |
+| Broker agency detail page | Extract OK with PDF warning common | PDF regex fallback when LLM PDF step fails |
+| Landing-page exposé host (e.g. `*.landingpage.immobilien`) | Extract OK; address often partial | Plot/description may come from PDF merge (values can differ from web snippet) |
+| Major portal with bot protection (e.g. ImmobilienScout24, Kleinanzeigen) | **`fetch_failed`** / „Seite nicht lesbar“ | Accepted external failure if UI stays stable; existing DB data must not be wiped by Auto-Fill |
+| PDF only, no listing URL | Success **or** `no_fields` | Depends on extractable PDF text; reindex PDF in project settings if needed |
+| URL blocked + good PDF | Fallback message „Inserat-Seite nicht lesbar — versuche Exposé-PDF.“ then PDF fields | |
+
+#### Apartment detail — Auto-Fill procedure (MCP)
+
+1. Open apartment with listing URL and/or PDF (discovered from list „Inserat öffnen“ or detail form).
+2. Optionally clear one disposable field (e.g. Grundstück m²) to verify `onlyEmpty`.
+3. Expand **Inserat-Link** if URL is only in DB — confirm input matches expected host **category** (not a specific URL in this doc).
+4. Click toolbar **Auto-Fill**.
+5. Assert button shows **„wird verarbeitet“** then **Auto-Fill** again; toolbar layout does not jump.
+6. Hover or read `title`: should mention „Leere Felder übernommen“, listed fields, PDF/LLM warnings if any.
+7. Verify only previously empty inputs changed; filled price/address unchanged when already set.
+8. Click **Speichern** under Preis & Adresse; expect `?basics_saved=1` or visible success.
+9. Reload page; confirm saved fields persist.
+10. If description was filled, save **Beschreibung** separately and reload again.
+
+Optional: `evaluate_script` → `fetch('/api/apartments/<id>/llm/extract', { method:'POST', body: JSON.stringify({ url }) })` to compare API vs UI (no PII in session notes).
+
+#### Project tab — quick-add import procedure (MCP)
+
+1. On **Immobilien** tab, paste listing URL into **Inserat-URL** (disposable test link from seed or synthetic listing).
+2. Click **Daten automatisch füllen**.
+3. Wait for **Wird ausgewertet…** → enabled **Immobilie hinzufügen**.
+4. Confirm quick-add fields populated; message lists marked fields.
+5. Submit **Immobilie hinzufügen** on disposable project or cancel after snapshot.
+
 #### Must always hold
 
-- On apartment detail, „Daten automatisch füllen“ may prefill empty cost fields in „Preis & Adresse“ when the listing or PDF mentions Hausgeld, Heizkosten, Grundsteuer, or Sanierung; user must save manually.
-- Admin LLM settings can be saved when valid.
-- LLM connection test shows a controlled success or controlled failure.
-- If LLM is not configured, apartment LLM actions show a controlled not-configured state.
-- Listing import can prefill empty fields when provider data is readable.
-- Existing non-empty fields are not overwritten without clear user intent.
-- PDF context can be used by LLM extraction when available.
-- The UI clearly distinguishes successful extraction, partial extraction, and provider failure.
-- Broker or Makler detection is reflected in the relevant checkbox where supported.
+- Admin LLM settings can be saved when valid; connection test shows controlled success or failure.
+- If LLM is not configured, extract/chat show controlled **503** / not-configured UI (no uncaught error).
+- Listing import and Auto-Fill prefill **empty** fields only unless user uses explicit draft-restore with overwrite (separate flow).
+- PDF context merges into preview; warnings distinguish LLM PDF success, regex fallback, and unreadable page.
+- Broker detection sets checkbox in quick-add or hints „Übernehmen“ on detail page.
+- Blocked portal: message **„Seite nicht lesbar“** or extract error in `title`; **no** Next.js overlay.
+- Partial address from PDF (e.g. PLZ + „Ort“ without street) is a **data quality** issue, not a blocker, if user can edit and save.
 
 #### Negative cases
 
-- Missing API token
-- Invalid base URL
-- LLM API timeout
-- Model endpoint missing
-- Invalid JSON or malformed response
-- Listing provider blocks scraping
-- PDF has no extractable text
-- Listing URL and PDF data disagree
+- Missing API token / invalid LLM base URL / timeout / malformed model response
+- Invalid listing URL
+- `fetch_failed` on blocked portal
+- PDF too short / no extractable text → `pdf_text_too_short` or `no_fields`
+- Auto-Fill with no URL and no usable PDF → `no_source` or `no_fields`
+- URL and PDF disagree (user must reconcile manually)
+- User saves without reviewing bad autofill address (test that edit + save fixes list row)
 
 #### Evidence
 
 - Admin LLM settings snapshot
-- Network status for save and test where available
-- Apartment extraction result
+- Network: `POST /api/listing/preview` (project) and `POST /api/apartments/.../llm/extract` (detail) — status 200 vs 422/503
+- Snapshots: toolbar loading state, filled form, save redirect query, reload
 - No console errors
 
 ### 12.18 Backup export and restore
@@ -866,6 +949,14 @@ Keep these regression cases active. They are derived from previously observed is
 | Backup panel loading | Auto-backup settings must resolve from loading state |
 | Street View links | Map popup and apartment detail links must use coordinates where available |
 | Public transit provider unavailable | Commute UI must degrade gracefully and avoid runtime crash |
+| Auto-Fill toolbar layout shift | Toolbar button must keep min width while showing „wird verarbeitet“ |
+| Auto-Fill overwrites filled fields | Must not change non-empty inputs (`onlyEmpty`) |
+| Auto-Fill without save | Reload must not show new values after Auto-Fill alone |
+| IS24 / Kleinanzeigen fetch | Controlled `fetch_failed`; no crash; existing apartment data intact |
+| PDF-only extract | Apartment with PDF, empty URL: extract succeeds or controlled `no_fields` |
+| PDF address regex weak | Incomplete address still editable; save persists corrected address |
+| Viewing conflict on past tab | Past calendar/viewing sections show no schedule warnings |
+| Project quick-add import | „Daten automatisch füllen“ fills add form; create still requires submit |
 
 ## 16. Release smoke checklist
 
@@ -889,6 +980,9 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] Map tab passed if address, PLZ, district, coordinate, or overlay code changed
 [ ] Calendar tab and iCal URL passed if viewing, timezone, env, or route code changed
 [ ] LLM/listing flow passed if import, PDF, or LLM code changed
+[ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
+[ ] Auto-Fill save + reload verified on disposable apartment
+[ ] Viewing schedule warnings checked if calendar/viewing code changed
 [ ] Backup UI passed if persistence, data path, upload, or admin code changed
 [ ] Mobile smoke passed for user-facing UI changes
 [ ] Console checked after each tested area
@@ -944,7 +1038,8 @@ Append short notes outside this guide. Do not paste IDs, real addresses, real na
 - App mode: dev | docker | production-like
 - Port: <port>
 - Data profile: empty | minimal | rich | map | calendar | llm | backup | mobile | custom
-- Tested areas: auth, admin, dashboard, project tabs, apartment detail, checklist, map, calendar, LLM, backup, mobile
+- Tested areas: auth, admin, dashboard, project tabs, apartment detail, checklist, map, calendar, LLM/auto-fill, viewing conflicts, backup, mobile
+- Portal categories tested (no URLs in note): e.g. readable aggregator, landing-page host, bot-blocked major portal, PDF-only
 - Passed:
   - <short statement>
 - Failed:
@@ -981,7 +1076,9 @@ data-testid="nav-admin"
 data-testid="project-tab-calendar"
 data-testid="project-tab-map"
 data-testid="apartment-save-price-address"
+data-testid="apartment-auto-fill"
 data-testid="apartment-llm-extract"
+data-testid="project-listing-import"
 data-testid="map-load-addresses"
 data-testid="map-area-mode"
 data-testid="calendar-ical-url"
@@ -1039,6 +1136,10 @@ This skeleton is intentionally generic. Adapt tool names to the actual MCP host.
 20. expand critical sections and perform one safe mutation
 21. reload and verify persistence
 22. open checklist fill page if configured
-23. switch to mobile viewport and repeat navigation smoke
-24. write short session note outside this guide
+23. if llm profile: on Immobilien tab, run listing import on add form (readable URL)
+24. open apartment with listing URL or PDF; run toolbar Auto-Fill; save Preis & Adresse; reload
+25. optional: apartment on blocked portal — Auto-Fill shows controlled failure, no data loss
+26. if calendar data: confirm upcoming viewing shows schedule warning when times are tight; past section has none
+27. switch to mobile viewport and repeat navigation smoke
+28. write short session note outside this guide
 ```
