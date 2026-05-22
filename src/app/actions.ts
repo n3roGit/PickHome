@@ -537,6 +537,7 @@ export async function updateApartmentBrokerAction(apartmentId: string, formData:
   });
   if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
+  redirect(`/project/${apt.projectId}/apartment/${apartmentId}?broker_saved=1`);
 }
 
 export async function updateApartmentTitleAction(apartmentId: string, formData: FormData) {

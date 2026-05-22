@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { mergeApartmentListingDraft } from "@/lib/apartment-listing-draft";
 import {
   apartmentListingUrlFormId,
   applyListingPreviewToApartment,
@@ -57,6 +58,7 @@ export function ApartmentAutoFillButton({
       const filled = applyListingPreviewToApartment(apartmentId, data.fields, {
         onlyEmpty: true,
       });
+      mergeApartmentListingDraft(apartmentId, data.fields, filled);
       const fieldHint =
         filled.length > 0
           ? ` Übernommen und markiert: ${formatPrefilledFieldLabels(filled)}.`

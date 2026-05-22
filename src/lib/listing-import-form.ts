@@ -94,8 +94,12 @@ export function clearPrefilledHighlights(root: ParentNode = document) {
   });
 }
 
-export function highlightPrefilledFields(root: ParentNode, fields: ListingPreviewFieldKey[]) {
-  clearPrefilledHighlights(root);
+export function highlightPrefilledFields(
+  root: ParentNode,
+  fields: ListingPreviewFieldKey[],
+  options?: { clear?: boolean }
+) {
+  if (options?.clear !== false) clearPrefilledHighlights(root);
   for (const key of fields) {
     if (key === "brokerInvolved") {
       highlightBrokerCheckbox(root);
@@ -131,10 +135,6 @@ export function applyListingPreviewFields(
     filled.push("description");
   if (setBrokerCheckbox(form, fields.brokerInvolved, onlyEmpty)) filled.push("brokerInvolved");
 
-  if (filled.length > 0) {
-    highlightPrefilledFields(form, filled);
-  }
-
   return filled;
 }
 
@@ -142,7 +142,12 @@ export function applyListingPreviewFields(
 export function applyListingPreviewToApartment(
   apartmentId: string,
   fields: ListingPreviewFields,
-  options?: { onlyEmpty?: boolean }
+  options?: {
+    onlyEmpty?: boolean;
+    /** When set, only highlight these keys (after all values are applied). */
+    highlightKeys?: ListingPreviewFieldKey[];
+    clearHighlights?: boolean;
+  }
 ): ListingPreviewFieldKey[] {
   const filled: ListingPreviewFieldKey[] = [];
 
@@ -156,7 +161,6 @@ export function applyListingPreviewToApartment(
     const onlyEmpty = options?.onlyEmpty !== false;
     if (setNamedField(titleRoot, "title", fields.title, onlyEmpty)) {
       filled.push("title");
-      highlightField(titleRoot, "title");
     }
   }
 
@@ -165,7 +169,6 @@ export function applyListingPreviewToApartment(
     const onlyEmpty = options?.onlyEmpty !== false;
     if (setNamedField(descRoot, "description", fields.description, onlyEmpty)) {
       filled.push("description");
-      highlightField(descRoot, "description");
     }
   }
 
@@ -174,9 +177,19 @@ export function applyListingPreviewToApartment(
     const onlyEmpty = options?.onlyEmpty !== false;
     if (setBrokerCheckbox(brokerRoot, fields.brokerInvolved, onlyEmpty)) {
       filled.push("brokerInvolved");
-      highlightBrokerCheckbox(brokerRoot);
     }
   }
 
-  return [...new Set(filled)];
+  const unique = [...new Set(filled)];
+  const highlightKeys = options?.highlightKeys ?? unique;
+  if (highlightKeys.length > 0) {
+    const page = document.getElementById(`apartment-page-${apartmentId}`);
+    if (page) {
+      highlightPrefilledFields(page, highlightKeys, {
+        clear: options?.clearHighlights !== false,
+      });
+    }
+  }
+
+  return unique;
 }

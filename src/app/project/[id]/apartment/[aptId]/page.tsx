@@ -53,6 +53,7 @@ import { apartmentLlmHasSourceText } from "@/lib/apartment-llm-context";
 import { isLlmConfigured } from "@/lib/llm-client";
 import { ApartmentAutoFillButton } from "@/components/ApartmentAutoFillButton";
 import { ApartmentConflictBanner } from "@/components/ApartmentConflictBanner";
+import { ApartmentListingDraftRestore } from "@/components/ApartmentListingDraftRestore";
 import { ApartmentUnsavedGuard } from "@/components/ApartmentUnsavedGuard";
 import { ApartmentLlmChatButton } from "@/components/ApartmentLlmChatButton";
 import { ApartmentChecklistExtras } from "@/components/ApartmentChecklistExtras";
@@ -77,6 +78,7 @@ export default async function ApartmentPage({
     notes_saved?: string;
     description_saved?: string;
     basics_saved?: string;
+    broker_saved?: string;
     address_unresolved?: string;
     address_geocoded?: string;
     address_geocode_failed?: string;
@@ -289,12 +291,20 @@ export default async function ApartmentPage({
       };
     });
 
+  const listingDraftSaved = {
+    title: resolvedSearchParams.title_saved === "1",
+    description: resolvedSearchParams.description_saved === "1",
+    basics: resolvedSearchParams.basics_saved === "1",
+    broker: resolvedSearchParams.broker_saved === "1",
+  };
+
   const unsavedResetKey = [
     resolvedSearchParams.title_saved,
     resolvedSearchParams.listing_saved,
     resolvedSearchParams.notes_saved,
     resolvedSearchParams.description_saved,
     resolvedSearchParams.basics_saved,
+    resolvedSearchParams.broker_saved,
     apartment.revision,
   ].join("|");
 
@@ -303,6 +313,11 @@ export default async function ApartmentPage({
       <Nav userName={user.name} isAdmin={admin} />
       <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 min-w-0 w-full">
         <ApartmentUnsavedGuard apartmentId={apartment.id} resetKey={unsavedResetKey}>
+        <ApartmentListingDraftRestore
+          apartmentId={apartment.id}
+          resetKey={unsavedResetKey}
+          saved={listingDraftSaved}
+        />
         <div id={`apartment-page-${apartment.id}`}>
         <ApartmentScoreProvider initial={myScore}>
         <Link

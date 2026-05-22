@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formHasChanges, snapshotForm } from "@/lib/apartment-form-snapshot";
+import { APARTMENT_DRAFT_RESTORED_EVENT } from "@/lib/apartment-listing-draft";
 import { UNSAVED_SECTION_CLASS } from "@/lib/listing-import-form";
 
 type TrackedForm = {
@@ -61,6 +62,15 @@ export function ApartmentUnsavedGuard({
   useEffect(() => {
     rescan();
   }, [resetKey, rescan]);
+
+  useEffect(() => {
+    const onDraftRestored = (e: Event) => {
+      const detail = (e as CustomEvent<{ apartmentId: string }>).detail;
+      if (detail?.apartmentId === apartmentId) rescan();
+    };
+    window.addEventListener(APARTMENT_DRAFT_RESTORED_EVENT, onDraftRestored);
+    return () => window.removeEventListener(APARTMENT_DRAFT_RESTORED_EVENT, onDraftRestored);
+  }, [apartmentId, rescan]);
 
   useEffect(() => {
     const root = document.getElementById(`apartment-page-${apartmentId}`);
