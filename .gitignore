@@ -19,3 +19,6 @@ src/data/.ortsteile-build-cache.json
 /scripts/list-listing-urls.mjs
 /scripts/test-kleinanzeigen-api.mjs
 /scripts/test-listing-import.mjs
+
+# Local MCP browser regression notes (session-specific, not for the repo)
+/docs/testing/

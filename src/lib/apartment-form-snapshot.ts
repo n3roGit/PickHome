@@ -5,6 +5,11 @@ export function snapshotForm(form: HTMLFormElement): string {
   const elements = form.querySelectorAll("input, textarea, select");
 
   for (const el of elements) {
+    if (
+      !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)
+    ) {
+      continue;
+    }
     if (!el.name || el.name === "revision") continue;
 
     if (el instanceof HTMLInputElement && el.type === "checkbox") {
