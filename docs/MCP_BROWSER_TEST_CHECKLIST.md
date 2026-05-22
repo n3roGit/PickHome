@@ -675,6 +675,7 @@ calendar
 - Auto-Fill calls `POST /api/apartments/<apartmentId>/llm/extract` with URL from the listing URL input (unsaved input counts) or saved DB URL.
 - Auto-Fill applies preview fields with **`onlyEmpty: true`** (does not overwrite user-edited or already filled inputs).
 - After successful Auto-Fill, user must **save** each section: „Speichern“ under **Preis & Adresse** (redirect may include `?basics_saved=1`), separate save for **Beschreibung** and **Notizen** if changed.
+- Auto-Fill marks newly filled inputs with green highlight (`pn-field-prefilled`); after **Preis & Adresse** save, highlights are cleared (including Hausgeld/Heizkosten/Grundsteuer/Sanierung).
 - Auto-Fill does **not** persist to the database by itself.
 - Notes and description sections can be expanded and saved.
 - Purchase cost and financing section reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set).
@@ -684,7 +685,8 @@ calendar
 - Camera allows taking another photo while earlier uploads still run in the background; progress text appears; gallery shows pending previews until sync completes.
 - Viewing appointments can be listed and added on disposable data.
 - Opinion differences appear when multiple members rated shared criteria.
-- Criteria sliders can be changed and persisted.
+- Criteria sliders: leftmost **—** = not rated (slider `min=-1`, distinct from score **0**); scale labels `— · 0 · 5 · 10`; setting **—** clears the rating in the DB; value label shows **—** when unrated.
+- Criteria sliders can be changed (0–10) and persisted.
 - Checklist blocks appear under criteria that are part of the checklist.
 - Custom checklist-only items appear in a separate checklist section where configured.
 
