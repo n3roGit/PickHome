@@ -13,11 +13,26 @@ export type ListingPreviewFields = {
   title?: string;
   price?: number;
   sizeSqm?: number;
+  plotSizeSqm?: number;
   address?: string;
   energyClass?: string;
   description?: string;
   brokerInvolved?: boolean;
+  hoaFeeMonthly?: number;
+  heatingCostMonthly?: number;
+  propertyTaxAnnual?: number;
+  renovationCost?: number;
 };
+
+function parseEuroAmountFromLabel(text: string, patterns: RegExp[]): number | undefined {
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m?.[1]) continue;
+    const n = parseGermanPrice(m[1]);
+    if (n != null && n > 0) return n;
+  }
+  return undefined;
+}
 
 /** Infer Maklerprovision from listing text and optionally the portal URL. */
 export function inferBrokerInvolved(text: string, url?: string): boolean | undefined {
@@ -109,10 +124,44 @@ export function parseEnergyClassInput(raw: string): string | null {
 }
 
 export function parseSqmFromText(text: string): number | undefined {
+  const living = parseLivingSqmFromText(text);
+  if (living != null) return living;
   const sqmMatch = text.match(/(\d{1,3}(?:[.,]\d+)?)\s*m[²2]/i);
   if (!sqmMatch) return undefined;
+  const before = text.slice(Math.max(0, sqmMatch.index! - 40), sqmMatch.index!).toLowerCase();
+  if (/grundst[üu]ck/.test(before)) return undefined;
   const n = parseFloat(sqmMatch[1].replace(",", "."));
   return Number.isFinite(n) && n > 0 ? Math.round(n) : undefined;
+}
+
+export function parseLivingSqmFromText(text: string): number | undefined {
+  const patterns = [
+    /wohnfl[äa]che[:\s]*(\d{1,3}(?:[.,]\d+)?)\s*m[²2]?/i,
+    /nutzfl[äa]che[:\s]*(\d{1,3}(?:[.,]\d+)?)\s*m[²2]?/i,
+    /wohnungsgr[öo][ßs]e[:\s]*(\d{1,3}(?:[.,]\d+)?)\s*m[²2]?/i,
+  ];
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m?.[1]) continue;
+    const n = parseFloat(m[1].replace(",", "."));
+    if (Number.isFinite(n) && n > 0) return Math.round(n);
+  }
+  return undefined;
+}
+
+export function parsePlotSqmFromText(text: string): number | undefined {
+  const patterns = [
+    /grundst[üu]cks?(?:s)?fl[äa]che[:\s]*(\d{1,4}(?:[.,]\d+)?)\s*m[²2]?/i,
+    /grundst[üu]ck[:\s]*(\d{1,4}(?:[.,]\d+)?)\s*m[²2]?/i,
+    /(\d{1,4}(?:[.,]\d+)?)\s*m[²2]\s*grundst[üu]ck/i,
+  ];
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m?.[1]) continue;
+    const n = parseFloat(m[1].replace(",", "."));
+    if (Number.isFinite(n) && n > 0) return Math.round(n);
+  }
+  return undefined;
 }
 
 function extractJsonLdObjects(html: string): unknown[] {
@@ -191,8 +240,13 @@ export function parseListingPlainText(text: string): ListingPreviewFields {
     if (kaufpreisMatch) fields.price = parseGermanPrice(kaufpreisMatch[1]);
   }
 
+  if (!fields.plotSizeSqm) {
+    const plot = parsePlotSqmFromText(textBlob);
+    if (plot != null) fields.plotSizeSqm = plot;
+  }
+
   if (!fields.sizeSqm) {
-    const parsed = parseSqmFromText(textBlob);
+    const parsed = parseLivingSqmFromText(textBlob) ?? parseSqmFromText(textBlob);
     if (parsed != null) fields.sizeSqm = parsed;
   }
 
@@ -218,6 +272,30 @@ export function parseListingPlainText(text: string): ListingPreviewFields {
 
   const broker = inferBrokerInvolved(textBlob);
   if (broker != null) fields.brokerInvolved = broker;
+
+  if (!fields.hoaFeeMonthly) {
+    fields.hoaFeeMonthly = parseEuroAmountFromLabel(textBlob, [
+      /hausgeld[:\s]*(\d{1,3}(?:\.\d{3})*|\d+)\s*(?:€|EUR)?/i,
+      /(?:monatliches?\s+)?hausgeld[:\s]*(\d{1,3}(?:\.\d{3})*|\d+)/i,
+    ]);
+  }
+  if (!fields.heatingCostMonthly) {
+    fields.heatingCostMonthly = parseEuroAmountFromLabel(textBlob, [
+      /heizkosten[:\s]*(\d{1,3}(?:\.\d{3})*|\d+)\s*(?:€|EUR)?/i,
+    ]);
+  }
+  if (!fields.propertyTaxAnnual) {
+    fields.propertyTaxAnnual = parseEuroAmountFromLabel(textBlob, [
+      /grundsteuer[:\s]*(\d{1,3}(?:\.\d{3})*|\d+)\s*(?:€|EUR)?\s*(?:\/|pro)?\s*Jahr/i,
+      /grundsteuer[:\s]*(\d{1,3}(?:\.\d{3})*|\d+)/i,
+    ]);
+  }
+  if (!fields.renovationCost) {
+    fields.renovationCost = parseEuroAmountFromLabel(textBlob, [
+      /sanierungs?(?:kosten|bedarf)?[:\s]*(\d{1,3}(?:\.\d{3})*|\d+)/i,
+      /renovierungs?(?:kosten)?[:\s]*(\d{1,3}(?:\.\d{3})*|\d+)/i,
+    ]);
+  }
 
   return fields;
 }

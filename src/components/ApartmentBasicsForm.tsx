@@ -20,7 +20,12 @@ export function ApartmentBasicsForm({
   priceHistoryCount,
   timeZone,
   sizeSqm,
+  plotSizeSqm,
   energyClass,
+  hoaFeeMonthly,
+  heatingCostMonthly,
+  propertyTaxAnnual,
+  renovationCost,
   budget,
   saved,
   addressUnresolved,
@@ -37,7 +42,12 @@ export function ApartmentBasicsForm({
   priceHistoryCount: number;
   timeZone: string;
   sizeSqm?: number | null;
+  plotSizeSqm?: number | null;
   energyClass?: string | null;
+  hoaFeeMonthly?: number | null;
+  heatingCostMonthly?: number | null;
+  propertyTaxAnnual?: number | null;
+  renovationCost?: number | null;
   budget: number | null;
   saved?: boolean;
   addressUnresolved?: boolean;
@@ -145,13 +155,65 @@ export function ApartmentBasicsForm({
             className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
           />
         </label>
+        <div className="pt-2 border-t border-pn-border">
+          <p className="text-sm font-medium text-pn-text-secondary mb-2">
+            Laufende & einmalige Kosten (grob)
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-sm text-pn-text-secondary">Hausgeld / Monat (€)</span>
+              <input
+                name="hoaFeeMonthly"
+                defaultValue={hoaFeeMonthly != null ? String(hoaFeeMonthly) : ""}
+                placeholder="z. B. 250"
+                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm text-pn-text-secondary">Heizkosten / Monat (€)</span>
+              <input
+                name="heatingCostMonthly"
+                defaultValue={heatingCostMonthly != null ? String(heatingCostMonthly) : ""}
+                placeholder="z. B. 120"
+                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm text-pn-text-secondary">Grundsteuer / Jahr (€)</span>
+              <input
+                name="propertyTaxAnnual"
+                defaultValue={propertyTaxAnnual != null ? String(propertyTaxAnnual) : ""}
+                placeholder="z. B. 600"
+                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm text-pn-text-secondary">Sanierung einmalig (€)</span>
+              <input
+                name="renovationCost"
+                defaultValue={renovationCost != null ? String(renovationCost) : ""}
+                placeholder="z. B. 30000"
+                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-3">
-          <label className="block flex-1 min-w-[120px]">
+          <label className="block flex-1 min-w-[7rem] max-w-[10rem]">
             <span className="text-sm font-medium text-pn-text-secondary">Wohnfläche (m²)</span>
             <input
               name="sizeSqm"
               defaultValue={sizeSqm != null ? String(sizeSqm) : ""}
               placeholder="z. B. 85"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block flex-1 min-w-[7rem] max-w-[10rem]">
+            <span className="text-sm font-medium text-pn-text-secondary">Grundstück (m²)</span>
+            <input
+              name="plotSizeSqm"
+              defaultValue={plotSizeSqm != null ? String(plotSizeSqm) : ""}
+              placeholder="z. B. 350"
               className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
           </label>

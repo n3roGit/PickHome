@@ -124,6 +124,15 @@ export function formatPricePerSqm(
   return `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(perSqm)} €/m²`;
 }
 
+export function formatPricePerPlotSqm(
+  price: number | null | undefined,
+  plotSizeSqm: number | null | undefined
+): string {
+  if (price == null || plotSizeSqm == null || plotSizeSqm <= 0) return "—";
+  const perSqm = Math.round(price / plotSizeSqm);
+  return `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(perSqm)} €/m² Grundstück`;
+}
+
 export type ApartmentSortKey = "score" | "price" | "ppp" | "date";
 export type ApartmentSortOrder = "asc" | "desc";
 

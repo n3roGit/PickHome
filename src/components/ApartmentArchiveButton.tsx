@@ -3,13 +3,16 @@
 import { useState, useTransition } from "react";
 import { archiveApartmentAction, unarchiveApartmentAction } from "@/app/actions";
 import { ARCHIVE_REASONS } from "@/lib/archive-reasons";
+import { APARTMENT_TOOLBAR_BTN_NEUTRAL } from "@/lib/apartment-toolbar-styles";
 
 export function ApartmentArchiveButton({
   apartmentId,
   archived,
+  toolbar,
 }: {
   apartmentId: string;
   archived: boolean;
+  toolbar?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -22,7 +25,7 @@ export function ApartmentArchiveButton({
         onClick={() =>
           startTransition(() => unarchiveApartmentAction(apartmentId))
         }
-        className="text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50"
+        className={toolbar ? APARTMENT_TOOLBAR_BTN_NEUTRAL : "text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50"}
       >
         Wiederherstellen
       </button>
@@ -35,7 +38,7 @@ export function ApartmentArchiveButton({
         type="button"
         disabled={pending}
         onClick={() => setDialogOpen(true)}
-        className="text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50"
+        className={toolbar ? APARTMENT_TOOLBAR_BTN_NEUTRAL : "text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50"}
       >
         Archivieren
       </button>

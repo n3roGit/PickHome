@@ -1,5 +1,10 @@
 import { APP_SETTINGS_ID, getOrCreateAppSettings } from "@/lib/app-settings";
 import { prisma } from "@/lib/prisma";
+import {
+  isWebSearchApiKeyConfigured,
+  parseWebSearchApiKeyInput,
+  parseWebSearchProvider,
+} from "@/lib/web-search-settings";
 
 export const LLM_BASE_URL_MAX_LENGTH = 500;
 export const LLM_API_KEY_MAX_LENGTH = 500;
@@ -22,6 +27,8 @@ export type LlmSettingsPublic = {
   systemPrompt: string;
   systemPromptIsDefault: boolean;
   defaultSystemPrompt: string;
+  webSearchApiKeyConfigured: boolean;
+  webSearchProvider: string;
 };
 
 export type LlmClientConfig = {
@@ -123,6 +130,8 @@ export async function getLlmSettingsPublic(): Promise<LlmSettingsPublic> {
     systemPrompt: storedPrompt ?? DEFAULT_LLM_SYSTEM_PROMPT,
     systemPromptIsDefault,
     defaultSystemPrompt: DEFAULT_LLM_SYSTEM_PROMPT,
+    webSearchApiKeyConfigured: await isWebSearchApiKeyConfigured(),
+    webSearchProvider: parseWebSearchProvider(process.env.PICKHOME_WEB_SEARCH_PROVIDER),
   };
 }
 
@@ -154,12 +163,14 @@ export async function updateLlmSettings(input: {
   apiKey?: string;
   model?: string;
   systemPrompt?: string;
+  webSearchApiKey?: string;
 }): Promise<LlmSettingsPublic> {
   const data: {
     llmBaseUrl?: string | null;
     llmApiKey?: string | null;
     llmModel?: string | null;
     llmSystemPrompt?: string | null;
+    webSearchApiKey?: string | null;
   } = {};
 
   if (input.baseUrl !== undefined) {
@@ -176,6 +187,10 @@ export async function updateLlmSettings(input: {
 
   if (input.systemPrompt !== undefined) {
     data.llmSystemPrompt = parseLlmSystemPromptInput(input.systemPrompt) ?? null;
+  }
+
+  if (input.webSearchApiKey !== undefined) {
+    data.webSearchApiKey = parseWebSearchApiKeyInput(input.webSearchApiKey) ?? null;
   }
 
   if (Object.keys(data).length === 0) {

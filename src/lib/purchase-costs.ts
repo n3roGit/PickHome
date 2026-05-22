@@ -126,11 +126,89 @@ export function resolveFederalStateCode(input: {
 }
 
 export type PurchaseCostLine = {
-  key: "landTransferTax" | "notaryRegistry" | "broker";
+  key: "landTransferTax" | "notaryRegistry" | "broker" | "renovation";
   label: string;
+  /** Rate as decimal; 0 for fixed amounts like renovation */
   rate: number;
   amount: number;
 };
+
+export type ApartmentOngoingCosts = {
+  hoaFeeMonthly?: number | null;
+  heatingCostMonthly?: number | null;
+  propertyTaxAnnual?: number | null;
+  price?: number | null;
+  sizeSqm?: number | null;
+  plotSizeSqm?: number | null;
+};
+
+/** Rough annual property tax when not entered (orientation only, not tax advice). */
+export function estimatePropertyTaxAnnual(input: {
+  price: number | null | undefined;
+  sizeSqm?: number | null;
+  plotSizeSqm?: number | null;
+}): number | null {
+  if (input.price == null || input.price <= 0) return null;
+  const baseRate = 0.002;
+  let rate = baseRate;
+  const plot = input.plotSizeSqm;
+  const living = input.sizeSqm;
+  if (plot != null && plot > 0 && living != null && living > 0) {
+    const ratio = plot / living;
+    if (ratio > 1.2) rate *= 1 + Math.min(0.5, (ratio - 1) * 0.15);
+  } else if (plot != null && plot > 400) {
+    rate *= 1.15;
+  }
+  return Math.max(100, Math.round(input.price * rate));
+}
+
+export function resolvePropertyTaxAnnual(costs: ApartmentOngoingCosts): {
+  annual: number | null;
+  isEstimate: boolean;
+} {
+  const stored = costs.propertyTaxAnnual;
+  if (stored != null && stored > 0) {
+    return { annual: stored, isEstimate: false };
+  }
+  const estimated = estimatePropertyTaxAnnual({
+    price: costs.price,
+    sizeSqm: costs.sizeSqm,
+    plotSizeSqm: costs.plotSizeSqm,
+  });
+  if (estimated == null) return { annual: null, isEstimate: false };
+  return { annual: estimated, isEstimate: true };
+}
+
+export function apartmentMonthlyMaintenance(costs: ApartmentOngoingCosts): number {
+  const hoa = costs.hoaFeeMonthly ?? 0;
+  const heating = costs.heatingCostMonthly ?? 0;
+  const { annual } = resolvePropertyTaxAnnual(costs);
+  const taxMonthly = annual ? Math.round(annual / 12) : 0;
+  return hoa + heating + taxMonthly;
+}
+
+export function totalAcquisitionCost(
+  purchase: PurchaseCostEstimate,
+  renovationCost?: number | null
+): number {
+  return purchase.totalWithPrice + (renovationCost ?? 0);
+}
+
+export function purchaseCostLinesWithRenovation(
+  estimate: PurchaseCostEstimate,
+  renovationCost?: number | null
+): PurchaseCostLine[] {
+  const lines = [...estimate.lines];
+  if (renovationCost != null && renovationCost > 0) {
+    lines.push({
+      key: "renovation",
+      label: "Sanierung (einmalig, grob)",
+      rate: 0,
+      amount: renovationCost,
+    });
+  }
+  return lines;
+}
 
 export type PurchaseCostEstimate = {
   state: FederalState;
@@ -321,8 +399,13 @@ export type ProjectFinanceSettings = {
 export type ApartmentCompareInput = {
   price: number | null;
   sizeSqm: number | null;
+  plotSizeSqm?: number | null;
   brokerInvolved: boolean;
   address: string | null;
+  hoaFeeMonthly?: number | null;
+  heatingCostMonthly?: number | null;
+  propertyTaxAnnual?: number | null;
+  renovationCost?: number | null;
 };
 
 export type ApartmentCompareMetrics = {
@@ -350,10 +433,12 @@ export function apartmentCompareMetrics(
     brokerInvolved: apartment.brokerInvolved,
     brokerBuyerRate: finance.brokerBuyerRate,
   });
+  const acquisitionTotal = totalAcquisitionCost(costs, apartment.renovationCost);
+  const monthlyMaintenance = apartmentMonthlyMaintenance(apartment);
 
   if (finance.equityAmount == null || finance.loanTermYears == null) {
     return {
-      totalCost: costs.totalWithPrice,
+      totalCost: acquisitionTotal,
       monthlyPayment: null,
       burdenShare: null,
       burdenLevel: null,
@@ -361,14 +446,14 @@ export function apartmentCompareMetrics(
   }
 
   const financing = estimateFinancing({
-    totalCost: costs.totalWithPrice,
+    totalCost: acquisitionTotal,
     equityAmount: finance.equityAmount,
     loanTermYears: finance.loanTermYears,
     interestRate: finance.interestRate,
   });
   if (!financing) {
     return {
-      totalCost: costs.totalWithPrice,
+      totalCost: acquisitionTotal,
       monthlyPayment: null,
       burdenShare: null,
       burdenLevel: null,
@@ -380,11 +465,12 @@ export function apartmentCompareMetrics(
       ? estimateAffordability({
           monthlyPayment: financing.monthlyPayment,
           netHouseholdIncome: finance.netHouseholdIncome,
+          monthlyMaintenance,
         })
       : null;
 
   return {
-    totalCost: costs.totalWithPrice,
+    totalCost: acquisitionTotal,
     monthlyPayment: financing.monthlyPayment,
     burdenShare: affordability?.burdenShare ?? null,
     burdenLevel: affordability?.level ?? null,

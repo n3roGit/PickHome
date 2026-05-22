@@ -27,14 +27,15 @@ export async function PUT(req: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  let body: { baseUrl?: string; apiKey?: string; model?: string; systemPrompt?: string };
+  let body: {
+    baseUrl?: string;
+    apiKey?: string;
+    model?: string;
+    systemPrompt?: string;
+    webSearchApiKey?: string;
+  };
   try {
-    body = (await req.json()) as {
-      baseUrl?: string;
-      apiKey?: string;
-      model?: string;
-      systemPrompt?: string;
-    };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
@@ -43,7 +44,8 @@ export async function PUT(req: Request) {
     body.baseUrl === undefined &&
     body.apiKey === undefined &&
     body.model === undefined &&
-    body.systemPrompt === undefined
+    body.systemPrompt === undefined &&
+    body.webSearchApiKey === undefined
   ) {
     return NextResponse.json({ error: "no_fields" }, { status: 400 });
   }
@@ -55,6 +57,9 @@ export async function PUT(req: Request) {
       ...(body.model !== undefined ? { model: String(body.model ?? "") } : {}),
       ...(body.systemPrompt !== undefined
         ? { systemPrompt: String(body.systemPrompt ?? "") }
+        : {}),
+      ...(body.webSearchApiKey !== undefined
+        ? { webSearchApiKey: String(body.webSearchApiKey ?? "") }
         : {}),
     });
     return NextResponse.json(saved);

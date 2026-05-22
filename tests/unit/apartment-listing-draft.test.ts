@@ -21,6 +21,7 @@ describe("apartment-listing-draft", () => {
       "price",
       "address",
       "sizeSqm",
+      "plotSizeSqm",
       "energyClass",
     ]);
   });

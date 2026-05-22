@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildBrokerQuestionsDigest,
+  checklistStatusFromIndex,
+  checklistStatusToIndex,
   filterChecklistItemsForUser,
   hasChecklistInfo,
+  parseChecklistStatus,
   userCanFillChecklistItem,
 } from "@/lib/checklist-display";
 
@@ -15,6 +18,19 @@ describe("hasChecklistInfo", () => {
   it("returns true when note or status set", () => {
     expect(hasChecklistInfo({ status: "unset", note: "  hello " })).toBe(true);
     expect(hasChecklistInfo({ status: "ok", note: null })).toBe(true);
+    expect(hasChecklistInfo({ status: "not_ok", note: null })).toBe(true);
+  });
+});
+
+describe("parseChecklistStatus", () => {
+  it("maps legacy values", () => {
+    expect(parseChecklistStatus("open")).toBe("not_ok");
+    expect(parseChecklistStatus("na")).toBe("unset");
+  });
+
+  it("round-trips slider indices", () => {
+    expect(checklistStatusFromIndex(checklistStatusToIndex("ok"))).toBe("ok");
+    expect(checklistStatusToIndex("not_ok")).toBe(1);
   });
 });
 

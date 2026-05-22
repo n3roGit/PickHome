@@ -48,6 +48,19 @@ describe("normalizeLlmListingExtract", () => {
     const fields = normalizeLlmListingExtract({ brokerInvolved: false });
     expect(fields.brokerInvolved).toBe(false);
   });
+
+  it("normalizes cost fields", () => {
+    const fields = normalizeLlmListingExtract({
+      hoaFeeMonthly: "250",
+      heatingCostMonthly: 120,
+      propertyTaxAnnual: 480,
+      renovationCost: "15.000",
+    });
+    expect(fields.hoaFeeMonthly).toBe(250);
+    expect(fields.heatingCostMonthly).toBe(120);
+    expect(fields.propertyTaxAnnual).toBe(480);
+    expect(fields.renovationCost).toBe(15000);
+  });
 });
 
 describe("truncateListingSourceText", () => {

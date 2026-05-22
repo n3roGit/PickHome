@@ -159,6 +159,7 @@ describe("apartment server actions", () => {
     form.set("price", "428000");
     form.set("address", "");
     form.set("sizeSqm", "");
+    form.set("plotSizeSqm", "");
     form.set("energyClass", "");
     form.set(APARTMENT_REVISION_FIELD, String(apt.revision));
 
@@ -166,6 +167,7 @@ describe("apartment server actions", () => {
 
     const updated = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
     expect(updated.sizeSqm).toBeNull();
+    expect(updated.plotSizeSqm).toBeNull();
     expect(updated.energyClass).toBeNull();
     await prisma.$disconnect();
   });

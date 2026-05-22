@@ -145,7 +145,12 @@ model Apartment {
   longitude   Float?
   price           Int?
   brokerInvolved  Boolean          @default(false)
+  hoaFeeMonthly       Int?
+  heatingCostMonthly  Int?
+  propertyTaxAnnual   Int?
+  renovationCost      Int?
   sizeSqm         Int?
+  plotSizeSqm     Int?
   floor       Int?
   yearBuilt   Int?
   description String?
@@ -282,6 +287,7 @@ model AppSettings {
   llmApiKey        String?
   llmModel         String?
   llmSystemPrompt  String?
+  webSearchApiKey  String?
   updatedAt        DateTime @updatedAt
 }
 

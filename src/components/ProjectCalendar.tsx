@@ -9,6 +9,8 @@ import {
   toDatetimeLocalValue,
 } from "@/lib/dates";
 import { useAppTimeZone } from "@/lib/use-app-timezone";
+import type { ViewingScheduleWarning } from "@/lib/viewing-schedule-conflicts";
+import { ViewingScheduleWarnings } from "@/components/ViewingScheduleWarnings";
 
 export type CalendarEvent = {
   id: string;
@@ -22,10 +24,12 @@ export function ProjectCalendar({
   projectId,
   icalUrl,
   events,
+  scheduleWarnings = {},
 }: {
   projectId: string;
   icalUrl: string;
   events: CalendarEvent[];
+  scheduleWarnings?: Record<string, ViewingScheduleWarning[]>;
 }) {
   const appTimeZone = useAppTimeZone();
   const [pending, startTransition] = useTransition();
@@ -71,6 +75,7 @@ export function ProjectCalendar({
         events={upcoming}
         projectId={projectId}
         appTimeZone={appTimeZone}
+        scheduleWarnings={scheduleWarnings}
         empty="Keine geplanten Besichtigungen."
         pending={pending}
         onDelete={onDelete}
@@ -81,6 +86,7 @@ export function ProjectCalendar({
         events={past}
         projectId={projectId}
         appTimeZone={appTimeZone}
+        scheduleWarnings={{}}
         empty="Keine vergangenen Termine."
         pending={pending}
         onDelete={onDelete}
@@ -95,6 +101,7 @@ function CalendarSection({
   events,
   projectId,
   appTimeZone,
+  scheduleWarnings,
   empty,
   pending,
   onDelete,
@@ -104,6 +111,7 @@ function CalendarSection({
   events: CalendarEvent[];
   projectId: string;
   appTimeZone: string;
+  scheduleWarnings: Record<string, ViewingScheduleWarning[]>;
   empty: string;
   pending: boolean;
   onDelete: (id: string, scheduledAt: string) => void;
@@ -134,6 +142,7 @@ function CalendarSection({
                     {e.apartmentTitle}
                   </Link>
                   {e.note && <p className="text-xs text-pn-text-tertiary mt-1">{e.note}</p>}
+                  <ViewingScheduleWarnings warnings={scheduleWarnings[e.id] ?? []} />
                 </div>
                 <form
                   action={(formData) => onUpdate(e.id, formData)}

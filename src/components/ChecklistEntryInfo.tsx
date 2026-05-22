@@ -32,8 +32,8 @@ export function ChecklistEntryInfo({
             className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
               parsed === "ok"
                 ? "bg-pn-score-high-bg text-pn-score-high"
-                : parsed === "open"
-                  ? "bg-pn-score-mid-bg text-pn-score-mid"
+                : parsed === "not_ok"
+                  ? "bg-pn-score-low-bg text-pn-score-low"
                   : "bg-pn-bg-surface text-pn-text-tertiary"
             }`}
           >

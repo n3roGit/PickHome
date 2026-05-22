@@ -497,6 +497,11 @@ export async function createApartmentAction(projectId: string, formData: FormDat
   const address = String(formData.get("address") ?? "").trim() || null;
 
   const brokerInvolved = formData.get("brokerInvolved") === "on";
+  const sizeSqmParsed = parseInt(String(formData.get("sizeSqm") ?? "").replace(/\D/g, ""), 10);
+  const plotSizeSqmParsed = parseInt(
+    String(formData.get("plotSizeSqm") ?? "").replace(/\D/g, ""),
+    10
+  );
 
   const apt = await prisma.apartment.create({
     data: {
@@ -507,7 +512,8 @@ export async function createApartmentAction(projectId: string, formData: FormDat
       longitude: null,
       price: Number.isFinite(price) ? price : null,
       brokerInvolved,
-      sizeSqm: parseInt(String(formData.get("sizeSqm") ?? ""), 10) || null,
+      sizeSqm: Number.isFinite(sizeSqmParsed) ? sizeSqmParsed : null,
+      plotSizeSqm: Number.isFinite(plotSizeSqmParsed) ? plotSizeSqmParsed : null,
       energyClass: parseEnergyClassInput(String(formData.get("energyClass") ?? "")),
       listingUrl: normalizeListingUrl(String(formData.get("listingUrl") ?? "")),
       description:
@@ -656,6 +662,14 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   const sizeSqmRaw = String(formData.get("sizeSqm") ?? "").trim();
   const energyClassRaw = String(formData.get("energyClass") ?? "").trim();
   const sizeSqmParsed = sizeSqmRaw ? parseInt(sizeSqmRaw.replace(/\D/g, ""), 10) : null;
+  const plotSizeSqmRaw = String(formData.get("plotSizeSqm") ?? "").trim();
+  const plotSizeSqmParsed = plotSizeSqmRaw
+    ? parseInt(plotSizeSqmRaw.replace(/\D/g, ""), 10)
+    : null;
+  const hoaFeeMonthly = parsePositiveInt(String(formData.get("hoaFeeMonthly") ?? ""));
+  const heatingCostMonthly = parsePositiveInt(String(formData.get("heatingCostMonthly") ?? ""));
+  const propertyTaxAnnual = parsePositiveInt(String(formData.get("propertyTaxAnnual") ?? ""));
+  const renovationCost = parsePositiveInt(String(formData.get("renovationCost") ?? ""));
   const resolvedPrice = Number.isFinite(price) ? price : null;
   const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
 
@@ -672,7 +686,15 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
       ? { latitude: null as number | null, longitude: null as number | null }
       : {}),
     sizeSqm: sizeSqmParsed != null && Number.isFinite(sizeSqmParsed) ? sizeSqmParsed : null,
+    plotSizeSqm:
+      plotSizeSqmParsed != null && Number.isFinite(plotSizeSqmParsed)
+        ? plotSizeSqmParsed
+        : null,
     energyClass: energyClassRaw ? parseEnergyClassInput(energyClassRaw) : null,
+    hoaFeeMonthly,
+    heatingCostMonthly,
+    propertyTaxAnnual,
+    renovationCost,
   });
   if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
 

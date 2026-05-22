@@ -62,5 +62,10 @@ export async function POST(
     return NextResponse.json({ error: result.error }, { status });
   }
 
-  return NextResponse.json({ ok: true, answer: result.answer });
+  return NextResponse.json({
+    ok: true,
+    answer: result.answer,
+    webSearchEnabled: result.webSearchEnabled,
+    webSearchUsed: result.webSearchUsed,
+  });
 }

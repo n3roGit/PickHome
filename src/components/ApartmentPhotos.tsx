@@ -1,14 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useState, useTransition } from "react";
-import {
-  deleteApartmentPhotoAction,
-  uploadApartmentPhotoAction,
-} from "@/app/apartment-photo-actions";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { deleteApartmentPhotoAction } from "@/app/apartment-photo-actions";
 import { FileDropzone } from "@/components/FileDropzone";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { PhotoCaptureInput } from "@/components/PhotoCaptureInput";
+import { usePhotoUploadQueue } from "@/hooks/use-photo-upload-queue";
+import { pickValidImageFiles } from "@/lib/apartment-photo-files";
 import type { GalleryPhoto } from "@/lib/gallery-photo";
 import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/upload-limits";
 import { apartmentPhotoUploadErrorMessage } from "@/lib/upload-messages";
@@ -29,52 +27,63 @@ export default function ApartmentPhotos({
   apartmentId: string;
   photos: GalleryPhoto[];
 }) {
-  const [pending, startTransition] = useTransition();
+  const [deletePending, startDeleteTransition] = useTransition();
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const queue = usePhotoUploadQueue(apartmentId);
 
-  const uploadFiles = useCallback(
+  const displayPhotos = useMemo(
+    () => [...photos, ...queue.pendingGalleryPhotos],
+    [photos, queue.pendingGalleryPhotos]
+  );
+
+  const ingestFiles = useCallback(
     (files: File[]) => {
-      startTransition(async () => {
-        setUploadError(null);
-        let uploaded = 0;
-        for (const file of files) {
-          if (file.size === 0) continue;
-          if (file.size > MAX_IMAGE_BYTES) {
-            setUploadError(apartmentPhotoUploadErrorMessage("too_large", file.name));
-            continue;
-          }
-          const single = new FormData();
-          single.set("photo", file);
-          const result = await uploadApartmentPhotoAction(apartmentId, single);
-          if (result && !result.ok) {
-            setUploadError(apartmentPhotoUploadErrorMessage(result.error, file.name));
-            continue;
-          }
-          uploaded += 1;
-        }
-      });
+      setUploadError(null);
+      const valid = pickValidImageFiles(files, setUploadError);
+      if (valid.length === 0) return;
+      const { rejected, added } = queue.enqueue(valid);
+      if (rejected > 0) {
+        setUploadError(
+          `Maximal ${added > 0 ? "weitere " : ""}${rejected} Foto(s) nicht in die Warteschlange aufgenommen (Limit erreicht).`
+        );
+      }
     },
-    [apartmentId]
+    [queue]
   );
 
   function onUploadFormData(formData: FormData) {
     const files = formData
       .getAll("photo")
       .filter((entry): entry is File => entry instanceof File);
-    uploadFiles(files);
+    ingestFiles(files);
   }
+
+  function onDeletePending(pendingId: string) {
+    queue.removeItem(pendingId);
+  }
+
+  const captureDisabled = queue.queueFull;
 
   return (
     <CollapsibleSection
       title="Bilder"
       defaultOpen
-      headerAside={photos.length > 0 ? `${photos.length} Bilder` : undefined}
+      headerAside={
+        displayPhotos.length > 0 ? `${photos.length} Bilder` : undefined
+      }
     >
-      {photos.length > 0 ? (
+      {displayPhotos.length > 0 ? (
         <PhotoGallery
-          photos={photos}
-          deletePending={pending}
-          onDelete={(photoId) => startTransition(() => deleteApartmentPhotoAction(photoId))}
+          photos={displayPhotos}
+          deletePending={deletePending}
+          onDelete={(photoId) => {
+            const pending = queue.pendingGalleryPhotos.find((p) => p.id === photoId);
+            if (pending?.pending) {
+              onDeletePending(photoId);
+              return;
+            }
+            startDeleteTransition(() => deleteApartmentPhotoAction(photoId));
+          }}
         />
       ) : (
         <p className="text-sm text-pn-text-tertiary mb-4">Noch keine Bilder hinterlegt.</p>
@@ -84,29 +93,37 @@ export default function ApartmentPhotos({
           {uploadError}
         </p>
       )}
-      {pending && (
-        <p className="mb-3 text-sm text-pn-text-secondary">Bilder werden hochgeladen…</p>
+      {queue.progressLabel && (
+        <p className="mb-3 text-sm text-pn-text-secondary">{queue.progressLabel}</p>
       )}
-      <div className="mb-3">
-        <PhotoCaptureInput
-          disabled={pending}
-          maxBytes={MAX_IMAGE_BYTES}
-          onTooLarge={(fileName) =>
-            setUploadError(apartmentPhotoUploadErrorMessage("too_large", fileName))
-          }
-          onFiles={uploadFiles}
-        />
-        <p className="text-xs text-pn-text-tertiary mt-2">
-          Auf dem Smartphone öffnet „Kamera“ die Gerätekamera — mehrere Fotos nacheinander oder
-          gesammelt bestätigen, sie werden automatisch hochgeladen.
-        </p>
-      </div>
+      {queue.errorItems.map((item) => (
+        <div
+          key={item.id}
+          className="mb-2 flex flex-wrap items-center gap-2 text-sm text-pn-score-low bg-pn-score-low-bg px-3 py-2 rounded-lg"
+        >
+          <span>{item.errorMessage ?? "Upload fehlgeschlagen"}</span>
+          <button
+            type="button"
+            className="text-pn-accent hover:underline font-medium"
+            onClick={() => queue.retry(item.id)}
+          >
+            Erneut versuchen
+          </button>
+          <button
+            type="button"
+            className="text-pn-text-secondary hover:underline"
+            onClick={() => queue.removeItem(item.id)}
+          >
+            Verwerfen
+          </button>
+        </div>
+      ))}
       <FileDropzone
         name="photo"
         accept="image/jpeg,image/png,image/webp,image/*"
         hint={`Oder Galerie / Dateien (JPG, PNG, WebP, mehrere möglich, max. ${MAX_IMAGE_MB} MB je Datei)`}
         multiple
-        disabled={pending}
+        disabled={captureDisabled}
         maxBytes={MAX_IMAGE_BYTES}
         onTooLarge={(fileName) =>
           setUploadError(apartmentPhotoUploadErrorMessage("too_large", fileName))

@@ -5,6 +5,7 @@ import {
   parseListingHtml,
   parseListingPlainText,
   parseEnergyClassInput,
+  parsePlotSqmFromText,
   parseSqmFromText,
 } from "@/lib/listing-import";
 
@@ -43,6 +44,13 @@ describe("listing-import", () => {
     expect(fields.price).toBe(450000);
     expect(fields.sizeSqm).toBe(95);
     expect(fields.energyClass).toBe("B");
+  });
+
+  it("parses plot sqm from exposé text", () => {
+    const fields = parseListingPlainText("Grundstücksfläche 420 m², Wohnfläche 95 m²");
+    expect(fields.plotSizeSqm).toBe(420);
+    expect(fields.sizeSqm).toBe(95);
+    expect(parsePlotSqmFromText("Grundstück 350 m²")).toBe(350);
   });
 
   it("parses sqm from free text", () => {

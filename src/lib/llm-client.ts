@@ -16,11 +16,41 @@ export type LlmChatMessage = {
   content: string;
 };
 
+export type LlmChatToolCall = {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+};
+
+export type LlmChatCompletionMessage =
+  | { role: "system" | "user"; content: string }
+  | { role: "assistant"; content: string | null; tool_calls?: LlmChatToolCall[] }
+  | { role: "tool"; tool_call_id: string; content: string };
+
+export type LlmChatTool = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+};
+
+export type LlmAssistantMessage = {
+  content: string | null;
+  tool_calls?: LlmChatToolCall[];
+};
+
 export type LlmChatResult =
   | { ok: true; content: string }
   | { ok: false; error: string; detail?: string };
 
+export type LlmChatCompletionResult =
+  | { ok: true; message: LlmAssistantMessage }
+  | { ok: false; error: string; detail?: string };
+
 const DEFAULT_CHAT_TIMEOUT_MS = 60_000;
+const AGENT_CHAT_TIMEOUT_MS = 120_000;
 
 function extractAssistantContent(
   message?: { content?: string | null; reasoning?: string | null } | null
@@ -45,10 +75,25 @@ export function llmChatCompletionsUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
 }
 
-export async function callLlmChat(
-  messages: LlmChatMessage[],
-  options?: { temperature?: number; maxTokens?: number; timeoutMs?: number }
-): Promise<LlmChatResult> {
+function toolsUnsupportedDetail(detail: string): boolean {
+  const lower = detail.toLowerCase();
+  return (
+    lower.includes("tools") ||
+    lower.includes("tool_choice") ||
+    lower.includes("function") ||
+    lower.includes("unsupported")
+  );
+}
+
+export async function callLlmChatCompletion(
+  messages: LlmChatCompletionMessage[],
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    timeoutMs?: number;
+    tools?: LlmChatTool[];
+  }
+): Promise<LlmChatCompletionResult> {
   const config = await getLlmClientConfig();
   if (!config) {
     return { ok: false, error: "not_configured" };
@@ -56,6 +101,17 @@ export async function callLlmChat(
 
   const url = llmChatCompletionsUrl(config.baseUrl);
   const model = await resolveLlmModel();
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    temperature: options?.temperature ?? 0.2,
+    max_tokens: options?.maxTokens ?? 2048,
+  };
+  if (options?.tools?.length) {
+    body.tools = options.tools;
+    body.tool_choice = "auto";
+  }
+
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -64,39 +120,63 @@ export async function callLlmChat(
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: options?.temperature ?? 0.2,
-        max_tokens: options?.maxTokens ?? 2048,
-      }),
-      signal: AbortSignal.timeout(options?.timeoutMs ?? DEFAULT_CHAT_TIMEOUT_MS),
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(
+        options?.timeoutMs ?? (options?.tools?.length ? AGENT_CHAT_TIMEOUT_MS : DEFAULT_CHAT_TIMEOUT_MS)
+      ),
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      let detail = body.slice(0, 300);
+      const rawBody = await res.text().catch(() => "");
+      let detail = rawBody.slice(0, 300);
       try {
-        const parsed = JSON.parse(body) as { error?: { message?: string } };
+        const parsed = JSON.parse(rawBody) as { error?: { message?: string } };
         if (parsed.error?.message) detail = parsed.error.message;
       } catch {
         /* keep raw slice */
+      }
+      if (options?.tools?.length && toolsUnsupportedDetail(detail)) {
+        return { ok: false, error: "tools_not_supported", detail };
       }
       return { ok: false, error: "request_failed", detail };
     }
 
     const data = (await res.json()) as {
-      choices?: { message?: { content?: string; reasoning?: string } }[];
+      choices?: {
+        message?: {
+          content?: string | null;
+          reasoning?: string | null;
+          tool_calls?: LlmChatToolCall[];
+        };
+      }[];
     };
-    const content = extractAssistantContent(data.choices?.[0]?.message);
-    if (!content) {
+    const message = data.choices?.[0]?.message;
+    if (!message) {
       return { ok: false, error: "empty_response" };
     }
-    return { ok: true, content };
+    const toolCalls = message.tool_calls?.length ? message.tool_calls : undefined;
+    const content = message.content?.trim() || extractAssistantContent(message) || null;
+    if (!content && !toolCalls?.length) {
+      return { ok: false, error: "empty_response" };
+    }
+    return { ok: true, message: { content, tool_calls: toolCalls } };
   } catch (err) {
     const message = err instanceof Error ? err.message : "fetch_failed";
     return { ok: false, error: message };
   }
+}
+
+export async function callLlmChat(
+  messages: LlmChatMessage[],
+  options?: { temperature?: number; maxTokens?: number; timeoutMs?: number }
+): Promise<LlmChatResult> {
+  const result = await callLlmChatCompletion(messages, options);
+  if (!result.ok) return result;
+  const content = result.message.content?.trim();
+  if (!content) {
+    return { ok: false, error: "empty_response" };
+  }
+  return { ok: true, content };
 }
 
 export async function testLlmConnectionWithConfig(

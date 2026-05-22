@@ -39,9 +39,11 @@ export function ScoreBadge({
   }[color];
 
   return (
-    <span className={`font-bold tabular-nums text-sm px-2.5 py-0.5 rounded-full ${classes}`}>
+    <span
+      className={`inline-flex items-center font-bold tabular-nums text-sm px-2 py-0.5 rounded-full shrink-0 ${classes}`}
+    >
       {score}
-      <span className="font-normal opacity-70">/100</span>
+      <span className="font-normal opacity-70 text-xs">/100</span>
     </span>
   );
 }

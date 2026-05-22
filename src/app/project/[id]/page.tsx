@@ -31,6 +31,12 @@ import {
 } from "@/lib/project-data";
 import { prisma } from "@/lib/prisma";
 import { ensureProjectIcalToken } from "@/lib/ical-token";
+import { getProjectViewingScheduleSlots } from "@/lib/viewing-schedule-data";
+import {
+  buildViewingScheduleWarningsAsync,
+  viewingWarningsToRecord,
+  type ViewingScheduleWarning,
+} from "@/lib/viewing-schedule-conflicts";
 import { ApartmentListSort } from "@/components/ApartmentListSort";
 import { ApartmentProjectSearch } from "@/components/ApartmentProjectSearch";
 import { filterApartmentsBySearch } from "@/lib/apartment-search";
@@ -137,6 +143,14 @@ export default async function ProjectPage({
         note: v.note,
       }))
     ) ?? [];
+
+  let scheduleWarnings: Record<string, ViewingScheduleWarning[]> = {};
+  if (tab === "calendar" && activeProject) {
+    const slots = await getProjectViewingScheduleSlots(projectId, user);
+    scheduleWarnings = viewingWarningsToRecord(
+      await buildViewingScheduleWarningsAsync(slots, appTimeZone)
+    );
+  }
 
   const memberFilter = { project: nestedProjectAccessFilter(user) };
   const [activeCount, archivedCount] = await Promise.all([
@@ -600,7 +614,12 @@ export default async function ProjectPage({
               address: a.address,
               price: a.price,
               sizeSqm: a.sizeSqm,
+              plotSizeSqm: a.plotSizeSqm,
               brokerInvolved: a.brokerInvolved,
+              hoaFeeMonthly: a.hoaFeeMonthly,
+              heatingCostMonthly: a.heatingCostMonthly,
+              propertyTaxAnnual: a.propertyTaxAnnual,
+              renovationCost: a.renovationCost,
             }))}
             finance={{
               federalStateCode: activeProject.federalStateCode,
@@ -682,6 +701,7 @@ export default async function ProjectPage({
             projectId={project.id}
             icalUrl={icalUrl}
             events={calendarEvents}
+            scheduleWarnings={scheduleWarnings}
           />
         )}
         </div>

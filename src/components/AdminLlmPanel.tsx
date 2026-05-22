@@ -8,6 +8,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   api_key_too_long: "API-Token ist zu lang.",
   model_too_long: "Modell-ID ist zu lang.",
   system_prompt_too_long: "System-Prompt ist zu lang.",
+  web_search_api_key_too_long: "Web-Recherche API-Schlüssel ist zu lang.",
   not_configured: "Bitte zuerst Basis-URL und API-Token speichern.",
   request_failed: "Server hat die Anfrage abgelehnt.",
   fetch_failed: "Verbindung zum Server fehlgeschlagen.",
@@ -22,6 +23,10 @@ export function AdminLlmPanel() {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [clearApiKey, setClearApiKey] = useState(false);
+  const [webSearchApiKeyConfigured, setWebSearchApiKeyConfigured] = useState(false);
+  const [webSearchProvider, setWebSearchProvider] = useState("tavily");
+  const [webSearchApiKey, setWebSearchApiKey] = useState("");
+  const [clearWebSearchApiKey, setClearWebSearchApiKey] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -44,6 +49,8 @@ export function AdminLlmPanel() {
         systemPrompt: string;
         systemPromptIsDefault: boolean;
         defaultSystemPrompt: string;
+        webSearchApiKeyConfigured?: boolean;
+        webSearchProvider?: string;
       };
       setBaseUrl(data.baseUrl ?? "");
       setModel(data.model ?? "");
@@ -53,6 +60,10 @@ export function AdminLlmPanel() {
       setApiKeyConfigured(data.apiKeyConfigured);
       setApiKey("");
       setClearApiKey(false);
+      setWebSearchApiKeyConfigured(Boolean(data.webSearchApiKeyConfigured));
+      setWebSearchProvider(data.webSearchProvider ?? "tavily");
+      setWebSearchApiKey("");
+      setClearWebSearchApiKey(false);
     } catch {
       setError("Einstellungen konnten nicht geladen werden.");
     } finally {
@@ -81,7 +92,13 @@ export function AdminLlmPanel() {
     setMessage(null);
     setError(null);
 
-    const payload: { baseUrl: string; model: string; systemPrompt: string; apiKey?: string } = {
+    const payload: {
+      baseUrl: string;
+      model: string;
+      systemPrompt: string;
+      apiKey?: string;
+      webSearchApiKey?: string;
+    } = {
       baseUrl,
       model,
       systemPrompt,
@@ -90,6 +107,11 @@ export function AdminLlmPanel() {
       payload.apiKey = "";
     } else if (apiKey.trim()) {
       payload.apiKey = apiKey;
+    }
+    if (clearWebSearchApiKey) {
+      payload.webSearchApiKey = "";
+    } else if (webSearchApiKey.trim()) {
+      payload.webSearchApiKey = webSearchApiKey;
     }
 
     try {
@@ -104,6 +126,8 @@ export function AdminLlmPanel() {
         systemPrompt?: string;
         systemPromptIsDefault?: boolean;
         apiKeyConfigured?: boolean;
+        webSearchApiKeyConfigured?: boolean;
+        webSearchProvider?: string;
         error?: string;
       };
       if (!res.ok) {
@@ -117,6 +141,10 @@ export function AdminLlmPanel() {
       setApiKeyConfigured(Boolean(data.apiKeyConfigured));
       setApiKey("");
       setClearApiKey(false);
+      setWebSearchApiKeyConfigured(Boolean(data.webSearchApiKeyConfigured));
+      setWebSearchProvider(data.webSearchProvider ?? "tavily");
+      setWebSearchApiKey("");
+      setClearWebSearchApiKey(false);
       setMessage("KI-Anbindung gespeichert.");
     } catch {
       setError("Einstellungen konnten nicht gespeichert werden.");
@@ -289,6 +317,55 @@ export function AdminLlmPanel() {
               </label>
             )}
           </label>
+
+          <div className="border-t border-pn-border pt-4">
+            <h3 className="font-semibold text-sm mb-1">Web-Recherche (optional)</h3>
+            <p className="text-xs text-pn-text-secondary mb-3">
+              Ermöglicht dem Exposé-Assistenten Internet-Recherche (z. B. Sanierungskosten).
+              Provider über Umgebungsvariable{" "}
+              <span className="font-mono">PICKHOME_WEB_SEARCH_PROVIDER</span> (
+              <span className="font-mono">tavily</span> oder <span className="font-mono">brave</span>
+              , Standard: tavily). Alternativ API-Schlüssel per{" "}
+              <span className="font-mono">PICKHOME_WEB_SEARCH_API_KEY</span> in der Umgebung.
+            </p>
+            <label className="block text-sm">
+              <span className="block mb-1 text-pn-text-secondary">
+                Web-Recherche API-Schlüssel ({webSearchProvider})
+              </span>
+              <input
+                name="webSearchApiKey"
+                type="password"
+                value={webSearchApiKey}
+                onChange={(e) => {
+                  setWebSearchApiKey(e.target.value);
+                  setClearWebSearchApiKey(false);
+                }}
+                disabled={saving}
+                placeholder={
+                  webSearchApiKeyConfigured
+                    ? "••••••••  (leer lassen = unverändert)"
+                    : "tvly-… oder Brave-Token"
+                }
+                className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full font-mono"
+                autoComplete="new-password"
+              />
+              {webSearchApiKeyConfigured && (
+                <label className="mt-2 flex items-center gap-2 text-pn-text-secondary">
+                  <input
+                    name="clearWebSearchApiKey"
+                    type="checkbox"
+                    checked={clearWebSearchApiKey}
+                    onChange={(e) => {
+                      setClearWebSearchApiKey(e.target.checked);
+                      if (e.target.checked) setWebSearchApiKey("");
+                    }}
+                    disabled={saving}
+                  />
+                  Gespeicherten Schlüssel entfernen
+                </label>
+              )}
+            </label>
+          </div>
 
           <div className="flex flex-wrap gap-3">
             <button

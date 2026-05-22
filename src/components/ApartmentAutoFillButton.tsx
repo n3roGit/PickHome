@@ -8,6 +8,7 @@ import {
   formatPrefilledFieldLabels,
 } from "@/lib/listing-import-form";
 import type { ListingPreviewFields } from "@/lib/listing-import";
+import { APARTMENT_TOOLBAR_BTN_NEUTRAL } from "@/lib/apartment-toolbar-styles";
 
 function resolveListingUrlInput(apartmentId: string, savedListingUrl: string | null): string {
   const form = document.getElementById(apartmentListingUrlFormId(apartmentId));
@@ -20,9 +21,11 @@ function resolveListingUrlInput(apartmentId: string, savedListingUrl: string | n
 export function ApartmentAutoFillButton({
   apartmentId,
   listingUrl,
+  toolbar,
 }: {
   apartmentId: string;
   listingUrl: string | null;
+  toolbar?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -64,7 +67,7 @@ export function ApartmentAutoFillButton({
           ? ` Übernommen und markiert: ${formatPrefilledFieldLabels(filled)}.`
           : "";
       setMessage(
-        `Leere Felder übernommen — bitte prüfen und speichern (Preis & Adresse, Titel, Beschreibung; Makler unter Kaufnebenkosten mit „Übernehmen“).${fieldHint}`
+        `Leere Felder übernommen — bitte prüfen und speichern (Preis & Adresse inkl. Kosten, Titel, Beschreibung; Makler unter Kaufnebenkosten mit „Übernehmen“).${fieldHint}`
       );
       const w = [...(data.warnings ?? [])];
       if (data.highlights) w.push(`Besonderheiten: ${data.highlights}`);
@@ -77,22 +80,35 @@ export function ApartmentAutoFillButton({
   }
 
   return (
-    <div className="flex flex-col items-stretch sm:items-end gap-2 max-w-md">
+    <div
+      className={
+        toolbar
+          ? "flex flex-col items-stretch gap-1.5 min-w-0"
+          : "flex flex-col items-stretch sm:items-end gap-2 max-w-md"
+      }
+    >
       <button
         type="button"
         disabled={loading}
         onClick={() => void autoFill()}
-        className="text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50 font-medium"
+        className={toolbar ? APARTMENT_TOOLBAR_BTN_NEUTRAL : "text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50 font-medium"}
       >
-        {loading ? "Wird ausgewertet…" : "Daten automatisch füllen"}
+        {loading ? "…" : toolbar ? "Auto-Fill" : "Daten automatisch füllen"}
       </button>
       {message && (
-        <p className="text-sm text-pn-text-secondary bg-pn-bg-subtle px-3 py-2 rounded-lg text-left sm:text-right">
+        <p
+          className={`text-xs text-pn-text-secondary bg-pn-bg-subtle px-2 py-1.5 rounded-lg ${
+            toolbar ? "max-w-xs" : "text-left sm:text-right"
+          }`}
+        >
           {message}
         </p>
       )}
       {warnings.map((w) => (
-        <p key={w} className="text-xs text-pn-text-tertiary text-left sm:text-right">
+        <p
+          key={w}
+          className={`text-xs text-pn-text-tertiary ${toolbar ? "max-w-xs" : "text-left sm:text-right"}`}
+        >
           {w}
         </p>
       ))}

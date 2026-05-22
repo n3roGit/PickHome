@@ -2,20 +2,35 @@ import { updateApartmentBrokerAction } from "@/app/actions";
 import { ApartmentRevisionField } from "@/components/ApartmentRevisionField";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import {
+  apartmentMonthlyMaintenance,
   estimateAffordability,
+  resolvePropertyTaxAnnual,
   estimateFinancing,
   estimatePurchaseCosts,
   formatBurdenShare,
   formatPercent,
+  purchaseCostLinesWithRenovation,
   resolveFederalStateCode,
+  totalAcquisitionCost,
   type AffordabilityEstimate,
   type FinancingEstimate,
   type PurchaseCostEstimate,
 } from "@/lib/purchase-costs";
-import { formatPrice } from "@/lib/scoring";
+import { formatPrice, formatPricePerPlotSqm } from "@/lib/scoring";
 import { apartmentBrokerFormId } from "@/lib/listing-import-form";
 
-function CostTable({ estimate, price }: { estimate: PurchaseCostEstimate; price: number }) {
+function CostTable({
+  estimate,
+  price,
+  renovationCost,
+  acquisitionTotal,
+}: {
+  estimate: PurchaseCostEstimate;
+  price: number;
+  renovationCost: number | null;
+  acquisitionTotal: number;
+}) {
+  const lines = purchaseCostLinesWithRenovation(estimate, renovationCost);
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -24,11 +39,13 @@ function CostTable({ estimate, price }: { estimate: PurchaseCostEstimate; price:
             <td className="py-2 text-pn-text-secondary">Kaufpreis</td>
             <td className="py-2 text-right font-medium">{formatPrice(price)}</td>
           </tr>
-          {estimate.lines.map((line) => (
+          {lines.map((line) => (
             <tr key={line.key} className="border-b border-pn-border">
               <td className="py-2 text-pn-text-secondary">
                 {line.label}
-                <span className="text-pn-text-tertiary"> · {formatPercent(line.rate)}</span>
+                {line.rate > 0 && (
+                  <span className="text-pn-text-tertiary"> · {formatPercent(line.rate)}</span>
+                )}
               </td>
               <td className="py-2 text-right">{formatPrice(line.amount)}</td>
             </tr>
@@ -39,7 +56,7 @@ function CostTable({ estimate, price }: { estimate: PurchaseCostEstimate; price:
           </tr>
           <tr>
             <td className="py-2 font-semibold">Geschätzte Gesamtkosten</td>
-            <td className="py-2 text-right font-semibold">{formatPrice(estimate.totalWithPrice)}</td>
+            <td className="py-2 text-right font-semibold">{formatPrice(acquisitionTotal)}</td>
           </tr>
         </tbody>
       </table>
@@ -156,6 +173,12 @@ export function ApartmentPurchaseCosts({
   federalStateCode,
   brokerBuyerRate,
   brokerInvolved,
+  hoaFeeMonthly,
+  heatingCostMonthly,
+  propertyTaxAnnual,
+  renovationCost,
+  plotSizeSqm,
+  sizeSqm,
   equityAmount,
   loanTermYears,
   interestRate,
@@ -169,6 +192,10 @@ export function ApartmentPurchaseCosts({
   federalStateCode: string | null;
   brokerBuyerRate: number | null;
   brokerInvolved: boolean;
+  hoaFeeMonthly: number | null;
+  heatingCostMonthly: number | null;
+  propertyTaxAnnual: number | null;
+  renovationCost: number | null;
   equityAmount: number | null;
   loanTermYears: number | null;
   interestRate: number | null;
@@ -188,10 +215,23 @@ export function ApartmentPurchaseCosts({
         brokerBuyerRate,
       })
     : null;
+  const acquisitionTotal = costEstimate
+    ? totalAcquisitionCost(costEstimate, renovationCost)
+    : null;
+  const ongoingCosts = {
+    hoaFeeMonthly,
+    heatingCostMonthly,
+    propertyTaxAnnual,
+    price,
+    sizeSqm,
+    plotSizeSqm,
+  };
+  const propertyTaxResolved = resolvePropertyTaxAnnual(ongoingCosts);
+  const monthlyMaintenance = apartmentMonthlyMaintenance(ongoingCosts);
   const financing =
-    costEstimate && equityAmount != null && loanTermYears != null
+    acquisitionTotal != null && equityAmount != null && loanTermYears != null
       ? estimateFinancing({
-          totalCost: costEstimate.totalWithPrice,
+          totalCost: acquisitionTotal,
           equityAmount,
           loanTermYears,
           interestRate,
@@ -202,6 +242,7 @@ export function ApartmentPurchaseCosts({
       ? estimateAffordability({
           monthlyPayment: financing.monthlyPayment,
           netHouseholdIncome,
+          monthlyMaintenance,
         })
       : null;
   const missingFinancingConfig = equityAmount == null || loanTermYears == null;
@@ -251,7 +292,25 @@ export function ApartmentPurchaseCosts({
               Übernehmen
             </button>
           </form>
-          <CostTable estimate={costEstimate} price={price} />
+          <CostTable
+            estimate={costEstimate}
+            price={price}
+            renovationCost={renovationCost}
+            acquisitionTotal={acquisitionTotal!}
+          />
+          {(plotSizeSqm != null || propertyTaxResolved.isEstimate) && (
+            <p className="text-xs text-pn-text-tertiary mt-3">
+              {plotSizeSqm != null && (
+                <>
+                  Grundstück {plotSizeSqm} m²
+                  {price != null && ` · ${formatPricePerPlotSqm(price, plotSizeSqm)}`}
+                  {propertyTaxResolved.isEstimate ? " · " : ""}
+                </>
+              )}
+              {propertyTaxResolved.isEstimate &&
+                "Grundsteuer grob geschätzt (Orientierung), weil kein Jahresbetrag hinterlegt ist."}
+            </p>
+          )}
           {financing && (
             <FinancingTable
               financing={financing}

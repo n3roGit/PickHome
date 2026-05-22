@@ -23,9 +23,15 @@ function uploadErrorFromCaught(e: unknown): UploadApartmentFileResult {
   return { ok: false, error: "invalid_type" };
 }
 
+export type UploadApartmentPhotoOptions = {
+  /** When false, skip revalidate until flushApartmentPhotoRevalidateAction (batch uploads). */
+  revalidate?: boolean;
+};
+
 export async function uploadApartmentPhotoAction(
   apartmentId: string,
-  formData: FormData
+  formData: FormData,
+  options?: UploadApartmentPhotoOptions
 ): Promise<UploadApartmentFileResult | void> {
   const user = await requireUser();
   const apt = await assertApartmentAccess(apartmentId, user);
@@ -34,17 +40,28 @@ export async function uploadApartmentPhotoAction(
   const file = formData.get("photo");
   if (!(file instanceof File) || file.size === 0) return;
 
+  const shouldRevalidate = options?.revalidate !== false;
+
   try {
     const url = await saveApartmentPhoto(apartmentId, file);
     const count = await prisma.apartmentPhoto.count({ where: { apartmentId } });
     await prisma.apartmentPhoto.create({
       data: { apartmentId, url, sortOrder: count },
     });
-    revalidateApartment(apt.projectId, apartmentId);
+    if (shouldRevalidate) {
+      revalidateApartment(apt.projectId, apartmentId);
+    }
     return { ok: true };
   } catch (e) {
     return uploadErrorFromCaught(e);
   }
+}
+
+export async function flushApartmentPhotoRevalidateAction(apartmentId: string) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user);
+  if (!apt) return;
+  revalidateApartment(apt.projectId, apartmentId);
 }
 
 export async function deleteApartmentPhotoAction(photoId: string) {

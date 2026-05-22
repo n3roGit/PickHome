@@ -10,7 +10,7 @@ import {
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { PartnerDivergenceCompareBlock } from "@/components/PartnerDivergencePanel";
 import { partnerComparisons } from "@/lib/rating-divergence";
-import { apartmentScore, formatPrice, formatPricePerSqm } from "@/lib/scoring";
+import { apartmentScore, formatPrice, formatPricePerPlotSqm, formatPricePerSqm } from "@/lib/scoring";
 
 const MAX_COMPARE = 5;
 
@@ -21,7 +21,12 @@ type Apartment = {
   address: string | null;
   price: number | null;
   sizeSqm: number | null;
+  plotSizeSqm?: number | null;
   brokerInvolved: boolean;
+  hoaFeeMonthly?: number | null;
+  heatingCostMonthly?: number | null;
+  propertyTaxAnnual?: number | null;
+  renovationCost?: number | null;
 };
 type Criterion = { id: string; name: string; weight: number; isDealbreaker: boolean; groupName: string };
 type Rating = {
@@ -75,6 +80,18 @@ function CompareNumbersTable({
             <CompareRow
               label="€/m²"
               values={rows.map((r) => formatPricePerSqm(r.apartment.price, r.apartment.sizeSqm))}
+            />
+            <CompareRow
+              label="Grundstück"
+              values={rows.map((r) =>
+                r.apartment.plotSizeSqm != null ? `${r.apartment.plotSizeSqm} m²` : "—"
+              )}
+            />
+            <CompareRow
+              label="€/m² Grundstück"
+              values={rows.map((r) =>
+                formatPricePerPlotSqm(r.apartment.price, r.apartment.plotSizeSqm ?? null)
+              )}
             />
             <CompareRow
               label="Gesamtkosten (grob)"

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  apartmentMonthlyMaintenance,
+  estimatePropertyTaxAnnual,
+  resolvePropertyTaxAnnual,
   brokerBuyerShareRate,
   estimateAffordability,
   apartmentCompareMetrics,
@@ -12,6 +15,7 @@ import {
   parseFederalStateCode,
   resolveBrokerBuyerRate,
   resolveFederalStateCode,
+  totalAcquisitionCost,
 } from "@/lib/purchase-costs";
 
 describe("parseFederalStateCode", () => {
@@ -140,6 +144,87 @@ describe("estimateAffordability", () => {
     });
     expect(result?.level).toBe("ok");
   });
+
+  it("includes monthly maintenance in burden", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 1_500,
+      netHouseholdIncome: 5_000,
+      monthlyMaintenance: 500,
+    });
+    expect(result?.totalMonthlyBurden).toBe(2_000);
+    expect(result?.burdenShare).toBe(0.4);
+    expect(result?.level).toBe("warn");
+  });
+});
+
+describe("estimatePropertyTaxAnnual", () => {
+  it("returns null without price", () => {
+    expect(estimatePropertyTaxAnnual({ price: null, plotSizeSqm: 500 })).toBeNull();
+  });
+
+  it("scales up slightly for large plot vs living area", () => {
+    const base = estimatePropertyTaxAnnual({ price: 400_000, sizeSqm: 100, plotSizeSqm: 100 });
+    const largePlot = estimatePropertyTaxAnnual({
+      price: 400_000,
+      sizeSqm: 100,
+      plotSizeSqm: 600,
+    });
+    expect(base).not.toBeNull();
+    expect(largePlot).not.toBeNull();
+    expect(largePlot!).toBeGreaterThan(base!);
+  });
+});
+
+describe("resolvePropertyTaxAnnual", () => {
+  it("prefers stored value over estimate", () => {
+    expect(
+      resolvePropertyTaxAnnual({
+        propertyTaxAnnual: 900,
+        price: 300_000,
+        plotSizeSqm: 500,
+      })
+    ).toEqual({ annual: 900, isEstimate: false });
+  });
+
+  it("estimates when annual tax missing", () => {
+    const r = resolvePropertyTaxAnnual({ price: 300_000, plotSizeSqm: 400 });
+    expect(r.isEstimate).toBe(true);
+    expect(r.annual).toBeGreaterThan(0);
+  });
+});
+
+describe("apartmentMonthlyMaintenance", () => {
+  it("sums hoa, heating, and monthly property tax", () => {
+    expect(
+      apartmentMonthlyMaintenance({
+        hoaFeeMonthly: 200,
+        heatingCostMonthly: 100,
+        propertyTaxAnnual: 600,
+      })
+    ).toBe(350);
+  });
+
+  it("uses estimated property tax from plot and price when annual missing", () => {
+    const monthly = apartmentMonthlyMaintenance({
+      hoaFeeMonthly: 0,
+      heatingCostMonthly: 0,
+      price: 500_000,
+      plotSizeSqm: 800,
+      sizeSqm: 120,
+    });
+    expect(monthly).toBeGreaterThan(0);
+  });
+});
+
+describe("totalAcquisitionCost", () => {
+  it("adds renovation to purchase total", () => {
+    const purchase = estimatePurchaseCosts({
+      price: 300_000,
+      federalStateCode: "HB",
+      brokerInvolved: false,
+    });
+    expect(totalAcquisitionCost(purchase, 25_000)).toBe(347_500);
+  });
 });
 
 describe("formatBurdenShare", () => {
@@ -165,7 +250,37 @@ describe("apartmentCompareMetrics", () => {
     );
     expect(result.totalCost).toBe(331_425);
     expect(result.monthlyPayment).toBeGreaterThan(0);
-    expect(result.burdenShare).toBeGreaterThan(0);
+    expect(result.burdenShare).not.toBeNull();
+    expect(result.burdenLevel).toBeTruthy();
+  });
+
+  it("includes maintenance in burden share", () => {
+    const result = apartmentCompareMetrics(
+      {
+        price: 300_000,
+        sizeSqm: 100,
+        brokerInvolved: true,
+        address: null,
+        hoaFeeMonthly: 400,
+        heatingCostMonthly: 200,
+      },
+      finance
+    );
+    expect(result.burdenShare).toBeGreaterThan(0.35);
+  });
+
+  it("includes renovation in total cost", () => {
+    const result = apartmentCompareMetrics(
+      {
+        price: 300_000,
+        sizeSqm: null,
+        brokerInvolved: false,
+        address: null,
+        renovationCost: 20_000,
+      },
+      { ...finance, equityAmount: null, loanTermYears: null }
+    );
+    expect(result.totalCost).toBe(342_500);
   });
 
   it("uses address Bundesland instead of project default", () => {

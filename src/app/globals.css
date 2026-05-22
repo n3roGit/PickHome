@@ -46,6 +46,33 @@ body {
     border: 2px solid #fff;
   }
 
+  .checklist-status-range {
+    @apply h-8 cursor-pointer touch-none;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+
+  .checklist-status-range::-webkit-slider-runnable-track {
+    @apply h-1.5 rounded-full bg-pn-border;
+  }
+
+  .checklist-status-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    @apply w-5 h-5 rounded-full bg-pn-accent shadow;
+    margin-top: -7px;
+    border: 2px solid #fff;
+  }
+
+  .checklist-status-range::-moz-range-track {
+    @apply h-1.5 rounded-full bg-pn-border;
+  }
+
+  .checklist-status-range::-moz-range-thumb {
+    @apply w-5 h-5 rounded-full bg-pn-accent shadow;
+    border: 2px solid #fff;
+  }
+
   .pn-field-prefilled {
     @apply ring-2 ring-pn-accent/50 border-pn-accent bg-pn-score-high-bg/40;
   }

@@ -9,6 +9,7 @@ export type ApartmentSearchInput = {
   listingUrl?: string | null;
   price?: number | null;
   sizeSqm?: number | null;
+  plotSizeSqm?: number | null;
   floor?: number | null;
   yearBuilt?: number | null;
   brokerInvolved?: boolean;
@@ -44,6 +45,7 @@ export function buildApartmentSearchBlob(
   push(apartment.listingUrl);
   push(apartment.price);
   push(apartment.sizeSqm);
+  push(apartment.plotSizeSqm);
   push(apartment.floor);
   push(apartment.yearBuilt);
   if (apartment.brokerInvolved) parts.push("makler");

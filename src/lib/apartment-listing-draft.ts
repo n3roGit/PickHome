@@ -19,6 +19,7 @@ const BASICS_FIELD_KEYS: ListingPreviewFieldKey[] = [
   "price",
   "address",
   "sizeSqm",
+  "plotSizeSqm",
   "energyClass",
 ];
 

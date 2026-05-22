@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { APARTMENT_TOOLBAR_BTN_ACCENT } from "@/lib/apartment-toolbar-styles";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -17,9 +18,11 @@ const ERROR_MESSAGES: Record<string, string> = {
 export function ApartmentLlmChatButton({
   apartmentId,
   hasSourceText,
+  toolbar,
 }: {
   apartmentId: string;
   hasSourceText: boolean;
+  toolbar?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -77,12 +80,17 @@ export function ApartmentLlmChatButton({
         disabled={!hasSourceText}
         title={
           hasSourceText
-            ? "Fragen zum Exposé stellen"
+            ? "KI-Assistent — Fragen zur Immobilie, optional mit Web-Recherche"
             : "PDF mit Textindex erforderlich oder Beschreibung/Notizen"
         }
-        className="text-sm border border-pn-accent text-pn-accent px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-40 disabled:border-pn-border disabled:text-pn-text-tertiary"
+        aria-label="KI-Assistent"
+        className={
+          toolbar
+            ? `${APARTMENT_TOOLBAR_BTN_ACCENT} disabled:border-pn-border disabled:text-pn-text-tertiary`
+            : "text-sm border border-pn-accent text-pn-accent px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-40 disabled:border-pn-border disabled:text-pn-text-tertiary"
+        }
       >
-        KI-Assistent
+        KI
       </button>
 
       {open && (
@@ -96,10 +104,11 @@ export function ApartmentLlmChatButton({
             <div className="flex items-start justify-between gap-3 p-4 border-b border-pn-border">
               <div>
                 <h2 id="llm-chat-title" className="text-lg font-semibold">
-                  Exposé-Assistent
+                  Immobilien-Assistent
                 </h2>
                 <p className="text-xs text-pn-text-secondary mt-1">
-                  Antworten nur aus Stammdaten, Beschreibung, Notizen und PDF-Text dieser Immobilie.
+                  Nutzt Immobiliendaten und Dokumente; bei konfigurierter Web-Recherche auch
+                  öffentliche Quellen. Bei Unklarheiten fragt die KI nach — keine erfundenen Fakten.
                 </p>
               </div>
               <button
@@ -118,7 +127,8 @@ export function ApartmentLlmChatButton({
             >
               {history.length === 0 && (
                 <p className="text-sm text-pn-text-secondary">
-                  z. B. „Was steht zur Heizung?“, „Hausgeld?“, „Sanierungsbedarf?“
+                  z. B. „Was steht zur Heizung?“, „Wie hoch könnten Sanierungskosten sein?“ (grobe
+                  Schätzung mit Annahmen)
                 </p>
               )}
               {history.map((turn, i) => (
@@ -149,7 +159,7 @@ export function ApartmentLlmChatButton({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={loading}
-                placeholder="Frage zum Exposé…"
+                placeholder="Frage zur Immobilie…"
                 className="flex-1 border border-pn-border rounded-lg px-3 py-2 text-sm"
               />
               <button

@@ -50,4 +50,19 @@ describe("buildApartmentLlmContext", () => {
     expect(ctx).toContain("Hausgeld 200 Euro");
     expect(ctx).toContain("a.pdf");
   });
+
+  it("includes monthly and renovation cost fields", () => {
+    const ctx = buildApartmentLlmContext({
+      projectName: "P",
+      title: "T",
+      address: TEST_ADDRESS_BERLIN_RAW,
+      price: 100_000,
+      hoaFeeMonthly: 350,
+      renovationCost: 40_000,
+      plotSizeSqm: 420,
+    });
+    expect(ctx).toContain("Hausgeld monatlich");
+    expect(ctx).toContain("Renovierung (eingetragen)");
+    expect(ctx).toContain("Grundstücksfläche m²: 420");
+  });
 });

@@ -9,10 +9,15 @@ export type ApartmentLlmContextInput = {
   listingUrl?: string | null;
   price?: number | null;
   sizeSqm?: number | null;
+  plotSizeSqm?: number | null;
   floor?: number | null;
   yearBuilt?: number | null;
   energyClass?: string | null;
   brokerInvolved?: boolean;
+  hoaFeeMonthly?: number | null;
+  heatingCostMonthly?: number | null;
+  propertyTaxAnnual?: number | null;
+  renovationCost?: number | null;
   description?: string | null;
   notes?: string | null;
   documents?: { fileName: string; extractedText?: string | null }[];
@@ -33,10 +38,23 @@ export function buildApartmentLlmContext(apartment: ApartmentLlmContextInput): s
   push("Inserat-URL", apartment.listingUrl);
   if (apartment.price != null) push("Preis", formatPrice(apartment.price));
   push("Wohnfläche m²", apartment.sizeSqm);
+  push("Grundstücksfläche m²", apartment.plotSizeSqm);
   push("Etage", apartment.floor);
   push("Baujahr", apartment.yearBuilt);
   push("Energieklasse", apartment.energyClass);
   if (apartment.brokerInvolved) lines.push("Makler: ja");
+  if (apartment.hoaFeeMonthly != null) {
+    push("Hausgeld monatlich", formatPrice(apartment.hoaFeeMonthly));
+  }
+  if (apartment.heatingCostMonthly != null) {
+    push("Heizkosten monatlich", formatPrice(apartment.heatingCostMonthly));
+  }
+  if (apartment.propertyTaxAnnual != null) {
+    push("Grundsteuer jährlich", formatPrice(apartment.propertyTaxAnnual));
+  }
+  if (apartment.renovationCost != null) {
+    push("Renovierung (eingetragen)", formatPrice(apartment.renovationCost));
+  }
 
   if (apartment.description?.trim()) {
     lines.push("", "Beschreibung:", apartment.description.trim());

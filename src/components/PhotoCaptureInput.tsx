@@ -2,14 +2,29 @@
 
 import { useRef } from "react";
 
+import { APARTMENT_TOOLBAR_BTN_NEUTRAL } from "@/lib/apartment-toolbar-styles";
+
+const BUTTON_CLASS = {
+  primary:
+    "inline-flex items-center justify-center gap-2 bg-pn-accent text-white font-semibold px-4 py-2.5 rounded-lg text-sm disabled:opacity-50 min-h-[44px]",
+  toolbar: APARTMENT_TOOLBAR_BTN_NEUTRAL,
+} as const;
+
 type Props = {
   disabled?: boolean;
   maxBytes?: number;
+  variant?: keyof typeof BUTTON_CLASS;
   onTooLarge?: (fileName: string) => void;
   onFiles: (files: File[]) => void;
 };
 
-export function PhotoCaptureInput({ disabled, maxBytes, onTooLarge, onFiles }: Props) {
+export function PhotoCaptureInput({
+  disabled,
+  maxBytes,
+  variant = "primary",
+  onTooLarge,
+  onFiles,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function handleChange(files: FileList | null) {
@@ -45,7 +60,7 @@ export function PhotoCaptureInput({ disabled, maxBytes, onTooLarge, onFiles }: P
         type="button"
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
-        className="inline-flex items-center justify-center gap-2 bg-pn-accent text-white font-semibold px-4 py-2.5 rounded-lg text-sm disabled:opacity-50 min-h-[44px]"
+        className={BUTTON_CLASS[variant]}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -53,7 +68,7 @@ export function PhotoCaptureInput({ disabled, maxBytes, onTooLarge, onFiles }: P
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
-          className="w-5 h-5 shrink-0"
+          className="w-4 h-4 shrink-0"
           aria-hidden
         >
           <path

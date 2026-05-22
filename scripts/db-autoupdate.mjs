@@ -127,6 +127,9 @@ async function main() {
   console.log("[pickhome] Backfilling sizeSqm from descriptions (if needed)...");
   runTsxScriptOptional("Backfill sizeSqm", "scripts/backfill-size-sqm.mjs");
 
+  console.log("[pickhome] Backfilling checklist status (if needed)...");
+  runTsxScriptOptional("Backfill checklist status", "scripts/backfill-checklist-status.mjs");
+
   console.log("[pickhome] Backfilling area filter ortKeys (if needed)...");
   runTsxScriptOptional("Backfill area filter ortKeys", "scripts/backfill-area-filter-ort-keys.mjs");
 

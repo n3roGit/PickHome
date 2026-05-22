@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { ApartmentLiveScoreBadge } from "@/components/ApartmentLiveScoreBadge";
+import { APARTMENT_TOOLBAR_BTN_NEUTRAL } from "@/lib/apartment-toolbar-styles";
 import { ApartmentLiveScoreSummary } from "@/components/ApartmentLiveScoreSummary";
 import { ApartmentScoreProvider } from "@/components/ApartmentScoreProvider";
 import { ApartmentDocuments } from "@/components/ApartmentDocuments";
@@ -57,11 +57,17 @@ import { ApartmentListingDraftRestore } from "@/components/ApartmentListingDraft
 import { ApartmentUnsavedGuard } from "@/components/ApartmentUnsavedGuard";
 import { ApartmentLlmChatButton } from "@/components/ApartmentLlmChatButton";
 import { ApartmentChecklistExtras } from "@/components/ApartmentChecklistExtras";
+import { ApartmentPhotoCameraButton } from "@/components/ApartmentPhotoCameraButton";
 import type { ChecklistCriterionHint } from "@/components/RatingSliders";
 import {
   hasChecklistInfo,
   userCanFillChecklistItem,
 } from "@/lib/checklist-display";
+import { getProjectViewingScheduleSlots } from "@/lib/viewing-schedule-data";
+import {
+  buildViewingScheduleWarningsAsync,
+  viewingWarningsToRecord,
+} from "@/lib/viewing-schedule-conflicts";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -134,10 +140,15 @@ export default async function ApartmentPage({
     listingUrl: apartment.listingUrl,
     price: apartment.price,
     sizeSqm: apartment.sizeSqm,
+    plotSizeSqm: apartment.plotSizeSqm,
     floor: apartment.floor,
     yearBuilt: apartment.yearBuilt,
     energyClass: apartment.energyClass,
     brokerInvolved: apartment.brokerInvolved,
+    hoaFeeMonthly: apartment.hoaFeeMonthly,
+    heatingCostMonthly: apartment.heatingCostMonthly,
+    propertyTaxAnnual: apartment.propertyTaxAnnual,
+    renovationCost: apartment.renovationCost,
     description: apartment.description,
     notes: apartment.notes,
     documents: apartment.documents.map((d) => ({
@@ -245,6 +256,11 @@ export default async function ApartmentPage({
   );
   const checklistEditHref = `/project/${project.id}/apartment/${apartment.id}/checklist`;
 
+  const viewingScheduleSlots = await getProjectViewingScheduleSlots(project.id, user);
+  const scheduleWarnings = viewingWarningsToRecord(
+    await buildViewingScheduleWarningsAsync(viewingScheduleSlots, appTimeZone)
+  );
+
   const checklistByCriterionId: Record<string, ChecklistCriterionHint> = {};
   for (const item of checklistItems) {
     if (!item.criterionId) continue;
@@ -326,55 +342,65 @@ export default async function ApartmentPage({
         >
           ← Zurück zu {project.name}
         </Link>
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-          <div>
-            <ApartmentTitleForm
-              apartmentId={apartment.id}
-              revision={apartment.revision}
-              title={apartment.title}
-              saved={resolvedSearchParams.title_saved === "1"}
-              empty={resolvedSearchParams.title_error === "empty"}
-            />
-            {archived && (
-              <span className="inline-block mt-1 text-xs font-medium text-pn-text-secondary bg-pn-bg-subtle px-2 py-0.5 rounded">
-                Archiviert
-              </span>
-            )}
-            {apartment.listingUrl && (
-              <a href={apartment.listingUrl} target="_blank" rel="noreferrer" className="text-sm text-pn-accent hover:underline mt-2 inline-block">
-                Inserat öffnen ↗
-              </a>
-            )}
-            <DuplicateApartmentBadge projectId={project.id} matches={duplicateMatches} />
-            {areaFilterEnabled && (
-              <div className="mt-2">
-                <DesiredAreaBadge status={areaMatch.status} mode={areaFilterModeValue} />
-              </div>
-            )}
-          </div>
-          <div className="flex flex-wrap items-start justify-end gap-2 sm:gap-3">
-            <ApartmentAutoFillButton
-              apartmentId={apartment.id}
-              listingUrl={apartment.listingUrl}
-            />
+        <div className="mb-4">
+          <ApartmentTitleForm
+            apartmentId={apartment.id}
+            revision={apartment.revision}
+            title={apartment.title}
+            saved={resolvedSearchParams.title_saved === "1"}
+            empty={resolvedSearchParams.title_error === "empty"}
+          />
+          {archived && (
+            <span className="inline-block mt-1 text-xs font-medium text-pn-text-secondary bg-pn-bg-subtle px-2 py-0.5 rounded">
+              Archiviert
+            </span>
+          )}
+          {apartment.listingUrl && (
+            <a
+              href={apartment.listingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-pn-accent hover:underline mt-2 inline-block"
+            >
+              Inserat öffnen ↗
+            </a>
+          )}
+          <DuplicateApartmentBadge projectId={project.id} matches={duplicateMatches} />
+          {areaFilterEnabled && (
+            <div className="mt-2">
+              <DesiredAreaBadge status={areaMatch.status} mode={areaFilterModeValue} />
+            </div>
+          )}
+        </div>
+        <ApartmentLiveScoreSummary userName={user.name} viewedAt={apartment.viewedAt} />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-6">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <Link href={checklistEditHref} className={APARTMENT_TOOLBAR_BTN_NEUTRAL}>
+              Checkliste
+            </Link>
+            <ApartmentPhotoCameraButton apartmentId={apartment.id} />
             {llmEnabled && (
               <ApartmentLlmChatButton
                 apartmentId={apartment.id}
                 hasSourceText={llmHasSourceText}
+                toolbar
               />
             )}
-            <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} />
-            <ApartmentDeleteButton apartmentId={apartment.id} />
-            <ApartmentLiveScoreBadge />
-            <Link
-              href={checklistEditHref}
-              className="text-sm font-semibold px-3 py-2 rounded-lg border border-pn-border bg-pn-bg-surface hover:bg-pn-bg-subtle text-pn-text-primary"
-            >
-              Checkliste
-            </Link>
+            <ApartmentAutoFillButton
+              apartmentId={apartment.id}
+              listingUrl={apartment.listingUrl}
+              toolbar
+            />
+          </div>
+          <div
+            className="hidden sm:block w-px h-6 bg-pn-border shrink-0"
+            aria-hidden
+          />
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} toolbar />
+            <ApartmentDeleteButton apartmentId={apartment.id} toolbar />
           </div>
         </div>
-        <ApartmentLiveScoreSummary userName={user.name} viewedAt={apartment.viewedAt} />
         <ScoreLegend className="mb-6" />
         {resolvedSearchParams.conflict === "1" && <ApartmentConflictBanner />}
         <ApartmentBasicsForm
@@ -388,7 +414,12 @@ export default async function ApartmentPage({
           priceHistoryCount={priceHistoryCount}
           timeZone={appTimeZone}
           sizeSqm={apartment.sizeSqm}
+          plotSizeSqm={apartment.plotSizeSqm}
           energyClass={apartment.energyClass}
+          hoaFeeMonthly={apartment.hoaFeeMonthly}
+          heatingCostMonthly={apartment.heatingCostMonthly}
+          propertyTaxAnnual={apartment.propertyTaxAnnual}
+          renovationCost={apartment.renovationCost}
           budget={project.budget}
           saved={resolvedSearchParams.basics_saved === "1"}
           addressUnresolved={resolvedSearchParams.address_unresolved === "1"}
@@ -421,6 +452,12 @@ export default async function ApartmentPage({
           federalStateCode={project.federalStateCode}
           brokerBuyerRate={project.brokerBuyerRate}
           brokerInvolved={apartment.brokerInvolved}
+          hoaFeeMonthly={apartment.hoaFeeMonthly}
+          heatingCostMonthly={apartment.heatingCostMonthly}
+          propertyTaxAnnual={apartment.propertyTaxAnnual}
+          renovationCost={apartment.renovationCost}
+          plotSizeSqm={apartment.plotSizeSqm}
+          sizeSqm={apartment.sizeSqm}
           equityAmount={project.equityAmount}
           loanTermYears={project.loanTermYears}
           interestRate={project.interestRate}
@@ -457,6 +494,7 @@ export default async function ApartmentPage({
         />
         <ViewingAppointments
           apartmentId={apartment.id}
+          scheduleWarnings={scheduleWarnings}
           viewings={apartment.viewings.map((v) => ({
             id: v.id,
             scheduledAt: v.scheduledAt.toISOString(),
@@ -472,7 +510,7 @@ export default async function ApartmentPage({
             />
           </CollapsibleSection>
         )}
-        <CollapsibleSection title="Kriterien bewerten" defaultOpen>
+        <CollapsibleSection title="Kriterien bewerten" defaultOpen={false}>
           <RatingSliders
             apartmentId={apartment.id}
             groups={groupsWithRatings}

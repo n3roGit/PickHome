@@ -5,6 +5,8 @@ import { addViewingAction, deleteViewingAction, updateViewingAction } from "@/ap
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { formatDateTimeDe, normalizeScheduledAtFormData, toDatetimeLocalValue } from "@/lib/dates";
 import { useAppTimeZone } from "@/lib/use-app-timezone";
+import type { ViewingScheduleWarning } from "@/lib/viewing-schedule-conflicts";
+import { ViewingScheduleWarnings } from "@/components/ViewingScheduleWarnings";
 
 type Viewing = {
   id: string;
@@ -15,9 +17,11 @@ type Viewing = {
 export function ViewingAppointments({
   apartmentId,
   viewings,
+  scheduleWarnings = {},
 }: {
   apartmentId: string;
   viewings: Viewing[];
+  scheduleWarnings?: Record<string, ViewingScheduleWarning[]>;
 }) {
   const appTimeZone = useAppTimeZone();
   const [pending, startTransition] = useTransition();
@@ -95,6 +99,7 @@ export function ViewingAppointments({
           items={upcoming}
           pending={pending}
           timeZone={appTimeZone}
+          scheduleWarnings={scheduleWarnings}
           onDelete={onDelete}
           onUpdate={onUpdate}
           variant="upcoming"
@@ -106,6 +111,7 @@ export function ViewingAppointments({
           items={past}
           pending={pending}
           timeZone={appTimeZone}
+          scheduleWarnings={{}}
           onDelete={onDelete}
           onUpdate={onUpdate}
           variant="past"
@@ -123,6 +129,7 @@ function ViewingList({
   items,
   pending,
   timeZone,
+  scheduleWarnings,
   onDelete,
   onUpdate,
   variant,
@@ -131,6 +138,7 @@ function ViewingList({
   items: { id: string; date: Date; note: string | null }[];
   pending: boolean;
   timeZone: string;
+  scheduleWarnings: Record<string, ViewingScheduleWarning[]>;
   onDelete: (id: string, date: Date) => void;
   onUpdate: (id: string, formData: FormData) => void;
   variant: "upcoming" | "past";
@@ -151,6 +159,9 @@ function ViewingList({
             <div className="mb-3">
               <p className="font-medium">{formatDateTimeDe(v.date, timeZone)}</p>
               {v.note && <p className="text-sm text-pn-text-secondary">{v.note}</p>}
+              {variant === "upcoming" && (
+                <ViewingScheduleWarnings warnings={scheduleWarnings[v.id] ?? []} />
+              )}
             </div>
             <form
               action={(formData) => onUpdate(v.id, formData)}

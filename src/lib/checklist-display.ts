@@ -1,20 +1,46 @@
-export type ChecklistStatus = "unset" | "ok" | "open" | "na";
+export type ChecklistStatus = "unset" | "not_ok" | "ok";
+
+/** Slider positions: 0 = unset, 1 = not_ok, 2 = ok */
+export const CHECKLIST_STATUS_VALUES: ChecklistStatus[] = ["unset", "not_ok", "ok"];
 
 export const CHECKLIST_STATUS_LEGEND: {
   key: ChecklistStatus;
-  label: string;
+  symbol: string;
   hint: string;
+  ariaLabel: string;
 }[] = [
-  { key: "unset", label: "—", hint: "Noch ohne Bewertung" },
-  { key: "ok", label: "OK", hint: "Passt / in Ordnung" },
-  { key: "open", label: "?", hint: "Offen, noch klären" },
-  { key: "na", label: "n. a.", hint: "Nicht anwendbar" },
+  { key: "unset", symbol: "○", hint: "Noch ohne Bewertung", ariaLabel: "Nicht bewertet" },
+  { key: "not_ok", symbol: "✕", hint: "Nicht in Ordnung", ariaLabel: "Nicht OK" },
+  { key: "ok", symbol: "✓", hint: "Passt / in Ordnung", ariaLabel: "OK" },
 ];
 
-const VALID_STATUSES = new Set<string>(["unset", "ok", "open", "na"]);
+const VALID_STATUSES = new Set<string>([
+  "unset",
+  "not_ok",
+  "ok",
+  "open",
+  "na",
+]);
+
+const LEGACY_STATUS_MAP: Record<string, ChecklistStatus> = {
+  open: "not_ok",
+  na: "unset",
+};
 
 export function parseChecklistStatus(value: string): ChecklistStatus {
-  return VALID_STATUSES.has(value) ? (value as ChecklistStatus) : "unset";
+  const raw = String(value ?? "").trim();
+  if (!VALID_STATUSES.has(raw)) return "unset";
+  if (raw in LEGACY_STATUS_MAP) return LEGACY_STATUS_MAP[raw];
+  return raw as ChecklistStatus;
+}
+
+export function checklistStatusToIndex(status: ChecklistStatus): number {
+  const idx = CHECKLIST_STATUS_VALUES.indexOf(status);
+  return idx >= 0 ? idx : 0;
+}
+
+export function checklistStatusFromIndex(index: number): ChecklistStatus {
+  return CHECKLIST_STATUS_VALUES[index] ?? "unset";
 }
 
 export function hasChecklistInfo(entry: {
@@ -23,20 +49,24 @@ export function hasChecklistInfo(entry: {
 } | null | undefined): boolean {
   if (!entry) return false;
   if (entry.note?.trim()) return true;
-  return entry.status !== "unset";
+  const status = parseChecklistStatus(entry.status);
+  return status !== "unset";
 }
 
 export function checklistStatusLabel(status: string): string {
-  switch (status) {
+  switch (parseChecklistStatus(status)) {
     case "ok":
       return "OK";
-    case "open":
-      return "Offen";
-    case "na":
-      return "n. a.";
+    case "not_ok":
+      return "Nicht OK";
     default:
       return "";
   }
+}
+
+export function checklistStatusSymbol(status: string): string {
+  const parsed = parseChecklistStatus(status);
+  return CHECKLIST_STATUS_LEGEND.find((s) => s.key === parsed)?.symbol ?? "○";
 }
 
 export function checklistItemDisplayName(item: {

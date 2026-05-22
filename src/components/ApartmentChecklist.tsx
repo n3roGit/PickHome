@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveChecklistEntryAction } from "@/app/checklist-actions";
+import { ChecklistStatusSlider } from "@/components/ChecklistStatusSlider";
 import {
   CHECKLIST_STATUS_LEGEND,
   parseChecklistStatus,
@@ -11,13 +12,6 @@ import {
 } from "@/lib/checklist-display";
 import { countFilledChecklistEntries } from "@/lib/checklist-progress";
 
-const STATUSES: { key: ChecklistStatus; label: string }[] = [
-  { key: "unset", label: "—" },
-  { key: "ok", label: "OK" },
-  { key: "open", label: "?" },
-  { key: "na", label: "n. a." },
-];
-
 export type ApartmentChecklistPartnerView = {
   userId: string;
   name: string;
@@ -25,17 +19,10 @@ export type ApartmentChecklistPartnerView = {
   brokerDigest: string;
 };
 
-function statusButtonClass(active: boolean, key: ChecklistStatus): string {
-  if (!active) {
-    return "bg-pn-bg-surface border-pn-border text-pn-text-tertiary";
-  }
-  if (key === "ok") {
-    return "bg-pn-score-high-bg border-pn-accent text-pn-score-high";
-  }
-  if (key === "open") {
-    return "bg-pn-score-mid-bg border-pn-score-mid text-pn-score-mid";
-  }
-  return "bg-pn-bg-subtle border-pn-border-strong text-pn-text-secondary";
+function legendSymbolClass(key: ChecklistStatus): string {
+  if (key === "ok") return "bg-pn-score-high-bg border-pn-accent text-pn-score-high";
+  if (key === "not_ok") return "bg-pn-score-low-bg border-pn-score-low text-pn-score-low";
+  return "bg-pn-bg-surface border-pn-border text-pn-text-tertiary";
 }
 
 export function ApartmentChecklist({
@@ -188,29 +175,17 @@ export function ApartmentChecklist({
                           {item.isCustom ? "Zusatz" : "Kriterium"}
                         </span>
                       </p>
-                      <div className="flex gap-1">
-                        {STATUSES.map((s) => (
-                          <button
-                            key={s.key}
-                            type="button"
-                            disabled={pending || active.readonly}
-                            onClick={() => setStatus(item.id, s.key)}
-                            className={`w-7 h-7 rounded text-xs font-bold border ${statusButtonClass(
-                              state.status === s.key,
-                              s.key
-                            )}`}
-                            title={s.label}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
-                      </div>
+                      <ChecklistStatusSlider
+                        status={state.status}
+                        disabled={pending || active.readonly}
+                        onChange={(next) => setStatus(item.id, next)}
+                      />
                     </div>
                     <input
                       type="text"
                       value={state.note}
                       readOnly={active.readonly}
-                      disabled={pending || active.readonly || state.status === "na"}
+                      disabled={pending || active.readonly}
                       placeholder="Fakt notieren…"
                       className="w-full border border-pn-border rounded-md px-2.5 py-2 text-sm bg-pn-bg-base focus:outline-none focus:ring-2 focus:ring-pn-accent disabled:bg-pn-bg-subtle disabled:text-pn-text-secondary"
                       onChange={(e) => setNote(item.id, e.target.value)}
@@ -242,10 +217,10 @@ export function ApartmentChecklist({
           {CHECKLIST_STATUS_LEGEND.map((s) => (
             <li key={s.key} className="flex flex-wrap items-center gap-2 text-pn-text-secondary">
               <span
-                className={`inline-flex w-7 h-7 items-center justify-center rounded text-xs font-bold border shrink-0 ${statusButtonClass(true, s.key)}`}
+                className={`inline-flex w-7 h-7 items-center justify-center rounded text-base font-bold border shrink-0 ${legendSymbolClass(s.key)}`}
                 aria-hidden
               >
-                {s.label}
+                {s.symbol}
               </span>
               <span>{s.hint}</span>
             </li>

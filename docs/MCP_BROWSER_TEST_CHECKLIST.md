@@ -221,7 +221,7 @@ Confirm:
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
 | Apartment detail | Price/address, listing link, notes, rating, archive/delete controls, commute, checklist links | Save or controlled no-op, no runtime errors |
-| Checklist fill | Assignment filtering, status buttons, notes, progress | Status persists after reload |
+| Checklist fill | Assignment filtering, 3-symbol status slider, notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
 | Calendar | Upcoming and past viewings, iCal URL | URL host/port correct, no crash |
@@ -643,15 +643,16 @@ calendar
 - Area badge reflects current project area mode where configured.
 - Score legend and current user context are visible.
 - Archive and delete controls are visible only where permitted.
-- Price and address section supports edit and save.
+- Price and address section supports edit and save, including optional cost fields (Hausgeld, Heizkosten, Grundsteuer, Sanierung).
 - Geocoding action works for this address or returns a controlled failure.
 - Street View link is available when coordinates or a resolvable address exist.
 - Listing URL section can be expanded and saved.
 - Notes and description sections can be expanded and saved.
-- Purchase cost and financing section reflects project defaults.
+- Purchase cost and financing section reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set).
 - Commute section shows per-member travel data where account addresses exist.
 - Company car and commuter allowance information appears when configured.
 - Image, camera, and exposé upload inputs accept supported file types and reject unsupported file types.
+- Camera allows taking another photo while earlier uploads still run in the background; progress text appears; gallery shows pending previews until sync completes.
 - Viewing appointments can be listed and added on disposable data.
 - Opinion differences appear when multiple members rated shared criteria.
 - Criteria sliders can be changed and persisted.
@@ -690,7 +691,7 @@ URL pattern:
 #### Must always hold
 
 - The page loads for the current apartment.
-- Status options are visible for each assigned point.
+- A 3-position status control (symbols ○ / ✕ / ✓, no text labels) is visible for each assigned point.
 - Notes can be added per point.
 - Counter updates after status changes.
 - Current user sees only points assigned to that user or to both members.
@@ -717,6 +718,7 @@ URL pattern:
 
 #### Must always hold
 
+- On apartment detail, „Daten automatisch füllen“ may prefill empty cost fields in „Preis & Adresse“ when the listing or PDF mentions Hausgeld, Heizkosten, Grundsteuer, or Sanierung; user must save manually.
 - Admin LLM settings can be saved when valid.
 - LLM connection test shows a controlled success or controlled failure.
 - If LLM is not configured, apartment LLM actions show a controlled not-configured state.

@@ -102,7 +102,19 @@ export function PhotoGallery({
                 fill
                 className="object-cover"
                 sizes="120px"
+                unoptimized={p.pending}
               />
+              {p.pending && (
+                <span
+                  className={`absolute inset-0 flex items-center justify-center text-xs font-medium ${
+                    p.uploadError
+                      ? "bg-pn-score-low/80 text-white"
+                      : "bg-black/40 text-white"
+                  }`}
+                >
+                  {p.uploadError ? "Fehler" : p.uploading ? "…" : ""}
+                </span>
+              )}
             </button>
           </li>
         ))}

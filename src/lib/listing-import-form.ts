@@ -5,18 +5,28 @@ export type ListingPreviewFieldKey =
   | "price"
   | "address"
   | "sizeSqm"
+  | "plotSizeSqm"
   | "energyClass"
   | "description"
-  | "brokerInvolved";
+  | "brokerInvolved"
+  | "hoaFeeMonthly"
+  | "heatingCostMonthly"
+  | "propertyTaxAnnual"
+  | "renovationCost";
 
 export const LISTING_PREVIEW_FIELD_LABELS: Record<ListingPreviewFieldKey, string> = {
   title: "Anzeigename",
   price: "Preis",
   address: "Adresse",
   sizeSqm: "Wohnfläche",
+  plotSizeSqm: "Grundstücksfläche",
   energyClass: "Energieklasse",
   description: "Beschreibung",
   brokerInvolved: "Makler",
+  hoaFeeMonthly: "Hausgeld",
+  heatingCostMonthly: "Heizkosten",
+  propertyTaxAnnual: "Grundsteuer",
+  renovationCost: "Sanierung",
 };
 
 import { UNSAVED_SECTION_CLASS } from "@/lib/unsaved-guard";
@@ -131,8 +141,18 @@ export function applyListingPreviewFields(
   if (setNamedField(form, "price", fields.price, onlyEmpty)) filled.push("price");
   if (setNamedField(form, "address", fields.address, onlyEmpty)) filled.push("address");
   if (setNamedField(form, "sizeSqm", fields.sizeSqm, onlyEmpty)) filled.push("sizeSqm");
+  if (setNamedField(form, "plotSizeSqm", fields.plotSizeSqm, onlyEmpty))
+    filled.push("plotSizeSqm");
   if (setNamedField(form, "energyClass", fields.energyClass, onlyEmpty))
     filled.push("energyClass");
+  if (setNamedField(form, "hoaFeeMonthly", fields.hoaFeeMonthly, onlyEmpty))
+    filled.push("hoaFeeMonthly");
+  if (setNamedField(form, "heatingCostMonthly", fields.heatingCostMonthly, onlyEmpty))
+    filled.push("heatingCostMonthly");
+  if (setNamedField(form, "propertyTaxAnnual", fields.propertyTaxAnnual, onlyEmpty))
+    filled.push("propertyTaxAnnual");
+  if (setNamedField(form, "renovationCost", fields.renovationCost, onlyEmpty))
+    filled.push("renovationCost");
   if (setNamedField(form, "description", fields.description, onlyEmpty))
     filled.push("description");
   if (setBrokerCheckbox(form, fields.brokerInvolved, onlyEmpty)) filled.push("brokerInvolved");

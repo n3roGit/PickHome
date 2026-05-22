@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ApartmentChecklist } from "@/components/ApartmentChecklist";
+import { ApartmentPhotoCameraButton } from "@/components/ApartmentPhotoCameraButton";
 import { getSessionUser, isAdmin } from "@/lib/auth";
 import {
   buildApartmentChecklistGroups,
@@ -71,11 +72,16 @@ export default async function ApartmentChecklistPage({
         >
           ← Zurück zur Wohnung
         </Link>
-        <h1 className="text-xl font-bold m-0">Checkliste</h1>
-        <p className="text-sm text-pn-text-secondary mt-1 mb-6">
-          {apartment.title}
-          {addressLine ? ` · ${addressLine}` : ""}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+          <div>
+            <h1 className="text-xl font-bold m-0">Checkliste</h1>
+            <p className="text-sm text-pn-text-secondary mt-1 m-0">
+              {apartment.title}
+              {addressLine ? ` · ${addressLine}` : ""}
+            </p>
+          </div>
+          <ApartmentPhotoCameraButton apartmentId={aptId} />
+        </div>
 
         <ApartmentChecklist
           apartmentId={aptId}

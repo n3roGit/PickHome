@@ -146,8 +146,13 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
         />
         <input
           name="sizeSqm"
-          placeholder="m²"
-          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-20 min-w-0"
+          placeholder="Wohnfl. m²"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-24 min-w-0"
+        />
+        <input
+          name="plotSizeSqm"
+          placeholder="Grundst. m²"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-24 min-w-0"
         />
         <input
           name="energyClass"
