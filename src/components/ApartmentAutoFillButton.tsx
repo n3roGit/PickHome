@@ -79,11 +79,13 @@ export function ApartmentAutoFillButton({
     }
   }
 
+  const statusHint = [message, ...warnings].filter(Boolean).join(" ");
+
   return (
     <div
       className={
         toolbar
-          ? "flex flex-col items-stretch gap-1.5 min-w-0"
+          ? "inline-flex shrink-0"
           : "flex flex-col items-stretch sm:items-end gap-2 max-w-md"
       }
     >
@@ -91,27 +93,34 @@ export function ApartmentAutoFillButton({
         type="button"
         disabled={loading}
         onClick={() => void autoFill()}
-        className={toolbar ? APARTMENT_TOOLBAR_BTN_NEUTRAL : "text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50 font-medium"}
+        title={toolbar && statusHint ? statusHint : undefined}
+        aria-busy={loading}
+        className={
+          toolbar
+            ? `${APARTMENT_TOOLBAR_BTN_NEUTRAL} min-w-[9.5rem] justify-center`
+            : "text-sm border border-pn-border px-3 py-1.5 rounded-lg hover:bg-pn-bg-subtle disabled:opacity-50 font-medium"
+        }
       >
-        {loading ? "…" : toolbar ? "Auto-Fill" : "Daten automatisch füllen"}
+        {loading
+          ? toolbar
+            ? "wird verarbeitet"
+            : "wird verarbeitet…"
+          : toolbar
+            ? "Auto-Fill"
+            : "Daten automatisch füllen"}
       </button>
-      {message && (
-        <p
-          className={`text-xs text-pn-text-secondary bg-pn-bg-subtle px-2 py-1.5 rounded-lg ${
-            toolbar ? "max-w-xs" : "text-left sm:text-right"
-          }`}
-        >
+      {!toolbar && !loading && message && (
+        <p className="text-xs text-pn-text-secondary bg-pn-bg-subtle px-2 py-1.5 rounded-lg text-left sm:text-right">
           {message}
         </p>
       )}
-      {warnings.map((w) => (
-        <p
-          key={w}
-          className={`text-xs text-pn-text-tertiary ${toolbar ? "max-w-xs" : "text-left sm:text-right"}`}
-        >
-          {w}
-        </p>
-      ))}
+      {!toolbar &&
+        !loading &&
+        warnings.map((w) => (
+          <p key={w} className="text-xs text-pn-text-tertiary text-left sm:text-right">
+            {w}
+          </p>
+        ))}
     </div>
   );
 }

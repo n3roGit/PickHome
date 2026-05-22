@@ -23,7 +23,6 @@ export function ApartmentListingUrlForm({
       title="Inserat-Link"
       subtitle="URL zur Anzeige (z. B. ImmobilienScout, Kleinanzeigen)."
       defaultOpen
-      className="max-w-lg"
     >
       {saved && (
         <p className="text-sm text-pn-score-high bg-pn-score-high-bg px-3 py-2 rounded-lg mb-4">
@@ -38,7 +37,7 @@ export function ApartmentListingUrlForm({
       <form
         id={apartmentListingUrlFormId(apartmentId)}
         action={updateApartmentListingUrlAction.bind(null, apartmentId)}
-        className="flex flex-wrap gap-2"
+        className="flex gap-2 w-full"
         data-unsaved-track
         data-unsaved-label="Inserat-Link"
       >
@@ -48,9 +47,12 @@ export function ApartmentListingUrlForm({
           type="url"
           defaultValue={listingUrl ?? ""}
           placeholder="https://…"
-          className="border border-pn-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]"
+          className="flex-1 min-w-0 border border-pn-border rounded-lg px-3 py-2 text-sm"
         />
-        <button type="submit" className="bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm">
+        <button
+          type="submit"
+          className="shrink-0 bg-pn-accent text-white font-semibold px-4 py-2 rounded-lg text-sm"
+        >
           Speichern
         </button>
       </form>
