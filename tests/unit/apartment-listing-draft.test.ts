@@ -23,7 +23,19 @@ describe("apartment-listing-draft", () => {
       "sizeSqm",
       "plotSizeSqm",
       "energyClass",
+      "hoaFeeMonthly",
+      "heatingCostMonthly",
+      "propertyTaxAnnual",
+      "renovationCost",
     ]);
+  });
+
+  it("prunes cost fields when basics block was saved", () => {
+    const costDraft: ApartmentListingDraft = {
+      fields: { heatingCostMonthly: 300, propertyTaxAnnual: 600 },
+      pending: ["heatingCostMonthly", "propertyTaxAnnual"],
+    };
+    expect(pruneApartmentListingDraft(costDraft, { basics: true })).toBeNull();
   });
 
   it("prunes only keys saved in this navigation", () => {

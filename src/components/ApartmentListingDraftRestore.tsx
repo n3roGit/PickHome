@@ -4,11 +4,15 @@ import { useEffect } from "react";
 import {
   APARTMENT_DRAFT_RESTORED_EVENT,
   type ApartmentListingSavedFlags,
+  keysForSavedFlags,
   pruneApartmentListingDraft,
   readApartmentListingDraft,
   writeApartmentListingDraft,
 } from "@/lib/apartment-listing-draft";
-import { applyListingPreviewToApartment } from "@/lib/listing-import-form";
+import {
+  applyListingPreviewToApartment,
+  clearPrefilledHighlightsForKeys,
+} from "@/lib/listing-import-form";
 
 export function ApartmentListingDraftRestore({
   apartmentId,
@@ -20,6 +24,11 @@ export function ApartmentListingDraftRestore({
   saved: ApartmentListingSavedFlags;
 }) {
   useEffect(() => {
+    const page = document.getElementById(`apartment-page-${apartmentId}`);
+    if (page) {
+      clearPrefilledHighlightsForKeys(page, keysForSavedFlags(saved));
+    }
+
     const draft = readApartmentListingDraft(apartmentId);
     if (!draft) return;
 

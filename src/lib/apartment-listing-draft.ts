@@ -15,12 +15,17 @@ export type ApartmentListingSavedFlags = {
 
 const STORAGE_PREFIX = "pickhome-listing-draft:";
 
+/** Fields stored via Preis & Adresse / updateApartmentBasicsAction */
 const BASICS_FIELD_KEYS: ListingPreviewFieldKey[] = [
   "price",
   "address",
   "sizeSqm",
   "plotSizeSqm",
   "energyClass",
+  "hoaFeeMonthly",
+  "heatingCostMonthly",
+  "propertyTaxAnnual",
+  "renovationCost",
 ];
 
 export function apartmentListingDraftStorageKey(apartmentId: string): string {

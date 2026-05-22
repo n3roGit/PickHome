@@ -106,6 +106,16 @@ export function clearPrefilledHighlights(root: ParentNode = document) {
   });
 }
 
+export function clearPrefilledHighlightsForKeys(
+  root: ParentNode,
+  keys: ListingPreviewFieldKey[]
+) {
+  for (const key of keys) {
+    const name = key === "brokerInvolved" ? "brokerInvolved" : key;
+    root.querySelector(`[name="${name}"]`)?.classList.remove(PREFILLED_FIELD_CLASS);
+  }
+}
+
 export function highlightPrefilledFields(
   root: ParentNode,
   fields: ListingPreviewFieldKey[],
