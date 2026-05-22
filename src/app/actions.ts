@@ -865,19 +865,33 @@ export async function deleteViewingAction(viewingId: string) {
 export async function saveRatingAction(
   apartmentId: string,
   criterionId: string,
-  score: number,
+  score: number | null,
   note?: string | null
 ) {
   const user = await requireUser();
   const apt = await assertApartmentAccess(apartmentId, user);
   if (!apt) return;
-  if (!Number.isInteger(score) || score < 0 || score > 10) return;
 
   const criterion = await prisma.criterion.findFirst({
     where: { id: criterionId, group: { projectId: apt.projectId } },
     select: { id: true },
   });
   if (!criterion) return;
+
+  if (score === null) {
+    await prisma.rating.deleteMany({
+      where: {
+        apartmentId,
+        criterionId,
+        userId: user.id,
+      },
+    });
+    revalidatePath(`/project/${apt.projectId}/apartment/${apartmentId}`);
+    revalidatePath(`/project/${apt.projectId}`);
+    return;
+  }
+
+  if (!Number.isInteger(score) || score < 0 || score > 10) return;
 
   await prisma.rating.upsert({
     where: {

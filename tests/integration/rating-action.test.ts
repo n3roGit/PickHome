@@ -72,6 +72,56 @@ describe("saveRatingAction", () => {
     await prisma.$disconnect();
   });
 
+  it("persists score 0 and lowers apartment total", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const criteria = await seedScoringTestCriteria(prisma, project.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Zero rated" },
+    });
+    const [, nice] = criteria;
+
+    await saveRatingAction(apt.id, nice.id, 0);
+
+    const loaded = await prisma.rating.findUniqueOrThrow({
+      where: {
+        apartmentId_criterionId_userId: {
+          apartmentId: apt.id,
+          criterionId: nice.id,
+          userId: user.id,
+        },
+      },
+    });
+    expect(loaded.score).toBe(0);
+
+    const { apartmentScore } = await import("@/lib/project-data");
+    const allRatings = await prisma.rating.findMany({ where: { apartmentId: apt.id } });
+    const result = apartmentScore([...criteria], allRatings, user.id);
+    expect(result.rated).toBe(1);
+    expect(result.score).toBe(0);
+    await prisma.$disconnect();
+  });
+
+  it("clears rating when score is null", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const criteria = await seedScoringTestCriteria(prisma, project.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Clear rating" },
+    });
+
+    await saveRatingAction(apt.id, criteria[0].id, 7);
+    await saveRatingAction(apt.id, criteria[0].id, null);
+
+    const count = await prisma.rating.count({
+      where: { apartmentId: apt.id, userId: user.id },
+    });
+    expect(count).toBe(0);
+    await prisma.$disconnect();
+  });
+
   it("ignores criterion from another project", async () => {
     const prisma = createTestPrisma();
     const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
