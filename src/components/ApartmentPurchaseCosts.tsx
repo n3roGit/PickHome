@@ -251,7 +251,7 @@ export function ApartmentPurchaseCosts({
 
   return (
     <CollapsibleSection
-      title="Kaufnebenkosten & Finanzierung"
+      title="Finanzen"
       subtitle="Grobe Schätzung — keine verbindliche Berechnung."
     >
       {price == null && (
@@ -275,7 +275,7 @@ export function ApartmentPurchaseCosts({
             action={updateApartmentBrokerAction.bind(null, apartmentId)}
             className="flex flex-wrap items-center gap-3 mb-4"
             data-unsaved-track
-            data-unsaved-label="Makler (Kaufnebenkosten)"
+            data-unsaved-label="Makler (Finanzen)"
           >
             <ApartmentRevisionField revision={revision} />
             <label className="flex items-center gap-2 text-sm cursor-pointer">

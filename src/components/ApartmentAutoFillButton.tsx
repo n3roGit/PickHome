@@ -67,7 +67,7 @@ export function ApartmentAutoFillButton({
           ? ` Übernommen und markiert: ${formatPrefilledFieldLabels(filled)}.`
           : "";
       setMessage(
-        `Leere Felder übernommen — bitte prüfen und speichern (Preis & Adresse inkl. Kosten, Titel, Beschreibung; Makler unter Kaufnebenkosten mit „Übernehmen“).${fieldHint}`
+        `Leere Felder übernommen — bitte prüfen und speichern (Preis & Adresse inkl. Kosten, Titel, Beschreibung; Makler unter Finanzen mit „Übernehmen“).${fieldHint}`
       );
       const w = [...(data.warnings ?? [])];
       if (data.highlights) w.push(`Besonderheiten: ${data.highlights}`);
