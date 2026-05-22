@@ -98,4 +98,61 @@ describe("importApartmentListingFields", () => {
     }
     expect(enrichListingFieldsWithLlm).not.toHaveBeenCalled();
   });
+
+  it("enriches from supplemental saved context on detail Auto-Fill", async () => {
+    vi.mocked(fetchListingPreview).mockResolvedValue({
+      ok: false,
+      error: "fetch_failed",
+      warnings: ["blocked"],
+    });
+    vi.mocked(isLlmConfigured).mockResolvedValue(true);
+    vi.mocked(enrichListingFieldsWithLlm).mockResolvedValue({
+      fields: { price: 420000, energyClass: "C" },
+      llmUsed: true,
+    });
+
+    const supplement = [
+      "--- Bereits in PickHome erfasst ---",
+      "Eigene Notizen:",
+      "Budget 420k, Energie C laut Makler-Mail",
+    ].join("\n");
+
+    const result = await importApartmentListingFields({
+      listingUrl: null,
+      pdfText: "",
+      supplementalContext: supplement.repeat(10),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.fields.price).toBe(420000);
+      expect(result.fields.energyClass).toBe("C");
+      expect(result.warnings.some((w) => w.includes("bereits erfasste"))).toBe(true);
+    }
+    expect(enrichListingFieldsWithLlm).toHaveBeenCalledWith({}, expect.stringContaining("PickHome"));
+  });
+
+  it("parses supplemental context without LLM when notes mention energy and area", async () => {
+    vi.mocked(isLlmConfigured).mockResolvedValue(false);
+    const supplement = [
+      "--- Bereits in PickHome erfasst ---",
+      "Eigene Notizen:",
+      "Energieklasse laut Besichtigung: D. Wohnfläche ca. 95 m². Grundstück etwa 400 m².",
+    ].join("\n");
+
+    const result = await importApartmentListingFields({
+      listingUrl: null,
+      pdfText: "",
+      supplementalContext: supplement.repeat(8),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.fields.energyClass).toBe("D");
+      expect(result.fields.sizeSqm).toBe(95);
+      expect(result.fields.plotSizeSqm).toBe(400);
+      expect(result.warnings.some((w) => w.includes("bereits erfasste"))).toBe(true);
+    }
+    expect(enrichListingFieldsWithLlm).not.toHaveBeenCalled();
+  });
 });

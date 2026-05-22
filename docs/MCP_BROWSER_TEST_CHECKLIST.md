@@ -753,6 +753,7 @@ This section is the **browser contract** for listing/Auto-Fill behavior. API det
 2. **PDF exposé** on the apartment — text from uploaded documents; merged when URL fails or to enrich fields.
 3. If URL fetch fails **and** PDF text is shorter than ~80 characters → controlled error (no crash).
 4. If URL is missing: extract may still run from PDF alone when enough text is present; otherwise `no_source` / `no_fields`.
+5. **Apartment detail Auto-Fill only:** saved Stammdaten, Notizen, Beschreibung, Checkliste (status/note), and PDF text via `supplementalContext` — **not** used on project quick-add. Warning may include „bereits erfasste Angaben“; works with or without LLM (regex fallback).
 
 #### Fields touched by import / Auto-Fill
 

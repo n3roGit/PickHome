@@ -83,6 +83,34 @@ export function truncateApartmentLlmContext(text: string): string {
   return `${head}\n\n[… Text gekürzt …]`;
 }
 
+export type ApartmentListingExtractSupplementOptions = {
+  checklistLines?: string[];
+  /** Skip PDF bodies when PDF text is processed separately in listing import. */
+  omitDocumentBodies?: boolean;
+};
+
+/** Context from saved apartment data for detail-page Auto-Fill (not used on project quick-add). */
+export function buildApartmentListingExtractSupplement(
+  apartment: ApartmentLlmContextInput,
+  options?: ApartmentListingExtractSupplementOptions
+): string {
+  const apt: ApartmentLlmContextInput = options?.omitDocumentBodies
+    ? { ...apartment, documents: [] }
+    : apartment;
+
+  const sections: string[] = [
+    "--- Bereits in PickHome erfasst (Notizen, Stammdaten, Checkliste; bei Widerspruch Inserat/PDF bevorzugen) ---",
+    buildApartmentLlmContext(apt),
+  ];
+
+  const checklist = options?.checklistLines?.filter((l) => l.trim());
+  if (checklist?.length) {
+    sections.push("", "Checkliste:", ...checklist);
+  }
+
+  return truncateApartmentLlmContext(sections.join("\n"));
+}
+
 export function apartmentLlmHasSourceText(apartment: ApartmentLlmContextInput): boolean {
   if (apartment.description?.trim()) return true;
   if (apartment.notes?.trim()) return true;

@@ -4,6 +4,7 @@ import type { ProjectAccessUser } from "@/lib/project-access";
 import { prisma } from "@/lib/prisma";
 import type { ApartmentLlmContextInput } from "@/lib/apartment-llm-context";
 import { publicPhotoPath } from "@/lib/pickhome-data";
+import { parseChecklistStatus } from "@/lib/checklist-display";
 import { extractPdfText } from "@/lib/pdf-text";
 import { isPdfDocument } from "@/lib/pdf-reindex";
 export async function getApartmentLlmBundle(
@@ -122,4 +123,42 @@ export async function loadApartmentPdfSourceText(
     parts.push(`--- ${doc.fileName} ---\n${text}`);
   }
   return parts.join("\n\n");
+}
+
+const CHECKLIST_STATUS_LABEL: Record<ReturnType<typeof parseChecklistStatus>, string> = {
+  unset: "offen",
+  not_ok: "nicht OK",
+  ok: "OK",
+};
+
+/** Lines for listing extract from checklist entries with status or note. */
+export async function buildApartmentChecklistExtractLines(
+  apartmentId: string
+): Promise<string[]> {
+  const entries = await prisma.checklistEntry.findMany({
+    where: { apartmentId },
+    include: {
+      item: {
+        include: {
+          criterionGroup: { select: { name: true } },
+          criterion: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { item: { sortOrder: "asc" } },
+  });
+
+  const lines: string[] = [];
+  for (const entry of entries) {
+    const status = parseChecklistStatus(entry.status);
+    const note = entry.note?.trim();
+    if (status === "unset" && !note) continue;
+
+    const label =
+      entry.item.criterion?.name?.trim() || entry.item.name?.trim() || "Checklistenpunkt";
+    let line = `- [${entry.item.criterionGroup.name}] ${label}: ${CHECKLIST_STATUS_LABEL[status]}`;
+    if (note) line += ` — Notiz: ${note}`;
+    lines.push(line);
+  }
+  return lines;
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   apartmentLlmHasSourceText,
   buildApartmentLlmContext,
+  buildApartmentListingExtractSupplement,
 } from "@/lib/apartment-llm-context";
 import { TEST_ADDRESS_BERLIN_RAW } from "../helpers/synthetic-addresses";
 
@@ -64,5 +65,26 @@ describe("buildApartmentLlmContext", () => {
     expect(ctx).toContain("Hausgeld monatlich");
     expect(ctx).toContain("Renovierung (eingetragen)");
     expect(ctx).toContain("Grundstücksfläche m²: 420");
+  });
+});
+
+describe("buildApartmentListingExtractSupplement", () => {
+  it("includes saved notes and checklist without PDF bodies when omitted", () => {
+    const ctx = buildApartmentListingExtractSupplement(
+      {
+        projectName: "P",
+        title: "T",
+        notes: "Dach undicht",
+        documents: [{ fileName: "expose.pdf", extractedText: "should be omitted" }],
+      },
+      {
+        omitDocumentBodies: true,
+        checklistLines: ["- [Technik] Dach: nicht OK — Notiz: undicht"],
+      }
+    );
+    expect(ctx).toContain("PickHome erfasst");
+    expect(ctx).toContain("Dach undicht");
+    expect(ctx).toContain("Checkliste:");
+    expect(ctx).not.toContain("should be omitted");
   });
 });

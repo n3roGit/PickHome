@@ -171,7 +171,8 @@ Regeln:
 - address: Standort der Immobilie (PLZ, Stadt, ggf. Stadtteil/Straße aus Lage-Beschreibung) — NICHT Büroadresse, Impressum oder Anschrift des Maklers/Anbieters (oft andere PLZ als die Immobilie)
 - Wenn nur Stadtteil und PLZ bekannt: "Stadtteil, PLZ Stadt" (z. B. "Nordstadt, 99999 Teststadt")
 - Nur Felder setzen, die im Text klar vorkommen; sonst null
-- highlights: max. 3 kurze Stichpunkte zu Besonderheiten/Risiken (ein String)`;
+- highlights: max. 3 kurze Stichpunkte zu Besonderheiten/Risiken (ein String)
+- Abschnitt „Bereits in PickHome erfasst“: Stammdaten, Notizen, Checkliste — wie Inseratstext nutzen; bei Widerspruch Inserat/Exposé bevorzugen`;
 
 export async function extractListingFieldsWithLlm(
   sourceText: string

@@ -153,6 +153,7 @@ export function parsePlotSqmFromText(text: string): number | undefined {
   const patterns = [
     /grundst[üu]cks?(?:s)?fl[äa]che[:\s]*(\d{1,4}(?:[.,]\d+)?)\s*m[²2]?/i,
     /grundst[üu]ck[:\s]*(\d{1,4}(?:[.,]\d+)?)\s*m[²2]?/i,
+    /grundst[üu]ck[^0-9]{0,24}?(\d{1,4}(?:[.,]\d+)?)\s*m[²2]?/i,
     /(\d{1,4}(?:[.,]\d+)?)\s*m[²2]\s*grundst[üu]ck/i,
   ];
   for (const re of patterns) {
@@ -254,9 +255,14 @@ export function parseListingPlainText(text: string): ListingPreviewFields {
     const energyMatch = textBlob.match(
       /energie\s*(?:effizienz)?\s*klasse\s*([A-H][+]?)/i
     );
+    const energyLooseMatch = textBlob.match(
+      /energie\s*(?:effizienz)?\s*klasse[^A-H]{0,40}?([A-H][+]?)\b/i
+    );
     fields.energyClass = energyMatch
       ? parseEnergyClass(energyMatch[1])
-      : parseEnergyClass(textBlob);
+      : energyLooseMatch
+        ? parseEnergyClass(energyLooseMatch[1])
+        : parseEnergyClass(textBlob);
   }
 
   if (!fields.address) {

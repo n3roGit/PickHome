@@ -20,13 +20,15 @@ function listingFieldsPresent(fields: ListingPreviewFields): boolean {
 export type ApartmentListingImportInput = {
   listingUrl: string | null;
   pdfText: string;
+  /** Saved notes, fields, checklist, etc. (apartment detail Auto-Fill only). */
+  supplementalContext?: string;
 };
 
 /** Merge Inserat-URL preview with optional Exposé PDF into form-fill fields. */
 export async function importApartmentListingFields(
   input: ApartmentListingImportInput
 ): Promise<ListingPreviewResult> {
-  const { listingUrl, pdfText } = input;
+  const { listingUrl, pdfText, supplementalContext } = input;
   const warnings: string[] = [];
   let fields: ListingPreviewFields = {};
   let highlights: string | undefined;
@@ -74,8 +76,32 @@ export async function importApartmentListingFields(
     }
   }
 
+  const supplement = supplementalContext?.trim() ?? "";
+  if (supplement.length >= 80) {
+    const llmConfigured = await isLlmConfigured();
+    if (llmConfigured) {
+      const fromSaved = await enrichListingFieldsWithLlm(fields, supplement);
+      fields = fromSaved.fields;
+      if (fromSaved.llmUsed) {
+        llmUsed = true;
+        warnings.push(
+          "Zusätzlich bereits erfasste Angaben ausgewertet (Stammdaten, Notizen, Checkliste, …)."
+        );
+      }
+      highlights = highlights ?? fromSaved.highlights;
+    } else {
+      const fromSaved = parseListingPlainText(supplement);
+      fields = mergeListingPreviewFields(fields, fromSaved);
+      if (listingFieldsPresent(fromSaved)) {
+        warnings.push(
+          "Felder aus bereits erfassten Angaben — bitte prüfen (Stammdaten, Notizen, Checkliste, …)."
+        );
+      }
+    }
+  }
+
   if (!listingFieldsPresent(fields)) {
-    if (!listingUrl && pdfText.length < 80) {
+    if (!listingUrl && pdfText.length < 80 && supplement.length < 80) {
       return {
         ok: false,
         error: "no_source",

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getApartmentLlmBundle, loadApartmentPdfSourceText } from "@/lib/apartment-llm-data";
+import {
+  buildApartmentChecklistExtractLines,
+  getApartmentLlmBundle,
+  loadApartmentPdfSourceText,
+} from "@/lib/apartment-llm-data";
+import { buildApartmentListingExtractSupplement } from "@/lib/apartment-llm-context";
 import { importApartmentListingFields } from "@/lib/apartment-listing-import";
 import { getSessionUser } from "@/lib/auth";
 import { normalizeListingUrl } from "@/lib/listing-url";
@@ -32,7 +37,16 @@ export async function POST(
     (bundle.apartment.listingUrl ? normalizeListingUrl(bundle.apartment.listingUrl) : null);
 
   const pdfText = await loadApartmentPdfSourceText(bundle.pdfDocuments);
-  const result = await importApartmentListingFields({ listingUrl, pdfText });
+  const checklistLines = await buildApartmentChecklistExtractLines(apartmentId);
+  const supplementalContext = buildApartmentListingExtractSupplement(bundle.apartment, {
+    checklistLines,
+    omitDocumentBodies: pdfText.length >= 80,
+  });
+  const result = await importApartmentListingFields({
+    listingUrl,
+    pdfText,
+    supplementalContext,
+  });
 
   if (!result.ok) {
     const status =
