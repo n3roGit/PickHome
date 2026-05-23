@@ -487,6 +487,17 @@ This skeleton is intentionally generic. Adapt tool names to the actual MCP host.
 25. draft restore: reload after save — confirm no flicker; optional second Auto-Fill + KI-Vorschlag Übernehmen/Verwerfen
 26. optional: apartment on blocked portal — Auto-Fill shows controlled failure, no data loss
 27. if calendar data: confirm upcoming viewing shows schedule warning when times are tight; past section has none
-28. switch to mobile viewport and repeat navigation smoke
-29. write short session note outside this guide
+28. open Immobilien-Assistent; property question; then „Was habe ich davor gefragt?“ — must reference prior user message
+29. switch to mobile viewport and repeat navigation smoke
+30. write short session note outside this guide
+```
+
+### 20.1 Session note template (no PII)
+
+```text
+Date: YYYY-MM-DD | Port: <port> | Profile: rich + prod backup (logins reset)
+Preflight: npm test OK | build: optional
+Pass: auth, roles, account, admin tabs, project tabs (9), apartment detail, KI chat + history meta, compare UI, mobile nav
+Criteria tab: name edits + bottom Speichern + unsaved highlight (see 02 §12.10)
+Skip: backup restore, TOTP full enroll, mutating calendar
 ```

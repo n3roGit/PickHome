@@ -102,7 +102,7 @@ Optional dev regression (no PII in notes): inject a stale `sessionStorage` draft
 
 ### 12.18 Immobilien-Assistent (KI chat)
 
-Toolbar button **KI** opens modal dialog (`ApartmentLlmChatButton`). API: `POST /api/apartments/<apartmentId>/llm/chat` with `{ message, history }`. Server uses `runLlmChatWithOptionalWebSearch` (DuckDuckGo default).
+Toolbar button **KI** opens modal dialog (`ApartmentLlmChatButton`). API: `POST /api/apartments/<apartmentId>/llm/chat` with `{ messages: ChatTurn[] }` (preferred — full in-modal history, up to 12 turns) or legacy `{ message, history }`. Server uses `runLlmChatWithOptionalWebSearch` (DuckDuckGo default) and embeds a chat recap in the system prompt when prior turns exist.
 
 #### Prerequisites (browser)
 
@@ -121,6 +121,7 @@ Toolbar button **KI** opens modal dialog (`ApartmentLlmChatButton`). API: `POST 
 - Web-research questions (e.g. „Wie ist der Stadtteil …?“, „typische Sanierungskosten …?“) return a substantive answer **or** a controlled failure message (timeout, no results) — never an uncaught error or Next.js overlay.
 - `POST …/llm/chat` returns **200** with `{ ok: true, answer, webSearchEnabled, webSearchUsed }` when LLM is configured; `webSearchUsed` may be true after external questions.
 - Chat history in modal: last user + assistant turns visible; errors show in red banner without corrupting prior turns.
+- Follow-up meta question (e.g. „Was habe ich davor gefragt?“) must answer from the visible in-modal history — not claim there were no prior messages.
 
 #### MCP procedure
 
@@ -128,8 +129,9 @@ Toolbar button **KI** opens modal dialog (`ApartmentLlmChatButton`). API: `POST 
 2. Click toolbar **KI** — modal opens, no console errors.
 3. Ask a **property-only** question → answer references on-page data; **tippt…** visible during wait.
 4. Ask a **web** question (district quality, market norms) → wait for **tippt…** → answer in prose with sources/domains or explicit „keine Treffer“ / failure; **no** JSON tool bubble.
-5. Optional DevTools: `POST /api/apartments/<id>/llm/chat` status 200; response JSON has string `answer`, not a JSON object as the only content.
-6. Close modal with **×**; reopen — prior turns still visible in session until page reload.
+5. Ask **„Was habe ich davor gefragt?“** (or similar) → assistant repeats or paraphrases the first user question from step 3.
+6. Optional DevTools: `POST /api/apartments/<id>/llm/chat` status 200; request body includes full `messages` array; response JSON has string `answer`, not a JSON object as the only content.
+7. Close modal with **×**; reopen — prior turns still visible in session until page reload.
 
 #### Negative cases
 

@@ -168,6 +168,9 @@ calendar
 - Group creation and criterion creation work on disposable data.
 - Reordering or weight changes persist after reload if tested.
 - Checklist tab label count remains consistent after criteria changes.
+- Group and criterion names are edited in one form; **Speichern** at the bottom saves all renames.
+- `ProjectUnsavedGuard` highlights the name form (`pn-section-unsaved`) while typing; leaving the page shows the unsaved-changes dialog.
+- Gewicht and Dealbreaker still save immediately on click.
 
 #### Negative cases
 
