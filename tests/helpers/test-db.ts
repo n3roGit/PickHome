@@ -8,6 +8,16 @@ import { ROLE_USER } from "@/lib/auth";
 import { DEFAULT_CRITERIA_GROUPS } from "@/lib/defaults";
 import { getTestDatabaseUrl, getTestDbPath } from "./test-db-path";
 
+/**
+ * Vitest uses an isolated SQLite file per worker (`data/test-<pid>.db`), not `data/pickhome.db`.
+ *
+ * After importing a **production backup** into local `data/` for manual or MCP browser testing:
+ * 1. `node scripts/set-dev-logins.mjs` — password for each user becomes their username; TOTP off.
+ * 2. `npm run dev` — log in with discovered usernames (e.g. `christoph` / `christoph`).
+ *
+ * See also `docs/MCP_BROWSER_TEST_CHECKLIST.md` §4 and §6.
+ */
+
 export { getTestDatabaseUrl, getTestDbPath };
 
 export function createTestPrisma() {

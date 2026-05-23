@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { getApartmentLlmBundle } from "@/lib/apartment-llm-data";
+import { normalizeApartmentChatMessages } from "@/lib/apartment-llm-chat-request";
 import { answerApartmentLlmQuestion } from "@/lib/llm-apartment-chat";
 import { getSessionUser } from "@/lib/auth";
 import { isLlmConfigured } from "@/lib/llm-client";
-
-const MAX_MESSAGE_LENGTH = 4000;
-const MAX_HISTORY_TURNS = 12;
 
 export async function POST(
   req: Request,
@@ -26,34 +24,25 @@ export async function POST(
     return NextResponse.json({ error: "llm_not_configured" }, { status: 503 });
   }
 
-  let body: { message?: string; history?: { role: string; content: string }[] };
+  let body: {
+    message?: string;
+    history?: { role: string; content: string }[];
+    messages?: { role: string; content: string }[];
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const message = String(body.message ?? "").trim();
-  if (!message || message.length > MAX_MESSAGE_LENGTH) {
+  const messages = normalizeApartmentChatMessages(body);
+  if (!messages) {
     return NextResponse.json({ error: "invalid_message" }, { status: 400 });
   }
 
-  const history = (body.history ?? [])
-    .filter(
-      (m) =>
-        (m.role === "user" || m.role === "assistant") &&
-        typeof m.content === "string" &&
-        m.content.trim()
-    )
-    .slice(-MAX_HISTORY_TURNS)
-    .map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content.trim().slice(0, MAX_MESSAGE_LENGTH),
-    }));
-
   const result = await answerApartmentLlmQuestion({
     apartment: bundle.apartment,
-    messages: [...history, { role: "user", content: message }],
+    messages,
   });
 
   if (!result.ok) {

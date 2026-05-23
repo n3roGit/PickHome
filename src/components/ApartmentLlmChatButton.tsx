@@ -30,6 +30,13 @@ export function ApartmentLlmChatButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<ChatTurn[]>([]);
+
+  const MAX_CHAT_TURNS = 12;
+
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -45,28 +52,36 @@ export function ApartmentLlmChatButton({
     setInput("");
     setError(null);
     const userTurn: ChatTurn = { role: "user", content: message };
-    setHistory((h) => [...h, userTurn]);
+    const messagesForApi = [...historyRef.current, userTurn].slice(-MAX_CHAT_TURNS);
+    setHistory(messagesForApi);
+    historyRef.current = messagesForApi;
     setLoading(true);
 
     try {
       const res = await fetch(`/api/apartments/${apartmentId}/llm/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message,
-          history: history.slice(-12),
-        }),
+        body: JSON.stringify({ messages: messagesForApi }),
       });
       const data = (await res.json()) as { ok?: boolean; answer?: string; error?: string };
       if (!res.ok || !data.answer) {
         setError(ERROR_MESSAGES[data.error ?? ""] ?? "Antwort fehlgeschlagen.");
-        setHistory((h) => h.slice(0, -1));
+        const rolledBack = messagesForApi.slice(0, -1);
+        setHistory(rolledBack);
+        historyRef.current = rolledBack;
         return;
       }
-      setHistory((h) => [...h, { role: "assistant", content: data.answer! }]);
+      const withAssistant: ChatTurn[] = [
+        ...messagesForApi,
+        { role: "assistant", content: data.answer! },
+      ];
+      setHistory(withAssistant);
+      historyRef.current = withAssistant;
     } catch {
       setError("Netzwerkfehler.");
-      setHistory((h) => h.slice(0, -1));
+      const rolledBack = messagesForApi.slice(0, -1);
+      setHistory(rolledBack);
+      historyRef.current = rolledBack;
     } finally {
       setLoading(false);
     }
