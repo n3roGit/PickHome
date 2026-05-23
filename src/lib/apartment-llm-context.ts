@@ -1,10 +1,46 @@
-import { formatPrice } from "@/lib/scoring";
+import {
+  apartmentScore,
+  formatPrice,
+  resolveDealbreakerThreshold,
+  type CriterionInput,
+} from "@/lib/scoring";
 
 export const APARTMENT_LLM_CONTEXT_MAX_CHARS = 96_000;
+
+export type ApartmentLlmScoringMember = {
+  userId: string;
+  name: string;
+};
+
+export type ApartmentLlmScoringRating = {
+  criterionId: string;
+  userId: string;
+  score: number | null;
+  note?: string | null;
+};
+
+export type ApartmentLlmScoringGroup = {
+  name: string;
+  criteria: {
+    id: string;
+    name: string;
+    weight: number;
+    isDealbreaker: boolean;
+  }[];
+};
+
+export type ApartmentLlmScoringInput = {
+  dealbreakerThreshold?: number | null;
+  groups: ApartmentLlmScoringGroup[];
+  ratings: ApartmentLlmScoringRating[];
+  members: ApartmentLlmScoringMember[];
+  focusUserId: string;
+};
 
 export type ApartmentLlmContextInput = {
   projectName: string;
   title: string;
+  scoring?: ApartmentLlmScoringInput | null;
   address?: string | null;
   listingUrl?: string | null;
   price?: number | null;
@@ -22,6 +58,86 @@ export type ApartmentLlmContextInput = {
   notes?: string | null;
   documents?: { fileName: string; extractedText?: string | null }[];
 };
+
+function memberName(members: ApartmentLlmScoringMember[], userId: string): string {
+  return members.find((m) => m.userId === userId)?.name?.trim() || "Nutzer";
+}
+
+function formatRatingScore(score: number | null | undefined): string {
+  if (score === null || score === undefined) return "nicht bewertet";
+  return `${score}/10`;
+}
+
+/** Project criteria, weights, and team ratings for the apartment LLM context. */
+export function buildApartmentScoringLlmSection(scoring: ApartmentLlmScoringInput): string {
+  const criteriaFlat: CriterionInput[] = scoring.groups.flatMap((g) =>
+    g.criteria.map((c) => ({
+      id: c.id,
+      weight: c.weight,
+      isDealbreaker: c.isDealbreaker,
+    }))
+  );
+  if (criteriaFlat.length === 0) return "";
+
+  const threshold = resolveDealbreakerThreshold(scoring.dealbreakerThreshold);
+  const lines: string[] = [
+    "--- Bewertungskriterien (PickHome) ---",
+    `Skala pro Kriterium: 0–10. Gewicht pro Kriterium: 1 (gering) bis 5 (hoch).`,
+    `Dealbreaker-Schwelle: Wert ≤ ${threshold} bei als Dealbreaker markierten Kriterien → Gesamtscore 0.`,
+  ];
+
+  const ratingsForScore = scoring.ratings.map((r) => ({
+    criterionId: r.criterionId,
+    userId: r.userId,
+    score: r.score,
+  }));
+
+  for (const member of scoring.members) {
+    const { score, displayScore, dealbreaker, rated, total } = apartmentScore(
+      criteriaFlat,
+      ratingsForScore,
+      member.userId,
+      threshold
+    );
+    const db = dealbreaker ? ", Dealbreaker aktiv" : "";
+    lines.push(
+      `Gesamtscore ${member.name}: ${displayScore} % (${rated}/${total} Kriterien bewertet${db}; intern ${score}).`
+    );
+  }
+
+  lines.push("");
+  lines.push(
+    "Kriterien (Gruppe | Name | Gewicht | Dealbreaker | Bewertungen der Teammitglieder):"
+  );
+
+  for (const group of scoring.groups) {
+    for (const criterion of group.criteria) {
+      const flags = criterion.isDealbreaker ? "ja" : "nein";
+      let line = `- [${group.name}] ${criterion.name} | Gewicht ${criterion.weight} | Dealbreaker ${flags} |`;
+      const ratingParts: string[] = [];
+      for (const member of scoring.members) {
+        const rating = scoring.ratings.find(
+          (r) => r.criterionId === criterion.id && r.userId === member.userId
+        );
+        const scoreLabel = formatRatingScore(rating?.score);
+        const note = rating?.note?.trim();
+        ratingParts.push(
+          note ? `${member.name}: ${scoreLabel} (Notiz: ${note})` : `${member.name}: ${scoreLabel}`
+        );
+      }
+      line += ` ${ratingParts.join("; ")}`;
+      lines.push(line);
+    }
+  }
+
+  const focusName = memberName(scoring.members, scoring.focusUserId);
+  lines.push(
+    "",
+    `Für Rückfragen zur persönlichen Einschätzung beziehe dich primär auf die Bewertungen von ${focusName}.`
+  );
+
+  return lines.join("\n");
+}
 
 export function buildApartmentLlmContext(apartment: ApartmentLlmContextInput): string {
   const lines: string[] = [
@@ -72,6 +188,13 @@ export function buildApartmentLlmContext(apartment: ApartmentLlmContextInput): s
 
   if (docSections.length > 0) {
     lines.push("", "Exposé / Dokumente (Volltext):", ...docSections);
+  }
+
+  if (apartment.scoring?.groups.length) {
+    const scoringSection = buildApartmentScoringLlmSection(apartment.scoring);
+    if (scoringSection) {
+      lines.push("", scoringSection);
+    }
   }
 
   return truncateApartmentLlmContext(lines.join("\n"));

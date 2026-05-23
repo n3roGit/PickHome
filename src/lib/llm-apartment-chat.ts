@@ -9,13 +9,13 @@ import { resolveLlmSystemPrompt } from "@/lib/llm-settings";
 import { isWebSearchConfigured } from "@/lib/web-search-settings";
 
 const APARTMENT_CHAT_TASK_SOURCES_ONLY = `Im aktuellen Gespräch beantwortest du Fragen ausschließlich zur unten angegebenen Immobilie.
-Nutze nur Stammdaten, Beschreibung, Notizen und Dokumente.
+Nutze Stammdaten, Beschreibung, Notizen, Dokumente und — falls vorhanden — den Abschnitt „Bewertungskriterien (PickHome)“ (Gewichtung, Team-Bewertungen, Gesamtscore).
 Fehlende oder unklare Angaben benennst du offen — ohne Schätzen oder Ergänzen aus Allgemeinwissen.`;
 
 const APARTMENT_CHAT_TASK_WITH_WEB = `Im aktuellen Gespräch beantwortest du Fragen zur unten angegebenen Immobilie.
 
 Quellen (Priorität):
-1. Stammdaten, Beschreibung, Notizen und Dokumente der Immobilie
+1. Stammdaten, Beschreibung, Notizen, Dokumente und Bewertungskriterien (Gewicht, Dealbreaker, Team-Bewertungen)
 2. Tool web_search für öffentliche Recherche (z. B. typische Sanierungskosten, Marktpreise), nur wenn (1) nicht ausreicht
 
 Wichtig:

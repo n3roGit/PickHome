@@ -2,7 +2,10 @@ import { readFile } from "fs/promises";
 import { assertApartmentAccess } from "@/lib/project-data";
 import type { ProjectAccessUser } from "@/lib/project-access";
 import { prisma } from "@/lib/prisma";
-import type { ApartmentLlmContextInput } from "@/lib/apartment-llm-context";
+import type {
+  ApartmentLlmContextInput,
+  ApartmentLlmScoringInput,
+} from "@/lib/apartment-llm-context";
 import { publicPhotoPath } from "@/lib/pickhome-data";
 import { parseChecklistStatus } from "@/lib/checklist-display";
 import { extractPdfText } from "@/lib/pdf-text";
@@ -21,7 +24,29 @@ export async function getApartmentLlmBundle(
   const row = await prisma.apartment.findUnique({
     where: { id: apartmentId },
     include: {
-      project: { select: { name: true } },
+      project: {
+        select: {
+          name: true,
+          dealbreakerThreshold: true,
+          members: {
+            include: { user: { select: { id: true, name: true } } },
+          },
+          groups: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              criteria: { orderBy: { sortOrder: "asc" } },
+            },
+          },
+        },
+      },
+      ratings: {
+        select: {
+          criterionId: true,
+          userId: true,
+          score: true,
+          note: true,
+        },
+      },
       documents: {
         orderBy: { sortOrder: "asc" },
         select: {
@@ -43,11 +68,14 @@ export async function getApartmentLlmBundle(
     select: { fileName: true, extractedText: true },
   });
 
+  const scoring = buildApartmentLlmScoringInput(row.project, row.ratings, user.id);
+
   return {
     projectName: row.project.name,
     apartment: {
       projectName: row.project.name,
       title: row.title,
+      scoring,
       address: row.address,
       listingUrl: row.listingUrl,
       price: row.price,
@@ -66,6 +94,48 @@ export async function getApartmentLlmBundle(
       documents,
     },
     pdfDocuments: row.documents,
+  };
+}
+
+function buildApartmentLlmScoringInput(
+  project: {
+    dealbreakerThreshold: number;
+    members: { userId: string; user: { id: string; name: string } }[];
+    groups: {
+      name: string;
+      criteria: {
+        id: string;
+        name: string;
+        weight: number;
+        isDealbreaker: boolean;
+      }[];
+    }[];
+  },
+  ratings: ApartmentLlmScoringInput["ratings"],
+  focusUserId: string
+): ApartmentLlmScoringInput | null {
+  const groups = project.groups
+    .map((g) => ({
+      name: g.name,
+      criteria: g.criteria.map((c) => ({
+        id: c.id,
+        name: c.name,
+        weight: c.weight,
+        isDealbreaker: c.isDealbreaker,
+      })),
+    }))
+    .filter((g) => g.criteria.length > 0);
+  if (groups.length === 0) return null;
+
+  return {
+    dealbreakerThreshold: project.dealbreakerThreshold,
+    groups,
+    ratings,
+    members: project.members.map((m) => ({
+      userId: m.user.id,
+      name: m.user.name,
+    })),
+    focusUserId,
   };
 }
 
