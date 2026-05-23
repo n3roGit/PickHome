@@ -24,7 +24,12 @@ export type LlmChatToolCall = {
 
 export type LlmChatCompletionMessage =
   | { role: "system" | "user"; content: string }
-  | { role: "assistant"; content: string | null; tool_calls?: LlmChatToolCall[] }
+  | {
+      role: "assistant";
+      content: string | null;
+      reasoning?: string | null;
+      tool_calls?: LlmChatToolCall[];
+    }
   | { role: "tool"; tool_call_id: string; content: string };
 
 export type LlmChatTool = {
@@ -38,6 +43,7 @@ export type LlmChatTool = {
 
 export type LlmAssistantMessage = {
   content: string | null;
+  reasoning?: string | null;
   tool_calls?: LlmChatToolCall[];
 };
 
@@ -50,16 +56,40 @@ export type LlmChatCompletionResult =
   | { ok: false; error: string; detail?: string };
 
 const DEFAULT_CHAT_TIMEOUT_MS = 60_000;
-const AGENT_CHAT_TIMEOUT_MS = 120_000;
+const AGENT_CHAT_TIMEOUT_MS = 180_000;
 
-function extractAssistantContent(
-  message?: { content?: string | null; reasoning?: string | null } | null
-): string | undefined {
-  if (!message) return undefined;
-  const content = message.content?.trim();
-  if (content) return content;
-  const reasoning = message?.reasoning?.trim();
-  return reasoning || undefined;
+/** True when assistant text looks like leaked chain-of-thought, not a user answer. */
+export function looksLikeReasoningLeak(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 350) return false;
+  return (
+    /^(Der Nutzer|Ich muss|Aus den Bewertungskriterien|Schauen wir)/i.test(trimmed) ||
+    (/\bDer Nutzer fragt\b/i.test(trimmed) && /\bVielleicht\b/i.test(trimmed))
+  );
+}
+
+export function looksLikeSystemPromptEcho(text: string): boolean {
+  const trimmed = text.trim();
+  return /^Du bist ein Immobilienberater für die Wohnungssuche in Deutschland/i.test(trimmed);
+}
+
+export function isUserFacingAssistantText(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  return !looksLikeReasoningLeak(trimmed) && !looksLikeSystemPromptEcho(trimmed);
+}
+
+function serializeMessagesForApi(messages: LlmChatCompletionMessage[]): unknown[] {
+  return messages.map((message) => {
+    if (message.role === "assistant") {
+      const payload: Record<string, unknown> = { role: "assistant" };
+      if (message.content != null) payload.content = message.content;
+      if (message.reasoning?.trim()) payload.reasoning = message.reasoning.trim();
+      if (message.tool_calls?.length) payload.tool_calls = message.tool_calls;
+      return payload;
+    }
+    return message;
+  });
 }
 
 export async function isLlmConfigured(): Promise<boolean> {
@@ -103,7 +133,7 @@ export async function callLlmChatCompletion(
   const model = await resolveLlmModel();
   const body: Record<string, unknown> = {
     model,
-    messages,
+    messages: serializeMessagesForApi(messages),
     temperature: options?.temperature ?? 0.2,
     max_tokens: options?.maxTokens ?? 2048,
   };
@@ -155,11 +185,12 @@ export async function callLlmChatCompletion(
       return { ok: false, error: "empty_response" };
     }
     const toolCalls = message.tool_calls?.length ? message.tool_calls : undefined;
-    const content = message.content?.trim() || extractAssistantContent(message) || null;
-    if (!content && !toolCalls?.length) {
+    const content = message.content?.trim() || null;
+    const reasoning = message.reasoning?.trim() || null;
+    if (!content && !reasoning && !toolCalls?.length) {
       return { ok: false, error: "empty_response" };
     }
-    return { ok: true, message: { content, tool_calls: toolCalls } };
+    return { ok: true, message: { content, reasoning, tool_calls: toolCalls } };
   } catch (err) {
     const message = err instanceof Error ? err.message : "fetch_failed";
     return { ok: false, error: message };

@@ -1,5 +1,7 @@
 import {
   callLlmChatCompletion,
+  isUserFacingAssistantText,
+  type LlmAssistantMessage,
   type LlmChatCompletionMessage,
   type LlmChatTool,
 } from "@/lib/llm-client";
@@ -31,6 +33,9 @@ export const LLM_WEB_SEARCH_TOOL: LlmChatTool = {
 
 const WEB_SEARCH_USER_FOLLOWUP =
   "Fasse die Web-Suchergebnisse in normaler deutscher Prosa zusammen. Gib keine Tool-JSON-, kein Code- und kein URL-Schnipsel als Antwort aus.";
+
+const FINAL_ANSWER_NUDGE =
+  "Gib jetzt nur die kurze finale Antwort für den Nutzer auf Deutsch. Kein interner Denkprozess, keine Meta-Erklärung deines Vorgehens.";
 
 export function parseWebSearchToolArgs(raw: string): { query: string } | null {
   try {
@@ -255,9 +260,33 @@ async function runWebSearchFromInlineContent(
 
 type ChatOptions = { temperature?: number; maxTokens?: number; timeoutMs?: number };
 
+async function resolveUserFacingContent(
+  transcript: LlmChatCompletionMessage[],
+  message: LlmAssistantMessage,
+  options: ChatOptions | undefined
+): Promise<string | null> {
+  const content = message.content?.trim() ?? "";
+  if (content && isUserFacingAssistantText(content)) return content;
+  if (message.tool_calls?.length) return content || null;
+
+  transcript.push({
+    role: "assistant",
+    content: message.content ?? null,
+    reasoning: message.reasoning ?? null,
+    tool_calls: message.tool_calls,
+  });
+  transcript.push({ role: "user", content: FINAL_ANSWER_NUDGE });
+
+  const retry = await callLlmChatCompletion(transcript, options);
+  if (!retry.ok) return null;
+  const retryContent = retry.message.content?.trim() ?? "";
+  if (retryContent && isUserFacingAssistantText(retryContent)) return retryContent;
+  return null;
+}
+
 async function finalizeAssistantContent(
   transcript: LlmChatCompletionMessage[],
-  content: string,
+  message: LlmAssistantMessage,
   options: ChatOptions | undefined,
   searchCount: number,
   webSearchUsed: boolean
@@ -265,39 +294,39 @@ async function finalizeAssistantContent(
   | { ok: true; content: string; webSearchUsed: boolean }
   | { ok: false; error: string }
 > {
-  if (!isWebSearchOnlyAssistantContent(content)) {
-    return { ok: true, content, webSearchUsed };
+  const content = message.content?.trim() ?? "";
+
+  if (isWebSearchOnlyAssistantContent(content)) {
+    const recovered = await runWebSearchFromInlineContent(transcript, content, searchCount);
+    if (!recovered.webSearchUsed || !recovered.output) {
+      return {
+        ok: true,
+        content:
+          "Die Web-Recherche konnte nicht ausgeführt werden. Bitte formuliere die Frage ohne URL-Code erneut.",
+        webSearchUsed: false,
+      };
+    }
+
+    transcript.push({ role: "assistant", content });
+    transcript.push({
+      role: "user",
+      content: `Web-Suchergebnisse:\n\n${recovered.output}\n\n${WEB_SEARCH_USER_FOLLOWUP}`,
+    });
+
+    const followUp = await callLlmChatCompletion(transcript, options);
+    if (!followUp.ok) return followUp;
+    return finalizeAssistantContent(
+      transcript,
+      followUp.message,
+      options,
+      recovered.searchCount,
+      true
+    );
   }
 
-  const recovered = await runWebSearchFromInlineContent(transcript, content, searchCount);
-  if (!recovered.webSearchUsed || !recovered.output) {
-    return {
-      ok: true,
-      content:
-        "Die Web-Recherche konnte nicht ausgeführt werden. Bitte formuliere die Frage ohne URL-Code erneut.",
-      webSearchUsed: false,
-    };
-  }
-
-  transcript.push({ role: "assistant", content });
-  transcript.push({
-    role: "user",
-    content: `Web-Suchergebnisse:\n\n${recovered.output}\n\n${WEB_SEARCH_USER_FOLLOWUP}`,
-  });
-
-  const followUp = await callLlmChatCompletion(transcript, options);
-  if (!followUp.ok) return followUp;
-  const next = followUp.message.content?.trim() ?? "";
-  if (!next) return { ok: false, error: "empty_response" };
-  if (isWebSearchOnlyAssistantContent(next)) {
-    return {
-      ok: true,
-      content:
-        "Die Web-Recherche wurde ausgeführt, aber die Zusammenfassung ist fehlgeschlagen. Bitte stelle die Frage erneut oder formuliere sie konkreter.",
-      webSearchUsed: true,
-    };
-  }
-  return { ok: true, content: next, webSearchUsed: true };
+  const resolved = await resolveUserFacingContent(transcript, message, options);
+  if (!resolved) return { ok: false, error: "empty_response" };
+  return { ok: true, content: resolved, webSearchUsed };
 }
 
 async function runLlmChatWithoutNativeTools(
@@ -316,9 +345,9 @@ async function runLlmChatWithoutNativeTools(
     if (!result.ok) return result;
 
     const content = result.message.content?.trim() ?? "";
-    if (!content) return { ok: false, error: "empty_response" };
+    if (!content && !result.message.reasoning) return { ok: false, error: "empty_response" };
 
-    if (isWebSearchOnlyAssistantContent(content)) {
+    if (content && isWebSearchOnlyAssistantContent(content)) {
       const recovered = await runWebSearchFromInlineContent(transcript, content, searchCount);
       if (recovered.webSearchUsed && recovered.output) {
         webSearchUsed = true;
@@ -332,7 +361,7 @@ async function runLlmChatWithoutNativeTools(
       }
     }
 
-    return await finalizeAssistantContent(transcript, content, options, searchCount, webSearchUsed);
+    return finalizeAssistantContent(transcript, result.message, options, searchCount, webSearchUsed);
   }
 
   return { ok: false, error: "max_tool_rounds" };
@@ -347,9 +376,10 @@ export async function runLlmChatWithOptionalWebSearch(
 > {
   const webSearchEnabled = await isWebSearchConfigured();
   if (!webSearchEnabled) {
-    const single = await callLlmChatCompletion(messages, options);
+    const transcript: LlmChatCompletionMessage[] = [...messages];
+    const single = await callLlmChatCompletion(transcript, options);
     if (!single.ok) return single;
-    const content = single.message.content?.trim();
+    const content = await resolveUserFacingContent(transcript, single.message, options);
     if (!content) return { ok: false, error: "empty_response" };
     return { ok: true, content, webSearchUsed: false };
   }
@@ -388,13 +418,20 @@ export async function runLlmChatWithOptionalWebSearch(
       } else if (!content) {
         return { ok: false, error: "empty_response" };
       } else {
-        return await finalizeAssistantContent(transcript, content, options, searchCount, webSearchUsed);
+        return finalizeAssistantContent(
+          transcript,
+          { content: assistant.content, reasoning: assistant.reasoning },
+          options,
+          searchCount,
+          webSearchUsed
+        );
       }
     }
 
     transcript.push({
       role: "assistant",
       content: assistant.content ?? null,
+      reasoning: assistant.reasoning ?? null,
       tool_calls: toolCalls,
     });
 

@@ -54,7 +54,7 @@ export function ApartmentLlmChatButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          history: history.slice(-10),
+          history: history.slice(-12),
         }),
       });
       const data = (await res.json()) as { ok?: boolean; answer?: string; error?: string };

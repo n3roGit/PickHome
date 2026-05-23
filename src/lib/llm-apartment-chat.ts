@@ -10,6 +10,9 @@ import { isWebSearchConfigured } from "@/lib/web-search-settings";
 
 const APARTMENT_CHAT_TASK_SOURCES_ONLY = `Im aktuellen Gespräch beantwortest du Fragen ausschließlich zur unten angegebenen Immobilie.
 Nutze Stammdaten, Beschreibung, Notizen, Dokumente und — falls vorhanden — den Abschnitt „Bewertungskriterien (PickHome)“ (Gewichtung, Team-Bewertungen, Gesamtscore).
+Die Bewertungen stehen dort im Format „Name: X/10“ — nutze sie direkt, ohne erneut nach Punkten zu fragen.
+Beziehe den bisherigen Chatverlauf ein (Folgefragen wie „und die Förderung?“ beziehen sich auf die letzte Antwort).
+Du darfst intern denken, antwortest dem Nutzer aber nur mit der finalen, kurzen Antwort — ohne Denkprozess oder Meta-Kommentare.
 Fehlende oder unklare Angaben benennst du offen — ohne Schätzen oder Ergänzen aus Allgemeinwissen.`;
 
 const APARTMENT_CHAT_TASK_WITH_WEB = `Im aktuellen Gespräch beantwortest du Fragen zur unten angegebenen Immobilie.
@@ -21,6 +24,10 @@ Quellen (Priorität):
 Wichtig:
 - Nutze das bereitgestellte Tool web_search — gib niemals rohes JSON wie {"type":"web_search",…} als Antwort aus.
 - Nach einer Suche fasse die Treffer in normaler deutscher Prosa zusammen.
+- Bewertungen stehen unter „Bewertungskriterien (PickHome)“ als „Name: X/10“.
+- Beziehe den bisherigen Chatverlauf ein.
+- Du darfst intern denken; die Nutzerantwort ist nur die finale Zusammenfassung ohne Denkprozess.
+- Explizite Bitte um Internetsuche (z. B. „suche im Internet“) → web_search ausführen, auch wenn das Exposé ähnliche Infos enthält.
 
 Verhalten:
 - Fehlen entscheidende Angaben (z. B. Sanierungsumfang, Zustand, Gewerke, genaue Lage), stelle zuerst klare Rückfragen — erfinde keine Details.
@@ -61,9 +68,9 @@ export async function answerApartmentLlmQuestion(input: {
   ];
 
   const result = await runLlmChatWithOptionalWebSearch(chatMessages, {
-    maxTokens: 2000,
+    maxTokens: 8192,
     temperature: 0.3,
-    timeoutMs: 120_000,
+    timeoutMs: 180_000,
   });
   if (!result.ok) {
     return { ok: false, error: result.error };
