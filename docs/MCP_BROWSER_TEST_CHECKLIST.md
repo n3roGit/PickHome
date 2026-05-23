@@ -231,14 +231,14 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Finanzen**, **KI** chat, Auto-Fill + **KI-Vorschlag**, draft restore, rating (—/0–10), archive/delete, commute, checklist | Save or controlled no-op; no flicker after save/reload; chat shows **tippt…** and prose answers; no runtime errors |
-| Checklist fill | Assignment filtering, 3-symbol status slider, notes, progress | Status persists after reload |
+| Apartment detail | Price/address, listing link, notes, **Finanzen**, **KI** chat, Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist | Save or controlled no-op; no flicker after save/reload; chat shows **tippt…** and prose answers; no runtime errors |
+| Checklist fill | Assignment filtering, 3-symbol status buttons (○/✕/✓, tap only), notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
 | Calendar | Upcoming and past viewings, iCal URL | URL host/port correct, no crash |
 | LLM/listing | Configured and not configured states; project import + apartment Auto-Fill on ≥2 portal types | Controlled success/partial/failure; `onlyEmpty` respected; **pending-only** session draft restore; save persists after reload |
 | Viewing conflicts | Two upcoming viewings same day, tight schedule | Warning on apartment detail (upcoming only) and project calendar (upcoming only); past section has no warnings |
-| Mobile | Narrow viewport navigation and one project flow | No unusable horizontal overflow |
+| Mobile | Narrow viewport navigation and one project flow; scroll checklist fill + **Kriterien bewerten** without accidental rating/status changes | No unusable horizontal overflow; scroll does not change checklist status or criterion scores (tap only) |
 
 ## 12. Feature contracts
 
@@ -481,7 +481,7 @@ This skeleton is intentionally generic. Adapt tool names to the actual MCP host.
 19. open first suitable apartment
 20. expand critical sections and perform one safe mutation
 21. reload and verify persistence
-22. open checklist fill page if configured
+22. open checklist fill page if configured; on mobile viewport scroll past several points — status unchanged until ○/✕/✓ tap
 23. if llm profile: on Immobilien tab, run listing import on add form (readable URL)
 24. open apartment with listing URL or PDF; run toolbar Auto-Fill; save Preis & Adresse; reload
 25. draft restore: reload after save — confirm no flicker; optional second Auto-Fill + KI-Vorschlag Übernehmen/Verwerfen

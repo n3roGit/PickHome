@@ -41,8 +41,8 @@ Apply shared rules from the master guide: **§2 Hard rules**, **§7 Evidence req
 - Camera allows taking another photo while earlier uploads still run in the background; progress text appears; gallery shows pending previews until sync completes.
 - Viewing appointments can be listed and added on disposable data.
 - Opinion differences appear when multiple members rated shared criteria.
-- Criteria sliders: leftmost **—** = not rated (slider `min=-1`, distinct from score **0**); scale labels `— · 0 · 5 · 10`; setting **—** clears the rating in the DB; value label shows **—** when unrated.
-- Criteria sliders can be changed (0–10) and persisted.
+- Criteria rating (section **Kriterien bewerten**): **—** button = not rated (distinct from score **0**); **0–10** as a segmented tap scale (`RatingScalePicker`, no range slider); segments left of the selection are visually filled; current score shown at the right; tap persists to the DB.
+- Criteria rating can be set to 0–10 or cleared with **—** and persists after reload.
 - Toolbar **KI** (Immobilien-Assistent) visible only when Admin → KI is configured (`isLlmConfigured`); see [§12.18](04-listing-llm.md#1218-immobilien-assistent-ki-chat).
 - Checklist blocks appear under criteria that are part of the checklist.
 - Custom checklist-only items appear in a separate checklist section where configured.
@@ -99,7 +99,7 @@ URL pattern:
 #### Must always hold
 
 - The page loads for the current apartment.
-- A 3-position status control (symbols ○ / ✕ / ✓, no text labels) is visible for each assigned point.
+- A 3-position status control (symbols ○ / ✕ / ✓ as tappable buttons, not a range slider; no text labels) is visible for each assigned point.
 - Notes can be added per point.
 - Counter updates after status changes.
 - Current user sees only points assigned to that user or to both members.

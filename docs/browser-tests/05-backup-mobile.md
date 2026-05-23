@@ -48,6 +48,8 @@ Recommended viewport:
 - Project tabs are reachable.
 - Apartment list is usable.
 - Apartment detail can be opened and saved where tested.
+- Checklist fill page: scrolling the list does not change ○/✕/✓ status; only button taps do.
+- Apartment **Kriterien bewerten**: scrolling does not change scores; only taps on **—** or a 0–10 segment do.
 - Map tab does not make the page unusable.
 - No main navigation horizontal overflow blocks use.
 

@@ -16,6 +16,7 @@ Keep these regression cases active. They are derived from previously observed is
 | Calendar timezone prop missing | Calendar tab must not crash and must show viewings |
 | Checklist count query unstable | Checklist tab label count must remain stable across criteria, map, compare, and calendar navigation |
 | Checklist affects score incorrectly | Changing checklist status must not change apartment score |
+| Accidental rating on mobile scroll | Vertical scroll on checklist fill or criterion rating must not change status/score; only explicit taps |
 | Area mode mutation affects shared data | Wunschgebiet and NoGo mode changes must be reverted or performed only on disposable projects |
 | LLM not configured | LLM chat and extract actions must show controlled not-configured state |
 | LLM configured | Save, connection test, chat, and extraction must complete or fail with controlled UI feedback |
