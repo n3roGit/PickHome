@@ -2,16 +2,22 @@
 
 import {
   CHECKLIST_STATUS_LEGEND,
-  checklistStatusFromIndex,
-  checklistStatusToIndex,
   type ChecklistStatus,
 } from "@/lib/checklist-display";
 
-function symbolClass(status: ChecklistStatus, active: boolean): string {
-  if (!active) return "text-pn-text-tertiary opacity-50";
-  if (status === "ok") return "text-pn-score-high";
-  if (status === "not_ok") return "text-pn-score-low";
-  return "text-pn-text-secondary";
+function statusButtonClass(key: ChecklistStatus, active: boolean): string {
+  const base =
+    "inline-flex w-10 h-10 sm:w-11 sm:h-11 items-center justify-center rounded-lg text-base font-bold border shrink-0 touch-manipulation transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  if (!active) {
+    return `${base} bg-pn-bg-surface border-pn-border text-pn-text-tertiary hover:border-pn-border-strong hover:text-pn-text-secondary`;
+  }
+  if (key === "ok") {
+    return `${base} bg-pn-score-high-bg border-pn-accent text-pn-score-high`;
+  }
+  if (key === "not_ok") {
+    return `${base} bg-pn-score-low-bg border-pn-score-low text-pn-score-low`;
+  }
+  return `${base} bg-pn-bg-subtle border-pn-border text-pn-text-secondary`;
 }
 
 export function ChecklistStatusSlider({
@@ -23,36 +29,32 @@ export function ChecklistStatusSlider({
   disabled?: boolean;
   onChange: (status: ChecklistStatus) => void;
 }) {
-  const index = checklistStatusToIndex(status);
-  const current = CHECKLIST_STATUS_LEGEND[index];
-
   return (
-    <div className="flex items-center gap-2 w-full min-w-0">
-      <div
-        className="flex items-center gap-1 text-base font-bold select-none shrink-0"
-        aria-hidden
-      >
-        {CHECKLIST_STATUS_LEGEND.map((s) => (
-          <span
+    <div
+      role="radiogroup"
+      aria-label="Checklisten-Status"
+      className="flex items-center gap-1.5 w-full min-w-0"
+    >
+      {CHECKLIST_STATUS_LEGEND.map((s) => {
+        const active = s.key === status;
+        return (
+          <button
             key={s.key}
-            className={`w-6 text-center ${symbolClass(s.key, s.key === status)}`}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={s.ariaLabel}
+            title={s.hint}
+            disabled={disabled}
+            className={statusButtonClass(s.key, active)}
+            onClick={() => {
+              if (!disabled && s.key !== status) onChange(s.key);
+            }}
           >
             {s.symbol}
-          </span>
-        ))}
-      </div>
-      <input
-        type="range"
-        min={0}
-        max={2}
-        step={1}
-        value={index}
-        disabled={disabled}
-        aria-label={current?.ariaLabel ?? "Checklisten-Status"}
-        title={current?.hint}
-        className="checklist-status-range flex-1 min-w-0 w-full"
-        onChange={(e) => onChange(checklistStatusFromIndex(Number(e.target.value)))}
-      />
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -19,60 +19,6 @@ body {
     @apply flex gap-1 sm:gap-2 border-b border-pn-border min-w-max pb-px;
   }
 
-  .rating-range {
-    @apply w-full h-10 cursor-grab active:cursor-grabbing touch-none;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-  }
-
-  .rating-range::-webkit-slider-runnable-track {
-    @apply h-2 rounded-full bg-pn-border;
-  }
-
-  .rating-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    @apply w-6 h-6 rounded-full bg-pn-accent shadow-md;
-    margin-top: -8px;
-    border: 2px solid #fff;
-  }
-
-  .rating-range::-moz-range-track {
-    @apply h-2 rounded-full bg-pn-border;
-  }
-
-  .rating-range::-moz-range-thumb {
-    @apply w-6 h-6 rounded-full bg-pn-accent shadow-md;
-    border: 2px solid #fff;
-  }
-
-  .checklist-status-range {
-    @apply h-8 cursor-pointer touch-none;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-  }
-
-  .checklist-status-range::-webkit-slider-runnable-track {
-    @apply h-1.5 rounded-full bg-pn-border;
-  }
-
-  .checklist-status-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    @apply w-5 h-5 rounded-full bg-pn-accent shadow;
-    margin-top: -7px;
-    border: 2px solid #fff;
-  }
-
-  .checklist-status-range::-moz-range-track {
-    @apply h-1.5 rounded-full bg-pn-border;
-  }
-
-  .checklist-status-range::-moz-range-thumb {
-    @apply w-5 h-5 rounded-full bg-pn-accent shadow;
-    border: 2px solid #fff;
-  }
-
   .pn-field-prefilled {
     @apply ring-2 ring-pn-accent/50 border-pn-accent bg-pn-score-high-bg/40;
   }

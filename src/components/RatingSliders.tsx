@@ -6,6 +6,7 @@ import { saveRatingAction } from "@/app/actions";
 import { useOptionalApartmentLiveScore } from "@/components/ApartmentScoreProvider";
 import { ChecklistEntryInfo } from "@/components/ChecklistEntryInfo";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { RatingScalePicker } from "@/components/RatingScalePicker";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { apartmentScore, type CriterionInput } from "@/lib/scoring";
 
@@ -127,23 +128,7 @@ export function RatingSliders({
     return partner.ratings.find((r) => r.criterionId === criterionId);
   }
 
-  const SLIDER_UNRATED = -1;
-
-  function sliderValue(criterionId: string): number {
-    const score = scores[criterionId];
-    return score == null ? SLIDER_UNRATED : score;
-  }
-
-  function scoreFromSlider(raw: number): number | null {
-    return raw <= SLIDER_UNRATED ? null : raw;
-  }
-
-  function onSlide(criterionId: string, raw: number) {
-    applyScores((s) => ({ ...s, [criterionId]: scoreFromSlider(raw) }));
-  }
-
-  function onCommit(criterionId: string, raw: number) {
-    const score = scoreFromSlider(raw);
+  function onScoreChange(criterionId: string, score: number | null) {
     applyScores((s) => ({ ...s, [criterionId]: score }));
     persistRating(criterionId, score);
   }
@@ -217,36 +202,11 @@ export function RatingSliders({
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs text-pn-text-tertiary mb-1">Ich</p>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <input
-                          type="range"
-                          min={SLIDER_UNRATED}
-                          max={10}
-                          step={1}
-                          value={sliderValue(c.id)}
-                          aria-valuetext={
-                            scores[c.id] == null ? "Nicht bewertet" : String(scores[c.id])
-                          }
-                          onInput={(e) =>
-                            onSlide(c.id, parseInt(e.currentTarget.value, 10))
-                          }
-                          onChange={(e) =>
-                            onCommit(c.id, parseInt(e.currentTarget.value, 10))
-                          }
-                          className="rating-range w-full"
-                        />
-                        <div className="flex justify-between text-[10px] text-pn-text-tertiary mt-0.5 tabular-nums">
-                          <span>—</span>
-                          <span>0</span>
-                          <span>5</span>
-                          <span>10</span>
-                        </div>
-                      </div>
-                      <span className="w-8 text-center font-bold tabular-nums shrink-0">
-                        {scores[c.id] == null ? "—" : scores[c.id]}
-                      </span>
-                    </div>
+                    <RatingScalePicker
+                      score={scores[c.id]}
+                      disabled={pending}
+                      onChange={(score) => onScoreChange(c.id, score)}
+                    />
                     <input
                       type="text"
                       placeholder="Notiz (optional)"
