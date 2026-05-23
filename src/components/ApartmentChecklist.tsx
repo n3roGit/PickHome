@@ -162,7 +162,7 @@ export function ApartmentChecklist({
                 const state = itemState(item);
                 return (
                   <li key={item.id} className="p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                    <div className="mb-2 space-y-2">
                       <p className="font-semibold text-sm m-0 flex flex-wrap items-center gap-2">
                         {item.displayName}
                         <span

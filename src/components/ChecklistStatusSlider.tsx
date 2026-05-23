@@ -27,8 +27,11 @@ export function ChecklistStatusSlider({
   const current = CHECKLIST_STATUS_LEGEND[index];
 
   return (
-    <div className="flex items-center gap-2 shrink-0">
-      <div className="flex items-center gap-1 text-base font-bold select-none" aria-hidden>
+    <div className="flex items-center gap-2 w-full min-w-0">
+      <div
+        className="flex items-center gap-1 text-base font-bold select-none shrink-0"
+        aria-hidden
+      >
         {CHECKLIST_STATUS_LEGEND.map((s) => (
           <span
             key={s.key}
@@ -47,7 +50,7 @@ export function ChecklistStatusSlider({
         disabled={disabled}
         aria-label={current?.ariaLabel ?? "Checklisten-Status"}
         title={current?.hint}
-        className="checklist-status-range w-20"
+        className="checklist-status-range flex-1 min-w-0 w-full"
         onChange={(e) => onChange(checklistStatusFromIndex(Number(e.target.value)))}
       />
     </div>
