@@ -288,8 +288,16 @@ export default async function ProjectPage({
         })
       : [];
 
+  const criteriaNamesKey = project.groups
+    .map(
+      (g) =>
+        `${g.id}:${g.name}:${g.criteria.map((c) => `${c.id}:${c.name}`).join(",")}`
+    )
+    .join("|");
+
   const unsavedResetKey = [
     tab,
+    criteriaNamesKey,
     resolvedSearchParams.settings_saved,
     resolvedSearchParams.areas_saved,
     resolvedSearchParams.districts_saved,
