@@ -151,8 +151,17 @@ export function buildApartmentFinanceLlmSection(
               `Gesamtbelastung/Monat: Rate ${formatPrice(financing.monthlyPayment)} + Wohnkosten ${formatPrice(monthlyMaintenance)}${fixedPart} = ${formatPrice(affordability.totalMonthlyBurden)}`
             );
             lines.push(
-              `Belastungsquote: ${formatBurdenShare(affordability.burdenShare)} vom Netto (Richtwert <= ca. 35 %); Rest nach allen Kosten: ${formatPrice(affordability.remainingMonthly)}/Monat`
+              `Rate-Anteil: ${formatBurdenShare(affordability.rateShare)} (Richtwert <= 35 %)`
             );
+            if (monthlyMaintenance > 0) {
+              lines.push(
+                `Wohnkosten-Anteil: ${formatBurdenShare(affordability.housingShare)} (Richtwert <= 40 %)`
+              );
+            }
+            const restLabel = affordability.fixedCostsConfigured
+              ? "Rest nach allen Kosten"
+              : "Rest nach Rate und Wohnkosten (ohne Lebenshaltung)";
+            lines.push(`${restLabel}: ${formatPrice(affordability.remainingMonthly)}/Monat`);
           }
         }
       }

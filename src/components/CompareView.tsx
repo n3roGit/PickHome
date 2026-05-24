@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   apartmentCompareMetrics,
+  affordabilityLevelClass,
   formatBurdenShare,
   type ProjectFinanceSettings,
 } from "@/lib/purchase-costs";
@@ -107,10 +108,12 @@ function CompareNumbersTable({
             />
             {finance.netHouseholdIncome != null && (
               <CompareRow
-                label="Anteil vom Netto"
-                valueClassNames={rows.map((r) =>
-                  r.metrics.burdenLevel === "warn" ? "text-pn-score-low font-medium" : ""
-                )}
+                label="Anteil Rate am Netto"
+                valueClassNames={rows.map((r) => {
+                  if (r.metrics.burdenLevel == null) return "";
+                  const cls = affordabilityLevelClass(r.metrics.burdenLevel);
+                  return r.metrics.burdenLevel === "ok" ? "" : `${cls} font-medium`;
+                })}
                 values={rows.map((r) =>
                   r.metrics.burdenShare != null ? formatBurdenShare(r.metrics.burdenShare) : "—"
                 )}

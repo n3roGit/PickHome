@@ -173,7 +173,7 @@ export function ProjectSettingsPanel({
               className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
             <span className="text-xs text-pn-text-tertiary mt-1 block">
-              Für den Anteil der Gesamtbelastung am Einkommen (Richtwert: max. ca. 35&nbsp;%).
+              Für Belastbarkeits-Checks (Rate am Netto, Rest nach Kosten). Richtwert Rate: max. ca. 35&nbsp;%.
             </span>
           </label>
           <label className="block">

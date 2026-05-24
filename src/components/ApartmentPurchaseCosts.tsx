@@ -9,6 +9,7 @@ import {
   estimatePurchaseCosts,
   formatBurdenShare,
   formatPercent,
+  affordabilityLevelClass,
   purchaseCostLinesWithRenovation,
   resolveFederalStateCode,
   totalAcquisitionCost,
@@ -60,6 +61,62 @@ function CostTable({
           </tr>
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function AffordabilityWarningBanners({ affordability }: { affordability: AffordabilityEstimate }) {
+  const banners: { level: "caution" | "warn"; text: string }[] = [];
+
+  if (affordability.rateLevel === "caution") {
+    banners.push({
+      level: "caution",
+      text: "Kreditrate über 35\u00a0% des Nettos — grobe Orientierung: eher knapp.",
+    });
+  } else if (affordability.rateLevel === "warn") {
+    banners.push({
+      level: "warn",
+      text: "Kreditrate über 45\u00a0% des Nettos — grobe Orientierung: eher kritisch.",
+    });
+  }
+
+  if (affordability.monthlyMaintenance > 0 && affordability.housingLevel === "caution") {
+    banners.push({
+      level: "caution",
+      text: "Wohnkosten (Rate + Nebenkosten) über 40\u00a0% des Nettos — grobe Orientierung: eher knapp.",
+    });
+  }
+
+  if (affordability.fixedCostsConfigured) {
+    if (affordability.remainingLevel === "warn") {
+      banners.push({
+        level: "warn",
+        text: "Ausgaben übersteigen das Netto — grobe Orientierung: nicht tragbar.",
+      });
+    } else if (affordability.remainingLevel === "caution") {
+      banners.push({
+        level: "caution",
+        text: "Weniger als 10\u00a0% Puffer nach allen Kosten — grobe Orientierung: eher knapp.",
+      });
+    }
+  }
+
+  if (banners.length === 0) return null;
+
+  return (
+    <div className="space-y-2 mt-3">
+      {banners.map((banner) => (
+        <p
+          key={banner.text}
+          className={`text-sm px-3 py-2 rounded-lg ${
+            banner.level === "warn"
+              ? "text-pn-score-low bg-pn-score-low-bg"
+              : "text-pn-score-mid bg-pn-score-mid-bg"
+          }`}
+        >
+          {banner.text}
+        </p>
+      ))}
     </div>
   );
 }
@@ -139,21 +196,43 @@ function FinancingTable({
               </tr>
               <tr className="border-b border-pn-border">
                 <td className="py-2 text-pn-text-secondary">
-                  Anteil vom Netto ({formatPrice(affordability.netHouseholdIncome)})
+                  Anteil Rate am Netto ({formatPrice(affordability.netHouseholdIncome)})
                 </td>
                 <td
-                  className={`py-2 text-right font-semibold ${
-                    affordability.level === "warn" ? "text-pn-score-low" : "text-pn-score-high"
-                  }`}
+                  className={`py-2 text-right font-semibold ${affordabilityLevelClass(affordability.rateLevel)}`}
                 >
-                  {formatBurdenShare(affordability.burdenShare)}
+                  {formatBurdenShare(affordability.rateShare)}
                 </td>
               </tr>
+              {affordability.monthlyMaintenance > 0 && (
+                <tr className="border-b border-pn-border">
+                  <td className="py-2 text-pn-text-secondary">
+                    Anteil Wohnkosten am Netto
+                    <span className="block text-xs text-pn-text-tertiary">Rate + Nebenkosten</span>
+                  </td>
+                  <td
+                    className={`py-2 text-right font-semibold ${affordabilityLevelClass(affordability.housingLevel)}`}
+                  >
+                    {formatBurdenShare(affordability.housingShare)}
+                  </td>
+                </tr>
+              )}
               <tr>
-                <td className="py-2 font-medium">Rest nach allen Kosten</td>
+                <td className="py-2 font-medium">
+                  Rest nach allen Kosten
+                  {!affordability.fixedCostsConfigured && (
+                    <span className="block text-xs font-normal text-pn-text-tertiary">
+                      ohne Lebenshaltung
+                    </span>
+                  )}
+                </td>
                 <td
                   className={`py-2 text-right font-semibold ${
-                    affordability.remainingMonthly < 0 ? "text-pn-score-low" : "text-pn-text-primary"
+                    affordability.fixedCostsConfigured
+                      ? affordabilityLevelClass(affordability.remainingLevel)
+                      : affordability.remainingMonthly < 0
+                        ? "text-pn-score-low"
+                        : "text-pn-text-primary"
                   }`}
                 >
                   {formatPrice(affordability.remainingMonthly)}
@@ -163,11 +242,7 @@ function FinancingTable({
           )}
         </tbody>
       </table>
-      {affordability?.level === "warn" && (
-        <p className="text-sm text-pn-score-low bg-pn-score-low-bg px-3 py-2 rounded-lg mt-3">
-          Über 35&nbsp;% des Nettoeinkommens — grobe Orientierung: eher knapp bis kritisch.
-        </p>
-      )}
+      {affordability && <AffordabilityWarningBanners affordability={affordability} />}
       {!affordability && (
         <p className="text-sm text-pn-text-tertiary mt-3">
           Für die Belastbarkeit im{" "}
