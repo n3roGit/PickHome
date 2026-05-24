@@ -66,6 +66,27 @@ describe("buildApartmentLlmContext", () => {
     expect(ctx).toContain("Renovierung (eingetragen)");
     expect(ctx).toContain("Grundstücksfläche m²: 420");
   });
+
+  it("includes finance, commute, and checklist sections in order", () => {
+    const ctx = buildApartmentLlmContext({
+      projectName: "P",
+      title: "T",
+      address: TEST_ADDRESS_BERLIN_RAW,
+      price: 100_000,
+      financeSection: "--- Finanz-Schätzung (PickHome, grobe Orientierung - keine verbindliche Kalkulation) ---",
+      commuteSection: "--- Fahrtwege (PickHome-Schätzung - Verkehr und ÖPNV können abweichen) ---",
+      checklistLines: ["- [Technik] Dach: nicht OK"],
+      description: "Beschreibungstext",
+    });
+    const financeIdx = ctx.indexOf("Finanz-Schätzung");
+    const commuteIdx = ctx.indexOf("Fahrtwege (PickHome-Schätzung");
+    const descIdx = ctx.indexOf("Beschreibung:");
+    const checklistIdx = ctx.indexOf("Checkliste (PickHome)");
+    expect(financeIdx).toBeGreaterThan(-1);
+    expect(commuteIdx).toBeGreaterThan(financeIdx);
+    expect(descIdx).toBeGreaterThan(commuteIdx);
+    expect(checklistIdx).toBeGreaterThan(descIdx);
+  });
 });
 
 describe("buildApartmentListingExtractSupplement", () => {

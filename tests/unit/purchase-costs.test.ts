@@ -155,6 +155,30 @@ describe("estimateAffordability", () => {
     expect(result?.burdenShare).toBe(0.4);
     expect(result?.level).toBe("warn");
   });
+
+  it("includes fixed costs in burden and remaining monthly", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 1_000,
+      netHouseholdIncome: 4_000,
+      monthlyMaintenance: 400,
+      monthlyFixedCosts: 800,
+    });
+    expect(result?.totalMonthlyBurden).toBe(2_200);
+    expect(result?.remainingMonthly).toBe(1_800);
+    expect(result?.monthlyFixedCosts).toBe(800);
+    expect(result?.burdenShare).toBeCloseTo(0.55);
+    expect(result?.level).toBe("warn");
+  });
+
+  it("defaults fixed costs to zero", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 1_000,
+      netHouseholdIncome: 4_000,
+      monthlyMaintenance: 400,
+    });
+    expect(result?.monthlyFixedCosts).toBe(0);
+    expect(result?.totalMonthlyBurden).toBe(1_400);
+  });
 });
 
 describe("estimatePropertyTaxAnnual", () => {
@@ -241,6 +265,7 @@ describe("apartmentCompareMetrics", () => {
     loanTermYears: 30,
     interestRate: 0.035,
     netHouseholdIncome: 5_000,
+    monthlyFixedCosts: null,
   };
 
   it("computes costs and monthly burden", () => {
@@ -250,8 +275,17 @@ describe("apartmentCompareMetrics", () => {
     );
     expect(result.totalCost).toBe(331_425);
     expect(result.monthlyPayment).toBeGreaterThan(0);
+    expect(result.totalMonthlyBurden).not.toBeNull();
     expect(result.burdenShare).not.toBeNull();
     expect(result.burdenLevel).toBeTruthy();
+  });
+
+  it("includes fixed costs in compare totalMonthlyBurden", () => {
+    const result = apartmentCompareMetrics(
+      { price: 300_000, sizeSqm: 100, brokerInvolved: false, address: null },
+      { ...finance, monthlyFixedCosts: 1_000 }
+    );
+    expect(result.totalMonthlyBurden).toBeGreaterThan(result.monthlyPayment!);
   });
 
   it("includes maintenance in burden share", () => {
