@@ -5,12 +5,17 @@ import {
   deleteApartmentPhotoFile,
   saveApartmentDocument,
   saveApartmentPhoto,
+  thumbUrlFromPhotoUrl,
 } from "@/lib/apartment-media";
 import { getApartmentUploadsRoot } from "@/lib/pickhome-data";
 import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES } from "@/lib/upload-limits";
+import { mockJpegFile } from "../helpers/mock-image-file";
 import { withIsolatedDataDir } from "../helpers/test-db";
 
 function mockFile(name: string, type: string, size: number, content = "x") {
+  if (type === "image/jpeg") {
+    return mockJpegFile(name, size);
+  }
   const buffer = Buffer.alloc(size, content.charCodeAt(0));
   return new File([buffer], name, { type });
 }
@@ -26,13 +31,39 @@ describe("apartment-media", () => {
     dataDir.restore();
   });
 
-  it("saves a JPEG photo under uploads/apartments", async () => {
+  it("saves a JPEG photo under uploads/apartments with thumbnail", async () => {
     const aptId = "apt-photo-1";
-    const file = mockFile("photo.jpg", "image/jpeg", 100);
-    const url = await saveApartmentPhoto(aptId, file);
+    const file = mockJpegFile("photo.jpg");
+    const { url, thumbUrl } = await saveApartmentPhoto(aptId, file);
     expect(url).toMatch(/^\/uploads\/apartments\/apt-photo-1\/.+\.jpg$/);
+    expect(thumbUrl).toBe(thumbUrlFromPhotoUrl(url));
     const diskPath = join(getApartmentUploadsRoot(), aptId, url.split("/").pop()!);
     await access(diskPath);
+    const thumbPath = join(getApartmentUploadsRoot(), aptId, thumbUrl!.split("/").pop()!);
+    await access(thumbPath);
+    const thumbBytes = await readFile(thumbPath);
+    expect(thumbBytes.length).toBeGreaterThan(0);
+  });
+
+  it("saves PNG photo with thumbnail", async () => {
+    const aptId = "apt-photo-png";
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64"
+    );
+    const file = new File([png], "photo.png", { type: "image/png" });
+    const { url, thumbUrl } = await saveApartmentPhoto(aptId, file);
+    expect(url).toMatch(/\.png$/);
+    expect(thumbUrl).toMatch(/-thumb\.webp$/);
+    await access(join(getApartmentUploadsRoot(), aptId, thumbUrl!.split("/").pop()!));
+  });
+
+  it("saves HEIC photo without thumbnail when sharp cannot decode", async () => {
+    const aptId = "apt-photo-heic";
+    const file = mockFile("photo.heic", "image/heic", 64);
+    const { url, thumbUrl } = await saveApartmentPhoto(aptId, file);
+    expect(url).toMatch(/\.heic$/);
+    expect(thumbUrl).toBeNull();
   });
 
   it("rejects invalid photo MIME", async () => {
@@ -68,12 +99,16 @@ describe("apartment-media", () => {
     await expect(saveApartmentDocument("apt-1", file, buffer)).rejects.toThrow("too_large");
   });
 
-  it("deleteApartmentPhotoFile removes file from disk", async () => {
+  it("deleteApartmentPhotoFile removes original and thumbnail from disk", async () => {
     const aptId = "apt-del";
-    const url = await saveApartmentPhoto(aptId, mockFile("x.jpg", "image/jpeg", 50));
-    await deleteApartmentPhotoFile(url);
+    const { url, thumbUrl } = await saveApartmentPhoto(aptId, mockJpegFile("x.jpg", 50));
+    await deleteApartmentPhotoFile(url, thumbUrl);
     const diskPath = join(getApartmentUploadsRoot(), aptId, url.split("/").pop()!);
     await expect(access(diskPath)).rejects.toThrow();
+    if (thumbUrl) {
+      const thumbPath = join(getApartmentUploadsRoot(), aptId, thumbUrl.split("/").pop()!);
+      await expect(access(thumbPath)).rejects.toThrow();
+    }
   });
 
   it("ignores delete for non-upload URLs", async () => {

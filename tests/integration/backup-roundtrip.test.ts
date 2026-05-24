@@ -19,6 +19,7 @@ import {
   resetTestDatabase,
   withIsolatedDataDir,
 } from "../helpers/test-db";
+import { mockJpegFile } from "../helpers/mock-image-file";
 
 describe("backup roundtrip", () => {
   let dataDir: ReturnType<typeof withIsolatedDataDir>;
@@ -46,10 +47,10 @@ describe("backup roundtrip", () => {
         longitude: 8.8,
       },
     });
-    const file = new File([Buffer.from("backup-photo")], "p.jpg", { type: "image/jpeg" });
-    const url = await saveApartmentPhoto(apt.id, file);
+    const file = mockJpegFile("p.jpg");
+    const { url, thumbUrl } = await saveApartmentPhoto(apt.id, file);
     await testPrisma.apartmentPhoto.create({
-      data: { apartmentId: apt.id, url, sortOrder: 0 },
+      data: { apartmentId: apt.id, url, thumbUrl, sortOrder: 0 },
     });
     await testPrisma.$disconnect();
 
@@ -70,7 +71,11 @@ describe("backup roundtrip", () => {
     });
     expect(restoredApt?.latitude).toBe(53.08);
     expect(restoredApt?.photos).toHaveLength(1);
+    expect(restoredApt?.photos[0]?.thumbUrl).toMatch(/-thumb\.webp$/);
     await access(publicPhotoPath(restoredApt!.photos[0].url)!);
+    if (restoredApt?.photos[0]?.thumbUrl) {
+      await access(publicPhotoPath(restoredApt.photos[0].thumbUrl)!);
+    }
     await after.$disconnect();
   });
 

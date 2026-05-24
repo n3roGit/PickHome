@@ -22,7 +22,18 @@ vi.mock("@/lib/pdf-text", () => ({
   extractPdfText: vi.fn(async () => "Sample PDF text for search"),
 }));
 
+import {
+  createTestPrisma,
+  createTestProject,
+  resetTestDatabase,
+  withIsolatedDataDir,
+} from "../helpers/test-db";
+import { mockJpegFile } from "../helpers/mock-image-file";
+
 function mockFile(name: string, type: string, size: number) {
+  if (type === "image/jpeg") {
+    return mockJpegFile(name, size);
+  }
   return new File([Buffer.alloc(size, 0x41)], name, { type });
 }
 
@@ -65,9 +76,71 @@ describe("upload server actions", () => {
 
     const photo = await prisma.apartmentPhoto.findFirst({ where: { apartmentId: apt.id } });
     expect(photo?.sortOrder).toBe(0);
+    expect(photo?.thumbUrl).toMatch(/-thumb\.webp$/);
     const disk = publicPhotoPath(photo!.url);
     expect(disk).not.toBeNull();
     await access(disk!);
+    if (photo?.thumbUrl) {
+      await access(publicPhotoPath(photo.thumbUrl)!);
+    }
+    await prisma.$disconnect();
+  });
+
+  it("rejects invalid photo type", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Photos" },
+    });
+
+    const form = new FormData();
+    form.set("photo", mockFile("notes.txt", "text/plain", 50));
+
+    const result = await uploadApartmentPhotoAction(apt.id, form);
+    expect(result).toEqual({ ok: false, error: "invalid_type" });
+    await prisma.$disconnect();
+  });
+
+  it("ignores empty photo upload", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Photos" },
+    });
+
+    const form = new FormData();
+    const result = await uploadApartmentPhotoAction(apt.id, form);
+    expect(result).toBeUndefined();
+    const count = await prisma.apartmentPhoto.count({ where: { apartmentId: apt.id } });
+    expect(count).toBe(0);
+    await prisma.$disconnect();
+  });
+
+  it("assigns sortOrder for second photo", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Photos" },
+    });
+
+    const form1 = new FormData();
+    form1.set("photo", mockFile("one.jpg", "image/jpeg", 500));
+    await uploadApartmentPhotoAction(apt.id, form1);
+
+    const form2 = new FormData();
+    form2.set("photo", mockFile("two.jpg", "image/jpeg", 500));
+    await uploadApartmentPhotoAction(apt.id, form2);
+
+    const photos = await prisma.apartmentPhoto.findMany({
+      where: { apartmentId: apt.id },
+      orderBy: { sortOrder: "asc" },
+    });
+    expect(photos).toHaveLength(2);
+    expect(photos[0]?.sortOrder).toBe(0);
+    expect(photos[1]?.sortOrder).toBe(1);
     await prisma.$disconnect();
   });
 
@@ -162,6 +235,9 @@ describe("upload server actions", () => {
     const gone = await prisma.apartmentPhoto.findUnique({ where: { id: photo.id } });
     expect(gone).toBeNull();
     await expect(access(disk)).rejects.toThrow();
+    if (photo.thumbUrl) {
+      await expect(access(publicPhotoPath(photo.thumbUrl)!)).rejects.toThrow();
+    }
     await prisma.$disconnect();
   });
 });
