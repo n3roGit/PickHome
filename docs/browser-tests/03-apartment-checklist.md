@@ -34,7 +34,7 @@ Apply shared rules from the master guide: **§2 Hard rules**, **§7 Evidence req
 - Auto-Fill marks newly filled inputs with green highlight (`pn-field-prefilled`); after **Preis & Adresse** save, highlights are cleared (including Hausgeld/Heizkosten/Grundsteuer/Sanierung).
 - Auto-Fill does **not** persist to the database by itself.
 - Notes and description sections can be expanded and saved.
-- Collapsible section **Finanzen** (formerly „Kaufnebenkosten & Finanzierung“) reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set); when project **Fixkosten** are set, shows Fixkosten row, **Gesamtbelastung / Monat** (Rate + Wohnnebenkosten + Fixkosten), **Rest nach allen Kosten**, and 35 % warning on total burden; Makler checkbox with **Übernehmen** lives here.
+- Collapsible section **Finanzen** (formerly „Kaufnebenkosten & Finanzierung“) reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set); when project **Fixkosten** are set, shows Fixkosten row, **Gesamtbelastung / Monat** (Rate + Wohnnebenkosten + Fixkosten), **Rest nach allen Kosten**, and contextual warnings for rate share (35 / 45 % guidelines), housing share (40 %), and tight/negative remaining buffer; Makler checkbox with **Übernehmen** lives here.
 - Commute section shows per-member travel data where account addresses exist.
 - Company car and commuter allowance information appears when configured.
 - Image, camera, and exposé upload inputs accept supported file types and reject unsupported file types.
