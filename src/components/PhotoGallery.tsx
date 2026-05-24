@@ -62,8 +62,22 @@ export function PhotoGallery({
 }) {
   const [index, setIndex] = useState<number | null>(null);
   const [chromeVisible, setChromeVisible] = useState(true);
+  const [carouselPreload, setCarouselPreload] = useState(1);
 
   const open = index !== null;
+
+  useEffect(() => {
+    if (!open) return;
+    function updatePreload() {
+      const w = window.innerWidth;
+      if (w >= 1280) setCarouselPreload(8);
+      else if (w >= 768) setCarouselPreload(5);
+      else setCarouselPreload(2);
+    }
+    updatePreload();
+    window.addEventListener("resize", updatePreload);
+    return () => window.removeEventListener("resize", updatePreload);
+  }, [open]);
 
   const slides = useMemo(
     () =>
@@ -184,10 +198,10 @@ export function PhotoGallery({
         slides={slides}
         plugins={[Zoom, Thumbnails, Counter, Captions]}
         className={`photo-gallery-lightbox${chromeVisible ? "" : " photo-gallery-lightbox--chrome-hidden"}`}
-        carousel={{ finite: false, preload: 1 }}
+        carousel={{ finite: false, preload: carouselPreload }}
         zoom={{ maxZoomPixelRatio: 3, doubleTapDelay: 300, doubleClickDelay: 300 }}
         controller={{ closeOnPullDown: false, closeOnBackdropClick: false }}
-        thumbnails={{ position: "bottom", width: 64, height: 64, border: 2, borderColor: "transparent" }}
+        thumbnails={{ position: "bottom", width: 64, height: 64, border: 2, borderColor: "transparent", gap: 8 }}
         labels={{
           Previous: "Vorheriges Bild",
           Next: "Nächstes Bild",

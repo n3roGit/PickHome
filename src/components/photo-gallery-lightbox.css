@@ -35,6 +35,15 @@
   padding-bottom: max(16px, env(safe-area-inset-bottom));
   padding-left: max(8px, env(safe-area-inset-left));
   padding-right: max(8px, env(safe-area-inset-right));
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .photo-gallery-lightbox .yarl__thumbnails_container {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
 }
 
 .photo-gallery-lightbox .yarl__slide_title_container {
