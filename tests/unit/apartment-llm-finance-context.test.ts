@@ -32,6 +32,8 @@ describe("buildApartmentFinanceLlmSection", () => {
     expect(section).toContain("keine verbindliche Kalkulation");
     expect(section).toContain("Fixkosten Lebenshaltung");
     expect(section).toContain("Gesamtbelastung/Monat");
+    expect(section).toContain("Rate-Anteil:");
+    expect(section).toContain("Wohnkosten-Anteil:");
     expect(section).toContain("Rest nach allen Kosten");
     expect(section).toContain("Standard-Zins");
   });

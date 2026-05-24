@@ -128,35 +128,40 @@ describe("estimateFinancing", () => {
 });
 
 describe("estimateAffordability", () => {
-  it("flags burden above 35 percent", () => {
+  it("flags rate share above 35 percent as caution", () => {
     const result = estimateAffordability({
       monthlyPayment: 2_000,
       netHouseholdIncome: 5_000,
     });
+    expect(result?.rateShare).toBe(0.4);
+    expect(result?.rateLevel).toBe("caution");
     expect(result?.burdenShare).toBe(0.4);
-    expect(result?.level).toBe("warn");
+    expect(result?.level).toBe("caution");
   });
 
-  it("marks affordable burden as ok", () => {
+  it("marks affordable rate share as ok", () => {
     const result = estimateAffordability({
       monthlyPayment: 1_500,
       netHouseholdIncome: 5_000,
     });
+    expect(result?.rateLevel).toBe("ok");
     expect(result?.level).toBe("ok");
   });
 
-  it("includes monthly maintenance in burden", () => {
+  it("flags housing share when maintenance pushes housing above 40 percent", () => {
     const result = estimateAffordability({
       monthlyPayment: 1_500,
       netHouseholdIncome: 5_000,
-      monthlyMaintenance: 500,
+      monthlyMaintenance: 501,
     });
-    expect(result?.totalMonthlyBurden).toBe(2_000);
-    expect(result?.burdenShare).toBe(0.4);
-    expect(result?.level).toBe("warn");
+    expect(result?.totalMonthlyBurden).toBe(2_001);
+    expect(result?.housingShare).toBeCloseTo(0.4002);
+    expect(result?.housingLevel).toBe("caution");
+    expect(result?.rateLevel).toBe("ok");
+    expect(result?.burdenShare).toBe(0.3);
   });
 
-  it("includes fixed costs in burden and remaining monthly", () => {
+  it("includes fixed costs in total burden and remaining monthly", () => {
     const result = estimateAffordability({
       monthlyPayment: 1_000,
       netHouseholdIncome: 4_000,
@@ -166,18 +171,47 @@ describe("estimateAffordability", () => {
     expect(result?.totalMonthlyBurden).toBe(2_200);
     expect(result?.remainingMonthly).toBe(1_800);
     expect(result?.monthlyFixedCosts).toBe(800);
-    expect(result?.burdenShare).toBeCloseTo(0.55);
-    expect(result?.level).toBe("warn");
+    expect(result?.fixedCostsConfigured).toBe(true);
+    expect(result?.rateLevel).toBe("ok");
+    expect(result?.remainingLevel).toBe("ok");
+    expect(result?.burdenShare).toBe(0.25);
   });
 
-  it("defaults fixed costs to zero", () => {
+  it("flags remaining caution when fixed costs leave less than 10 percent buffer", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 1_500,
+      netHouseholdIncome: 4_000,
+      monthlyMaintenance: 400,
+      monthlyFixedCosts: 1_710,
+    });
+    expect(result?.remainingMonthly).toBe(390);
+    expect(result?.remainingLevel).toBe("caution");
+    expect(result?.rateLevel).toBe("caution");
+  });
+
+  it("flags remaining warn when expenses exceed net income", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 3_000,
+      netHouseholdIncome: 4_000,
+      monthlyMaintenance: 400,
+      monthlyFixedCosts: 800,
+    });
+    expect(result?.remainingMonthly).toBeLessThan(0);
+    expect(result?.remainingLevel).toBe("warn");
+  });
+
+  it("skips remaining alarm when fixed costs are not configured", () => {
     const result = estimateAffordability({
       monthlyPayment: 1_000,
       netHouseholdIncome: 4_000,
       monthlyMaintenance: 400,
+      monthlyFixedCosts: null,
     });
+    expect(result?.fixedCostsConfigured).toBe(false);
     expect(result?.monthlyFixedCosts).toBe(0);
     expect(result?.totalMonthlyBurden).toBe(1_400);
+    expect(result?.remainingMonthly).toBe(2_600);
+    expect(result?.remainingLevel).toBe("ok");
   });
 });
 
@@ -288,8 +322,17 @@ describe("apartmentCompareMetrics", () => {
     expect(result.totalMonthlyBurden).toBeGreaterThan(result.monthlyPayment!);
   });
 
-  it("includes maintenance in burden share", () => {
-    const result = apartmentCompareMetrics(
+  it("uses rate share only for burdenShare, not maintenance", () => {
+    const withoutMaint = apartmentCompareMetrics(
+      {
+        price: 300_000,
+        sizeSqm: 100,
+        brokerInvolved: true,
+        address: null,
+      },
+      finance
+    );
+    const withMaint = apartmentCompareMetrics(
       {
         price: 300_000,
         sizeSqm: 100,
@@ -300,7 +343,8 @@ describe("apartmentCompareMetrics", () => {
       },
       finance
     );
-    expect(result.burdenShare).toBeGreaterThan(0.35);
+    expect(withMaint.burdenShare).toBe(withoutMaint.burdenShare);
+    expect(withMaint.totalMonthlyBurden!).toBeGreaterThan(withoutMaint.totalMonthlyBurden!);
   });
 
   it("includes renovation in total cost", () => {
