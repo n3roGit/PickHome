@@ -251,6 +251,7 @@ Stable per-area contracts. UI labels may change; user outcomes must not break. S
 | Apartment detail, checklist fill page | [03-apartment-checklist.md](browser-tests/03-apartment-checklist.md) |
 | Listing import, Auto-Fill, Immobilien-Assistent (KI chat) | [04-listing-llm.md](browser-tests/04-listing-llm.md) |
 | Backup export/restore, mobile viewport | [05-backup-mobile.md](browser-tests/05-backup-mobile.md) |
+| Photo gallery, thumbnails, upload queue, camera | [06-photo-gallery.md](browser-tests/06-photo-gallery.md) |
 | Regression case library (reference table) | [regression-library.md](browser-tests/regression-library.md) |
 
 New features: add or extend the matching contract file and register it in this table. Template: **§17**.
@@ -329,6 +330,7 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] Compare tab: **Gesamtbelastung/Monat (grob)** row if compare/finance code changed
 [ ] KI chat: finance/commute/checklist estimate questions answered as **Schätzung** (if LLM context changed)
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
+[ ] Photo gallery: grid loads WebP thumbs; lightbox loads original; upload/delete/reload if photo code changed
 [ ] Auto-Fill save + reload verified on disposable apartment
 [ ] Draft restore: after basics save + reload, no flicker between old KI data and DB (if `apartment-listing-draft` or Auto-Fill changed)
 [ ] KI-Vorschlag: Übernehmen changes one field only; Verwerfen removes hint only
