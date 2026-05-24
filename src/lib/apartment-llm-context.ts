@@ -57,6 +57,9 @@ export type ApartmentLlmContextInput = {
   description?: string | null;
   notes?: string | null;
   documents?: { fileName: string; extractedText?: string | null }[];
+  financeSection?: string | null;
+  commuteSection?: string | null;
+  checklistLines?: string[];
 };
 
 function memberName(members: ApartmentLlmScoringMember[], userId: string): string {
@@ -172,6 +175,13 @@ export function buildApartmentLlmContext(apartment: ApartmentLlmContextInput): s
     push("Renovierung (eingetragen)", formatPrice(apartment.renovationCost));
   }
 
+  if (apartment.financeSection?.trim()) {
+    lines.push("", apartment.financeSection.trim());
+  }
+  if (apartment.commuteSection?.trim()) {
+    lines.push("", apartment.commuteSection.trim());
+  }
+
   if (apartment.description?.trim()) {
     lines.push("", "Beschreibung:", apartment.description.trim());
   }
@@ -188,6 +198,11 @@ export function buildApartmentLlmContext(apartment: ApartmentLlmContextInput): s
 
   if (docSections.length > 0) {
     lines.push("", "Exposé / Dokumente (Volltext):", ...docSections);
+  }
+
+  const checklist = apartment.checklistLines?.filter((l) => l.trim());
+  if (checklist?.length) {
+    lines.push("", "--- Checkliste (PickHome) ---", ...checklist);
   }
 
   if (apartment.scoring?.groups.length) {

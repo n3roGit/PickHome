@@ -6,10 +6,17 @@ import type {
   ApartmentLlmContextInput,
   ApartmentLlmScoringInput,
 } from "@/lib/apartment-llm-context";
+import { buildApartmentFinanceLlmSection } from "@/lib/apartment-llm-finance-context";
+import { buildApartmentCommuteLlmSection } from "@/lib/apartment-llm-commute-context";
+import { computeCommuteForMembers } from "@/lib/commute";
+import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
+import { resolveTransitSettings } from "@/lib/transit-settings";
+import { parseTravelMode } from "@/lib/travel-mode";
 import { publicPhotoPath } from "@/lib/pickhome-data";
 import { parseChecklistStatus } from "@/lib/checklist-display";
 import { extractPdfText } from "@/lib/pdf-text";
 import { isPdfDocument } from "@/lib/pdf-reindex";
+
 export async function getApartmentLlmBundle(
   apartmentId: string,
   user: ProjectAccessUser
@@ -28,6 +35,13 @@ export async function getApartmentLlmBundle(
         select: {
           name: true,
           dealbreakerThreshold: true,
+          federalStateCode: true,
+          brokerBuyerRate: true,
+          equityAmount: true,
+          loanTermYears: true,
+          interestRate: true,
+          netHouseholdIncome: true,
+          monthlyFixedCosts: true,
           members: {
             include: { user: { select: { id: true, name: true } } },
           },
@@ -69,6 +83,102 @@ export async function getApartmentLlmBundle(
   });
 
   const scoring = buildApartmentLlmScoringInput(row.project, row.ratings, user.id);
+  const finance = {
+    federalStateCode: row.project.federalStateCode,
+    brokerBuyerRate: row.project.brokerBuyerRate,
+    equityAmount: row.project.equityAmount,
+    loanTermYears: row.project.loanTermYears,
+    interestRate: row.project.interestRate,
+    netHouseholdIncome: row.project.netHouseholdIncome,
+    monthlyFixedCosts: row.project.monthlyFixedCosts,
+  };
+  const financeSection = buildApartmentFinanceLlmSection(
+    {
+      price: row.price,
+      address: row.address,
+      brokerInvolved: row.brokerInvolved,
+      hoaFeeMonthly: row.hoaFeeMonthly,
+      heatingCostMonthly: row.heatingCostMonthly,
+      propertyTaxAnnual: row.propertyTaxAnnual,
+      renovationCost: row.renovationCost,
+      sizeSqm: row.sizeSqm,
+      plotSizeSqm: row.plotSizeSqm,
+    },
+    finance
+  );
+
+  const memberUsers = await prisma.user.findMany({
+    where: { id: { in: row.project.members.map((m) => m.userId) } },
+    select: {
+      id: true,
+      name: true,
+      travelMode: true,
+      transitArrivalHour: true,
+      transitArrivalMinute: true,
+      transitArrivalWeekday: true,
+      transitFallbackMaxKm: true,
+      transitFallbackMode: true,
+      companyCar: true,
+      companyCarRate: true,
+      listPrice: true,
+      marginalTaxRatePercent: true,
+      companyCarCommuteMethod: true,
+      companyCarOfficeTripsPerMonth: true,
+      companyCarContributionEur: true,
+      companyCarSelfPaidCostsEur: true,
+      companyCarEmployerFuelCard: true,
+      commuteAllowanceDaysPerYear: true,
+      commuteAllowanceVacationDays: true,
+      commuteAllowanceSickDays: true,
+      commuteAllowanceHomeOfficeDays: true,
+      addresses: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+    },
+  });
+  const apartmentCoords =
+    row.latitude != null && row.longitude != null
+      ? { latitude: row.latitude, longitude: row.longitude }
+      : null;
+  const commutePeople = await computeCommuteForMembers({
+    apartmentId: row.id,
+    apartment: apartmentCoords,
+    apartmentAddress: row.address ?? row.title,
+    currentUserId: user.id,
+    cacheOnly: true,
+    members: memberUsers.map((member) => ({
+      userId: member.id,
+      name: member.name,
+      travelMode: parseTravelMode(member.travelMode),
+      transitSettings:
+        parseTravelMode(member.travelMode) === "transit"
+          ? resolveTransitSettings(member)
+          : null,
+      companyCar: member.companyCar,
+      companyCarRate: member.companyCar ? parseCompanyCarRate(member.companyCarRate) : null,
+      listPrice: member.listPrice,
+      marginalTaxRatePercent: member.marginalTaxRatePercent,
+      companyCarCommuteMethod: member.companyCar
+        ? parseCompanyCarCommuteMethod(member.companyCarCommuteMethod)
+        : null,
+      companyCarOfficeTripsPerMonth: member.companyCar ? member.companyCarOfficeTripsPerMonth : null,
+      companyCarContributionEur: member.companyCar ? member.companyCarContributionEur : null,
+      companyCarSelfPaidCostsEur: member.companyCar ? member.companyCarSelfPaidCostsEur : null,
+      companyCarEmployerFuelCard: member.companyCar ? member.companyCarEmployerFuelCard : true,
+      commuteAllowanceDaysPerYear: member.commuteAllowanceDaysPerYear,
+      commuteAllowanceVacationDays: member.commuteAllowanceVacationDays,
+      commuteAllowanceSickDays: member.commuteAllowanceSickDays,
+      commuteAllowanceHomeOfficeDays: member.commuteAllowanceHomeOfficeDays,
+      addresses: member.addresses.map((a) => ({
+        id: a.id,
+        label: a.label,
+        address: a.address,
+        latitude: a.latitude,
+        longitude: a.longitude,
+        isWorkplace: a.isWorkplace,
+      })),
+    })),
+  });
+  const commuteSection = buildApartmentCommuteLlmSection(commutePeople);
+  const checklistLines = await buildApartmentChecklistExtractLines(apartmentId);
 
   return {
     projectName: row.project.name,
@@ -92,6 +202,9 @@ export async function getApartmentLlmBundle(
       description: row.description,
       notes: row.notes,
       documents,
+      financeSection,
+      commuteSection,
+      checklistLines,
     },
     pdfDocuments: row.documents,
   };

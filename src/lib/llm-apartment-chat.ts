@@ -14,9 +14,15 @@ const APARTMENT_CHAT_HISTORY_RULES = `Chatverlauf (wichtig):
 - Behaupte niemals, es gäbe keine vorherigen Fragen oder Nachrichten, wenn im Verlauf bereits user-Nachrichten stehen.
 - Meta-Fragen zum Gespräch beantwortest du aus dem Verlauf; Immobilienfragen aus Verlauf plus Stammdaten/Dokumenten unten.`;
 
+const APARTMENT_CHAT_ESTIMATE_RULES = `PickHome-Schätzungen:
+- Abschnitte mit „(PickHome-Schätzung …)“, „grobe Orientierung“ oder „Finanz-Schätzung“ sind rechnerische Annahmen, keine verbindlichen Fakten.
+- Nutze Finanz-, Fahrtwege- und Checklisten-Abschnitte, wenn sie zur Frage passen, aber kennzeichne Schätzwerte immer als grobe Orientierung.
+- Nenne fehlende Annahmen (z. B. fehlendes Haushaltsnetto, nicht berechnete Route) offen — erfinde keine Zahlen.`;
+
 const APARTMENT_CHAT_TASK_SOURCES_ONLY = `Im aktuellen Gespräch beantwortest du Fragen ausschließlich zur unten angegebenen Immobilie.
-Nutze Stammdaten, Beschreibung, Notizen, Dokumente und — falls vorhanden — den Abschnitt „Bewertungskriterien (PickHome)“ (Gewichtung, Team-Bewertungen, Gesamtscore).
+Nutze Stammdaten, Beschreibung, Notizen, Dokumente, Checkliste und — falls vorhanden — die Abschnitte „Finanz-Schätzung (PickHome …)“, „Fahrtwege (PickHome-Schätzung …)“ sowie „Bewertungskriterien (PickHome)“ (Gewichtung, Team-Bewertungen, Gesamtscore).
 Die Bewertungen stehen dort im Format „Name: X/10“ — nutze sie direkt, ohne erneut nach Punkten zu fragen.
+${APARTMENT_CHAT_ESTIMATE_RULES}
 ${APARTMENT_CHAT_HISTORY_RULES}
 Du darfst intern denken, antwortest dem Nutzer aber nur mit der finalen, kurzen Antwort — ohne Denkprozess oder Meta-Kommentare.
 Fehlende oder unklare Angaben benennst du offen — ohne Schätzen oder Ergänzen aus Allgemeinwissen.`;
@@ -24,13 +30,14 @@ Fehlende oder unklare Angaben benennst du offen — ohne Schätzen oder Ergänze
 const APARTMENT_CHAT_TASK_WITH_WEB = `Im aktuellen Gespräch beantwortest du Fragen zur unten angegebenen Immobilie.
 
 Quellen (Priorität):
-1. Stammdaten, Beschreibung, Notizen, Dokumente und Bewertungskriterien (Gewicht, Dealbreaker, Team-Bewertungen)
+1. Stammdaten, Beschreibung, Notizen, Dokumente, Checkliste, Bewertungskriterien und PickHome-Schätzungen (Finanz, Fahrtwege)
 2. Tool web_search für öffentliche Recherche (z. B. typische Sanierungskosten, Marktpreise), nur wenn (1) nicht ausreicht
 
 Wichtig:
 - Nutze das bereitgestellte Tool web_search — gib niemals rohes JSON wie {"type":"web_search",…} als Antwort aus.
 - Nach einer Suche fasse die Treffer in normaler deutscher Prosa zusammen.
 - Bewertungen stehen unter „Bewertungskriterien (PickHome)“ als „Name: X/10“.
+- ${APARTMENT_CHAT_ESTIMATE_RULES}
 - ${APARTMENT_CHAT_HISTORY_RULES}
 - Du darfst intern denken; die Nutzerantwort ist nur die finale Zusammenfassung ohne Denkprozess.
 - Explizite Bitte um Internetsuche (z. B. „suche im Internet“) → web_search ausführen, auch wenn das Exposé ähnliche Infos enthält.
