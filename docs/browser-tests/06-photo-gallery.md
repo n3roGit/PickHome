@@ -43,6 +43,8 @@ Sections **§12.21** in [MCP_BROWSER_TEST_CHECKLIST.md](../MCP_BROWSER_TEST_CHEC
 
 - Network tab on apartment detail: grid/hero requests use `.webp` thumb URLs, not original `.jpg`/`.png` paths.
 - Opening lightbox: network shows original URL loaded for main image only.
+- Repeat visit (soft navigate away and back, or second apartment open): no new `/uploads/**` requests — browser serves from immutable cache (`Cache-Control: public, max-age=31536000, immutable`).
+- Response headers on thumb and original URLs include `immutable` and `max-age=31536000`.
 
 #### Evidence
 

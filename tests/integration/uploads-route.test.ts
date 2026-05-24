@@ -35,6 +35,7 @@ describe("uploads route GET", () => {
     const dir = join(getUploadsRoot(), relDir);
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, "photo.jpg"), Buffer.from([0xff, 0xd8, 0xff]));
+    await writeFile(join(dir, "thumb.webp"), Buffer.from("RIFF"));
     await writeFile(join(dir, "doc.pdf"), Buffer.from("%PDF"));
 
     const jpgRes = await GET(new Request("http://localhost/uploads/x"), {
@@ -42,12 +43,22 @@ describe("uploads route GET", () => {
     });
     expect(jpgRes.status).toBe(200);
     expect(jpgRes.headers.get("Content-Type")).toBe("image/jpeg");
+    expect(jpgRes.headers.get("Cache-Control")).toContain("immutable");
+    expect(jpgRes.headers.get("Cache-Control")).toContain("max-age=31536000");
+
+    const webpRes = await GET(new Request("http://localhost/uploads/x"), {
+      params: Promise.resolve({ path: [...relDir.split("/"), "thumb.webp"] }),
+    });
+    expect(webpRes.status).toBe(200);
+    expect(webpRes.headers.get("Content-Type")).toBe("image/webp");
+    expect(webpRes.headers.get("Cache-Control")).toContain("immutable");
 
     const pdfRes = await GET(new Request("http://localhost/uploads/x"), {
       params: Promise.resolve({ path: [...relDir.split("/"), "doc.pdf"] }),
     });
     expect(pdfRes.status).toBe(200);
     expect(pdfRes.headers.get("Content-Type")).toBe("application/pdf");
+    expect(pdfRes.headers.get("Cache-Control")).toContain("immutable");
 
     await writeFile(join(dir, "unknown.bin"), Buffer.from([1, 2, 3]));
     const binRes = await GET(new Request("http://localhost/uploads/x"), {
