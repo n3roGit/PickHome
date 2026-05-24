@@ -10,5 +10,5 @@ export function mockJpegBuffer(size = 100): Buffer {
 }
 
 export function mockJpegFile(name: string, size = 100): File {
-  return new File([mockJpegBuffer(size)], name, { type: "image/jpeg" });
+  return new File([new Uint8Array(mockJpegBuffer(size))], name, { type: "image/jpeg" });
 }
