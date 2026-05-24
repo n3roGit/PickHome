@@ -231,9 +231,9 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Finanzen**, **KI** chat, Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist | Save or controlled no-op; no flicker after save/reload; chat shows **tippt…** and prose answers; no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist | Save or controlled no-op; no flicker after save/reload; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status buttons (○/✕/✓, tap only), notes, progress | Status persists after reload |
-| Compare | Select 2 or more apartments | Comparison table appears |
+| Compare | Select 2 or more apartments; **Gesamtbelastung/Monat (grob)** when finance configured | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
 | Calendar | Upcoming and past viewings, iCal URL | URL host/port correct, no crash |
 | LLM/listing | Configured and not configured states; project import + apartment Auto-Fill on ≥2 portal types | Controlled success/partial/failure; `onlyEmpty` respected; **pending-only** session draft restore; save persists after reload |
@@ -324,6 +324,10 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] Calendar tab and iCal URL passed if viewing, timezone, env, or route code changed
 [ ] LLM/listing flow passed if import, PDF, or LLM code changed
 [ ] KI chat passed if `ApartmentLlmChatButton`, `llm/chat`, or `llm-tools` changed (**tippt…**, no raw `web_search` JSON, web answer in prose)
+[ ] Project settings: **Monatliche Fixkosten** save/reload if finance settings changed
+[ ] Finanzen panel: **Gesamtbelastung/Monat** and **Rest nach allen Kosten** if Fixkosten + Haushaltsnetto set
+[ ] Compare tab: **Gesamtbelastung/Monat (grob)** row if compare/finance code changed
+[ ] KI chat: finance/commute/checklist estimate questions answered as **Schätzung** (if LLM context changed)
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
 [ ] Auto-Fill save + reload verified on disposable apartment
 [ ] Draft restore: after basics save + reload, no flicker between old KI data and DB (if `apartment-listing-draft` or Auto-Fill changed)

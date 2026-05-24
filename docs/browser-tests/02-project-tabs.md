@@ -136,7 +136,9 @@ calendar
 #### Must always hold
 
 - Project name and budget can be edited where permitted.
-- Bundesland, purchase-cost defaults, broker settings, financing defaults, and dealbreaker threshold are visible where supported.
+- Bundesland, purchase-cost defaults, broker settings, financing defaults (Eigenkapital, Laufzeit, Sollzins, Haushaltsnetto, **monatliche Fixkosten**), and dealbreaker threshold are visible where supported.
+- **Monatliche Fixkosten** field appears under Haushaltsnetto in Finanzierung section; save persists after reload (`?settings_saved=1`); empty field clears value.
+- Fixkosten help text clarifies Lebenshaltung außer Wohnen (Hausgeld/Heizung pro Immobilie).
 - PDF reindex action is visible.
 - Address enrichment action is visible.
 - Coordinate reindex action is visible.

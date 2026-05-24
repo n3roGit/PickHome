@@ -122,16 +122,21 @@ Toolbar button **KI** opens modal dialog (`ApartmentLlmChatButton`). API: `POST 
 - `POST …/llm/chat` returns **200** with `{ ok: true, answer, webSearchEnabled, webSearchUsed }` when LLM is configured; `webSearchUsed` may be true after external questions.
 - Chat history in modal: last user + assistant turns visible; errors show in red banner without corrupting prior turns.
 - Follow-up meta question (e.g. „Was habe ich davor gefragt?“) must answer from the visible in-modal history — not claim there were no prior messages.
+- Finance estimate questions (e.g. „Was kostet mich das monatlich insgesamt?“, „Wie hoch sind die Kaufnebenkosten grob?“) use **Finanz-Schätzung (PickHome …)** context; answers must label values as **grobe Schätzung / Orientierung**, not as binding facts.
+- Commute questions (e.g. „Wie weit ist es zur Arbeit?“) use **Fahrtwege (PickHome-Schätzung …)** from commute cache; if route not calculated, say so honestly — no invented times.
+- Checklist questions (e.g. „Was wurde schon geprüft?“) use **Checkliste (PickHome)** entries with status and notes.
 
 #### MCP procedure
 
-1. Open disposable apartment with notes/description (or indexed PDF).
+1. Open disposable apartment with notes/description (or indexed PDF); project has Finanz-Annahmen (Eigenkapital, Laufzeit, Haushaltsnetto, optional Fixkosten); commute cache populated if testing Fahrtwege.
 2. Click toolbar **KI** — modal opens, no console errors.
 3. Ask a **property-only** question → answer references on-page data; **tippt…** visible during wait.
-4. Ask a **web** question (district quality, market norms) → wait for **tippt…** → answer in prose with sources/domains or explicit „keine Treffer“ / failure; **no** JSON tool bubble.
-5. Ask **„Was habe ich davor gefragt?“** (or similar) → assistant repeats or paraphrases the first user question from step 3.
-6. Optional DevTools: `POST /api/apartments/<id>/llm/chat` status 200; request body includes full `messages` array; response JSON has string `answer`, not a JSON object as the only content.
-7. Close modal with **×**; reopen — prior turns still visible in session until page reload.
+4. Ask **„Was kostet mich diese Immobilie monatlich insgesamt?“** → answer mentions Rate, Wohnnebenkosten, Fixkosten (if set), labels as Schätzung.
+5. Ask **„Was wurde in der Checkliste schon geprüft?“** (when checklist entries exist) → status + notes from context.
+6. Ask a **web** question (district quality, market norms) → wait for **tippt…** → answer in prose with sources/domains or explicit „keine Treffer“ / failure; **no** JSON tool bubble.
+7. Ask **„Was habe ich davor gefragt?“** (or similar) → assistant repeats or paraphrases the first user question from step 3.
+8. Optional DevTools: `POST /api/apartments/<id>/llm/chat` status 200; request body includes full `messages` array; response JSON has string `answer`, not a JSON object as the only content.
+9. Close modal with **×**; reopen — prior turns still visible in session until page reload.
 
 #### Negative cases
 
