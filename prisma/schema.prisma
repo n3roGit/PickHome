@@ -252,6 +252,7 @@ model ApartmentPhoto {
   id          String    @id @default(uuid())
   apartmentId String
   url         String
+  thumbUrl    String?
   caption     String?
   sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())

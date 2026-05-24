@@ -475,6 +475,7 @@ export default async function ApartmentPage({
           photos={apartment.photos.map((p) => ({
             id: p.id,
             url: p.url,
+            thumbUrl: p.thumbUrl,
             caption: p.caption,
           }))}
         />

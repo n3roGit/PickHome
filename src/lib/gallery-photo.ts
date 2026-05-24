@@ -1,6 +1,7 @@
 export type GalleryPhoto = {
   id: string;
   url: string;
+  thumbUrl?: string | null;
   caption: string | null;
   /** Local blob preview while upload is in progress */
   pending?: boolean;

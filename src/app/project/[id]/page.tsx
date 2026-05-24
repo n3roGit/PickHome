@@ -410,7 +410,7 @@ export default async function ProjectPage({
                   <div className="flex gap-3 min-w-0 flex-1">
                     {a.photos[0] && (
                       <Image
-                        src={a.photos[0].url}
+                        src={a.photos[0].thumbUrl ?? a.photos[0].url}
                         alt=""
                         width={64}
                         height={64}

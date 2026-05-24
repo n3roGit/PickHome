@@ -1,10 +1,12 @@
-import { mkdir, unlink, writeFile } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 import { getApartmentUploadsRoot, publicPhotoPath } from "@/lib/pickhome-data";
 import { MAX_DOCUMENT_BYTES, MAX_IMAGE_BYTES } from "@/lib/upload-limits";
 
 export { publicPhotoPath };
+
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 const DOCUMENT_TYPES = new Set([
   "image/jpeg",
@@ -12,6 +14,44 @@ const DOCUMENT_TYPES = new Set([
   "image/webp",
   "application/pdf",
 ]);
+
+export function thumbUrlFromPhotoUrl(url: string): string {
+  return url.replace(/\.[^/.]+$/, "") + "-thumb.webp";
+}
+
+export async function generatePhotoThumbnailFromBuffer(
+  buffer: Buffer,
+  thumbDiskPath: string
+): Promise<boolean> {
+  try {
+    await sharp(buffer)
+      .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toFile(thumbDiskPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function generatePhotoThumbnailFromUrl(
+  photoUrl: string
+): Promise<string | null> {
+  const originalPath = publicPhotoPath(photoUrl);
+  if (!originalPath) return null;
+
+  const thumbUrl = thumbUrlFromPhotoUrl(photoUrl);
+  const thumbPath = publicPhotoPath(thumbUrl);
+  if (!thumbPath) return null;
+
+  try {
+    const buffer = await readFile(originalPath);
+    const ok = await generatePhotoThumbnailFromBuffer(buffer, thumbPath);
+    return ok ? thumbUrl : null;
+  } catch {
+    return null;
+  }
+}
 
 function apartmentDir(apartmentId: string) {
   return join(getApartmentUploadsRoot(), apartmentId);
@@ -66,9 +106,22 @@ async function saveFile(
   };
 }
 
-export async function saveApartmentPhoto(apartmentId: string, file: File) {
+export async function saveApartmentPhoto(
+  apartmentId: string,
+  file: File
+): Promise<{ url: string; thumbUrl: string | null }> {
   const saved = await saveFile(apartmentId, file, "");
-  return saved.url;
+  let thumbUrl: string | null = null;
+  const thumbFileName = thumbUrlFromPhotoUrl(saved.url);
+  const thumbPath = publicPhotoPath(thumbFileName);
+  if (thumbPath) {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const ok = await generatePhotoThumbnailFromBuffer(buffer, thumbPath);
+    if (ok) {
+      thumbUrl = thumbFileName;
+    }
+  }
+  return { url: saved.url, thumbUrl };
 }
 
 export async function saveApartmentDocument(
@@ -110,12 +163,18 @@ async function saveFileWithBuffer(
   };
 }
 
-export async function deleteApartmentPhotoFile(url: string) {
-  const path = publicPhotoPath(url);
+async function tryUnlink(path: string | null) {
   if (!path) return;
   try {
     await unlink(path);
   } catch {
     // file may already be gone
+  }
+}
+
+export async function deleteApartmentPhotoFile(url: string, thumbUrl?: string | null) {
+  await tryUnlink(publicPhotoPath(url));
+  if (thumbUrl) {
+    await tryUnlink(publicPhotoPath(thumbUrl));
   }
 }

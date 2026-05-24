@@ -139,6 +139,9 @@ async function main() {
     "scripts/backfill-apartment-price-history.mjs"
   );
 
+  console.log("[pickhome] Backfilling photo thumbnails (if needed)...");
+  runTsxScriptOptional("Backfill photo thumbnails", "scripts/backfill-photo-thumbs.mjs");
+
   if (isNewDatabase) {
     console.log("[pickhome] Seeding initial admin user...");
     runTsxScript("prisma/seed.ts");

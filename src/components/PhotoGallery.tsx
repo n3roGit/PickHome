@@ -69,7 +69,7 @@ export function PhotoGallery({
           className="relative w-full aspect-[16/10] max-h-[420px] rounded-xl overflow-hidden border border-pn-border bg-pn-bg-subtle group block"
         >
           <Image
-            src={photos[0].url}
+            src={photos[0].thumbUrl ?? photos[0].url}
             alt={photos[0].caption ?? "Immobilienfoto 1"}
             fill
             className="object-cover transition-transform group-hover:scale-[1.02]"
@@ -97,7 +97,7 @@ export function PhotoGallery({
               }`}
             >
               <Image
-                src={p.url}
+                src={p.thumbUrl ?? p.url}
                 alt={p.caption ?? `Immobilienfoto ${i + 1}`}
                 fill
                 className="object-cover"
@@ -206,7 +206,7 @@ export function PhotoGallery({
                   i === index ? "border-pn-accent" : "border-transparent opacity-70 hover:opacity-100"
                 }`}
               >
-                <Image src={p.url} alt="" fill className="object-cover" sizes="64px" />
+                <Image src={p.thumbUrl ?? p.url} alt="" fill className="object-cover" sizes="64px" />
               </button>
             ))}
           </div>

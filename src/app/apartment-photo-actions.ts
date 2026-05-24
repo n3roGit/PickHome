@@ -43,10 +43,10 @@ export async function uploadApartmentPhotoAction(
   const shouldRevalidate = options?.revalidate !== false;
 
   try {
-    const url = await saveApartmentPhoto(apartmentId, file);
+    const { url, thumbUrl } = await saveApartmentPhoto(apartmentId, file);
     const count = await prisma.apartmentPhoto.count({ where: { apartmentId } });
     await prisma.apartmentPhoto.create({
-      data: { apartmentId, url, sortOrder: count },
+      data: { apartmentId, url, thumbUrl, sortOrder: count },
     });
     if (shouldRevalidate) {
       revalidateApartment(apt.projectId, apartmentId);
@@ -74,7 +74,7 @@ export async function deleteApartmentPhotoAction(photoId: string) {
   const apt = await assertApartmentAccess(photo.apartmentId, user);
   if (!apt) return;
 
-  await deleteApartmentPhotoFile(photo.url);
+  await deleteApartmentPhotoFile(photo.url, photo.thumbUrl);
   await prisma.apartmentPhoto.delete({ where: { id: photoId } });
   revalidateApartment(photo.apartment.projectId, photo.apartmentId);
 }
