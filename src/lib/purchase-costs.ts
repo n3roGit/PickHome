@@ -4,8 +4,13 @@ import { federalStateCodeFromAddress } from "@/lib/federal-state-from-address";
 
 export const NOTARY_REGISTRY_RATE = 0.02;
 
-/** Rough guideline: monthly housing burden above this share of net income is flagged. */
-export const AFFORDABILITY_WARN_THRESHOLD = 0.35;
+/** Rate share of net income: caution above 35 %, warning above 45 %. */
+export const RATE_CAUTION_THRESHOLD = 0.35;
+export const RATE_WARN_THRESHOLD = 0.45;
+/** Housing share (rate + maintenance): caution above 40 %. */
+export const HOUSING_CAUTION_THRESHOLD = 0.4;
+/** Remaining income share below 10 % of net triggers caution (when fixed costs are configured). */
+export const REMAINING_CAUTION_SHARE = 0.1;
 
 /** Fallback when no project interest rate is set (rough estimate only). */
 export const DEFAULT_INTEREST_RATE = 0.035;
@@ -352,18 +357,56 @@ export function estimateFinancing(input: {
   };
 }
 
-export type AffordabilityLevel = "ok" | "warn";
+export type AffordabilityLevel = "ok" | "caution" | "warn";
 
 export type AffordabilityEstimate = {
   monthlyPayment: number;
   monthlyMaintenance: number;
   monthlyFixedCosts: number;
+  housingBurden: number;
   totalMonthlyBurden: number;
   remainingMonthly: number;
   netHouseholdIncome: number;
+  rateShare: number;
+  housingShare: number;
+  remainingShare: number;
+  rateLevel: AffordabilityLevel;
+  housingLevel: AffordabilityLevel;
+  remainingLevel: AffordabilityLevel;
+  fixedCostsConfigured: boolean;
+  /** Alias for compare: rate share of net income. */
   burdenShare: number;
+  /** Alias for compare: rate affordability level. */
   level: AffordabilityLevel;
 };
+
+export function levelFromRateShare(share: number): AffordabilityLevel {
+  if (share > RATE_WARN_THRESHOLD) return "warn";
+  if (share > RATE_CAUTION_THRESHOLD) return "caution";
+  return "ok";
+}
+
+export function levelFromHousingShare(share: number): AffordabilityLevel {
+  if (share > HOUSING_CAUTION_THRESHOLD) return "caution";
+  return "ok";
+}
+
+export function levelFromRemaining(
+  remaining: number,
+  netto: number,
+  fixedCostsConfigured: boolean
+): AffordabilityLevel {
+  if (!fixedCostsConfigured || netto <= 0) return "ok";
+  if (remaining < 0) return "warn";
+  if (remaining / netto < REMAINING_CAUTION_SHARE) return "caution";
+  return "ok";
+}
+
+export function affordabilityLevelClass(level: AffordabilityLevel): string {
+  if (level === "warn") return "text-pn-score-low";
+  if (level === "caution") return "text-pn-score-mid";
+  return "text-pn-score-high";
+}
 
 export function estimateAffordability(input: {
   monthlyPayment: number;
@@ -372,19 +415,38 @@ export function estimateAffordability(input: {
   monthlyFixedCosts?: number | null;
 }): AffordabilityEstimate | null {
   if (input.netHouseholdIncome <= 0) return null;
+  const netto = input.netHouseholdIncome;
   const monthlyMaintenance = input.monthlyMaintenance ?? 0;
+  const fixedCostsConfigured = input.monthlyFixedCosts != null;
   const monthlyFixedCosts = input.monthlyFixedCosts ?? 0;
-  const totalMonthlyBurden = input.monthlyPayment + monthlyMaintenance + monthlyFixedCosts;
-  const burdenShare = totalMonthlyBurden / input.netHouseholdIncome;
+  const housingBurden = input.monthlyPayment + monthlyMaintenance;
+  const totalMonthlyBurden = housingBurden + monthlyFixedCosts;
+  const remainingMonthly = fixedCostsConfigured
+    ? netto - totalMonthlyBurden
+    : netto - housingBurden;
+  const rateShare = input.monthlyPayment / netto;
+  const housingShare = housingBurden / netto;
+  const remainingShare = remainingMonthly / netto;
+  const rateLevel = levelFromRateShare(rateShare);
+  const housingLevel = levelFromHousingShare(housingShare);
+  const remainingLevel = levelFromRemaining(remainingMonthly, netto, fixedCostsConfigured);
   return {
     monthlyPayment: input.monthlyPayment,
     monthlyMaintenance,
     monthlyFixedCosts,
+    housingBurden,
     totalMonthlyBurden,
-    remainingMonthly: input.netHouseholdIncome - totalMonthlyBurden,
-    netHouseholdIncome: input.netHouseholdIncome,
-    burdenShare,
-    level: burdenShare > AFFORDABILITY_WARN_THRESHOLD ? "warn" : "ok",
+    remainingMonthly,
+    netHouseholdIncome: netto,
+    rateShare,
+    housingShare,
+    remainingShare,
+    rateLevel,
+    housingLevel,
+    remainingLevel,
+    fixedCostsConfigured,
+    burdenShare: rateShare,
+    level: rateLevel,
   };
 }
 
@@ -490,7 +552,7 @@ export function apartmentCompareMetrics(
     totalCost: acquisitionTotal,
     monthlyPayment: financing.monthlyPayment,
     totalMonthlyBurden: affordability?.totalMonthlyBurden ?? null,
-    burdenShare: affordability?.burdenShare ?? null,
-    burdenLevel: affordability?.level ?? null,
+    burdenShare: affordability?.rateShare ?? null,
+    burdenLevel: affordability?.rateLevel ?? null,
   };
 }
