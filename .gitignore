@@ -22,3 +22,6 @@ src/data/.ortsteile-build-cache.json
 
 # Local MCP browser regression notes (session-specific, not for the repo)
 /docs/testing/
+
+# Generated MCP upload fixtures (multi-file/size-limit browser tests; includes large files)
+/tests/fixtures/mcp-uploads/
