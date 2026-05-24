@@ -9,7 +9,7 @@ Sections **§12.21** in [MCP_BROWSER_TEST_CHECKLIST.md](../MCP_BROWSER_TEST_CHEC
 #### Must always hold
 
 - Grid thumbnails and hero image load `thumbUrl` (WebP) when available, not the full original.
-- Opening the lightbox loads the original `url` for the main image; zoom up to 300% works (buttons and keyboard `+`/`-`).
+- Opening the lightbox loads the original `url` for the main image; zoom up to 300% works (toolbar buttons, double-tap/pinch on mobile, keyboard `+`/`-` on desktop).
 - Photos without `thumbUrl` (pre-backfill or HEIC fallback) show the original via `thumbUrl ?? url` without errors or blank tiles.
 - Deleting a photo removes it from the gallery after reload and does not leave broken image tiles.
 - Upload queue shows progress for single and multi-file uploads; pending blob previews appear before server completion.
@@ -46,10 +46,26 @@ Sections **§12.21** in [MCP_BROWSER_TEST_CHECKLIST.md](../MCP_BROWSER_TEST_CHEC
 - Repeat visit (soft navigate away and back, or second apartment open): no new `/uploads/**` requests — browser serves from immutable cache (`Cache-Control: public, max-age=31536000, immutable`).
 - Response headers on thumb and original URLs include `immutable` and `max-age=31536000`.
 
+#### Mobile lightbox gestures
+
+Test at **412×915** (Android Chrome, primary) and **390×844** (iPhone, secondary). Apartment with ≥30 photos recommended for swipe and bandwidth checks.
+
+| Check | Expected |
+|---|---|
+| Swipe left/right | Next/previous image; counter updates |
+| Double-tap / pinch | Zoom above 100% (MCP: double-tap simulable; pinch manual on device) |
+| Swipe while zoomed | Pan only, no slide change |
+| Tap on image (unzoomed) | Toolbar + thumbnails + caption toggle visible/hidden |
+| Address bar collapse | Lightbox uses `100dvh`; no vertical clip when opening after page scroll (Android Chrome) |
+| Bottom padding | Thumbnails above Android gesture bar / iOS home indicator |
+| Close | Close button + Escape; **no** pull-down-to-close |
+| Bandwidth | Unchanged: grid WebP thumbs, lightbox loads original only |
+
 #### Evidence
 
 - Snapshot after gallery load (grid + hero visible).
 - Network panel or request list showing thumb vs original URLs.
-- Snapshot after lightbox open with zoom at >100%.
+- Snapshot after lightbox open with zoom at >100% (double-tap or toolbar zoom).
+- Snapshot with chrome hidden after tap on image.
 - Snapshot after multi-upload completion.
 - Console check: no errors after upload, delete, or gallery navigation.
