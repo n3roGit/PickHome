@@ -1,0 +1,65 @@
+/* YARL overrides scoped to apartment photo lightbox */
+
+.photo-gallery-lightbox.yarl__root {
+  height: 100dvh;
+  --yarl__color_backdrop: rgba(0, 0, 0, 0.95);
+}
+
+@supports not (height: 100dvh) {
+  .photo-gallery-lightbox.yarl__root {
+    height: 100vh;
+  }
+}
+
+.photo-gallery-lightbox .yarl__button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.photo-gallery-lightbox .yarl__thumbnails_thumbnail {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.photo-gallery-lightbox .yarl__thumbnails_thumbnail_active {
+  border-color: #16a34a;
+}
+
+.photo-gallery-lightbox .yarl__toolbar {
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-left: max(8px, env(safe-area-inset-left));
+  padding-right: max(8px, env(safe-area-inset-right));
+}
+
+.photo-gallery-lightbox .yarl__thumbnails_container {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-left: max(8px, env(safe-area-inset-left));
+  padding-right: max(8px, env(safe-area-inset-right));
+}
+
+.photo-gallery-lightbox .yarl__slide_title_container {
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+}
+
+.photo-gallery-lightbox--chrome-hidden .yarl__toolbar,
+.photo-gallery-lightbox--chrome-hidden .yarl__thumbnails_container,
+.photo-gallery-lightbox--chrome-hidden .yarl__slide_title_container,
+.photo-gallery-lightbox--chrome-hidden .yarl__slide_description_container {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+@media (max-width: 767px) {
+  .photo-gallery-lightbox .yarl__navigation_prev,
+  .photo-gallery-lightbox .yarl__navigation_next {
+    display: none;
+  }
+}
+
+.photo-gallery-lightbox__delete svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}

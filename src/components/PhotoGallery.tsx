@@ -1,11 +1,55 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import Lightbox, { useLightboxState } from "yet-another-react-lightbox";
+import Captions from "yet-another-react-lightbox/plugins/captions";
+import Counter from "yet-another-react-lightbox/plugins/counter";
+import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
 
 import type { GalleryPhoto } from "@/lib/gallery-photo";
 
-const ZOOM_STEPS = [1, 1.25, 1.5, 2, 2.5, 3];
+import "yet-another-react-lightbox/styles.css";
+import "yet-another-react-lightbox/plugins/captions.css";
+import "yet-another-react-lightbox/plugins/thumbnails.css";
+import "./photo-gallery-lightbox.css";
+
+function DeletePhotoButton({
+  photos,
+  onDelete,
+  deletePending,
+  onAfterDelete,
+}: {
+  photos: GalleryPhoto[];
+  onDelete: (photoId: string) => void;
+  deletePending?: boolean;
+  onAfterDelete: (remainingCount: number, deletedIndex: number) => void;
+}) {
+  const { currentIndex } = useLightboxState();
+  const photo = photos[currentIndex];
+  if (!photo) return null;
+
+  return (
+    <button
+      key="delete"
+      type="button"
+      className="yarl__button photo-gallery-lightbox__delete"
+      aria-label="Dieses Bild entfernen"
+      title="Dieses Bild entfernen"
+      disabled={deletePending}
+      onClick={() => {
+        if (!window.confirm("Dieses Bild wirklich entfernen?")) return;
+        onDelete(photo.id);
+        onAfterDelete(photos.length - 1, currentIndex);
+      }}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+      </svg>
+    </button>
+  );
+}
 
 export function PhotoGallery({
   photos,
@@ -17,55 +61,71 @@ export function PhotoGallery({
   deletePending?: boolean;
 }) {
   const [index, setIndex] = useState<number | null>(null);
-  const [zoomIndex, setZoomIndex] = useState(0);
+  const [chromeVisible, setChromeVisible] = useState(true);
 
   const open = index !== null;
-  const current = index !== null ? photos[index] : null;
-  const zoom = ZOOM_STEPS[zoomIndex];
+
+  const slides = useMemo(
+    () =>
+      photos.map((p, i) => ({
+        src: p.url,
+        alt: p.caption ?? `Immobilienfoto ${i + 1}`,
+        title: p.caption ?? undefined,
+        thumbnail: p.thumbUrl ?? p.url,
+      })),
+    [photos]
+  );
+
+  const openAt = useCallback((i: number) => {
+    setIndex(i);
+    setChromeVisible(true);
+  }, []);
 
   const close = useCallback(() => {
     setIndex(null);
-    setZoomIndex(0);
+    setChromeVisible(true);
   }, []);
 
-  const goPrev = useCallback(() => {
-    setIndex((i) => (i === null ? null : (i - 1 + photos.length) % photos.length));
-    setZoomIndex(0);
-  }, [photos.length]);
-
-  const goNext = useCallback(() => {
-    setIndex((i) => (i === null ? null : (i + 1) % photos.length));
-    setZoomIndex(0);
-  }, [photos.length]);
+  const handleAfterDelete = useCallback((remainingCount: number, deletedIndex: number) => {
+    if (remainingCount <= 0) {
+      setIndex(null);
+      return;
+    }
+    if (deletedIndex >= remainingCount) {
+      setIndex(remainingCount - 1);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") close();
-      if (e.key === "ArrowLeft") goPrev();
-      if (e.key === "ArrowRight") goNext();
-      if (e.key === "+" || e.key === "=") setZoomIndex((z) => Math.min(z + 1, ZOOM_STEPS.length - 1));
-      if (e.key === "-") setZoomIndex((z) => Math.max(z - 1, 0));
+    if (index === null) return;
+    if (photos.length === 0) {
+      setIndex(null);
+    } else if (index >= photos.length) {
+      setIndex(photos.length - 1);
     }
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [open, close, goPrev, goNext]);
+  }, [photos.length, index]);
 
   if (photos.length === 0) return null;
+
+  const toolbarButtons: (ReactNode | "close")[] = onDelete
+    ? [
+        <DeletePhotoButton
+          key="delete"
+          photos={photos}
+          onDelete={onDelete}
+          deletePending={deletePending}
+          onAfterDelete={handleAfterDelete}
+        />,
+        "close",
+      ]
+    : ["close"];
 
   return (
     <>
       <div className="mb-4">
         <button
           type="button"
-          onClick={() => {
-            setIndex(0);
-            setZoomIndex(0);
-          }}
+          onClick={() => openAt(0)}
           className="relative w-full aspect-[16/10] max-h-[420px] rounded-xl overflow-hidden border border-pn-border bg-pn-bg-subtle group block"
         >
           <Image
@@ -88,10 +148,7 @@ export function PhotoGallery({
           <li key={p.id}>
             <button
               type="button"
-              onClick={() => {
-                setIndex(i);
-                setZoomIndex(0);
-              }}
+              onClick={() => openAt(i)}
               className={`relative w-full aspect-square rounded-lg overflow-hidden border bg-pn-bg-subtle ${
                 i === 0 ? "ring-2 ring-pn-accent border-pn-accent" : "border-pn-border"
               }`}
@@ -120,116 +177,35 @@ export function PhotoGallery({
         ))}
       </ul>
 
-      {open && current && index !== null && (
-        <div
-          className="fixed inset-0 z-[100] flex flex-col bg-black/95"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Bildergalerie"
-        >
-          <div className="flex items-center justify-between gap-2 px-4 py-3 text-white shrink-0">
-            <p className="text-sm font-medium tabular-nums">
-              Bild {index + 1} von {photos.length}
-              {current.caption ? ` · ${current.caption}` : ""}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setZoomIndex((z) => Math.max(z - 1, 0))}
-                disabled={zoomIndex === 0}
-                className="px-2.5 py-1.5 text-sm rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40"
-                aria-label="Verkleinern"
-              >
-                −
-              </button>
-              <span className="text-xs tabular-nums w-12 text-center">{Math.round(zoom * 100)}%</span>
-              <button
-                type="button"
-                onClick={() => setZoomIndex((z) => Math.min(z + 1, ZOOM_STEPS.length - 1))}
-                disabled={zoomIndex === ZOOM_STEPS.length - 1}
-                className="px-2.5 py-1.5 text-sm rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40"
-                aria-label="Vergrößern"
-              >
-                +
-              </button>
-              <button
-                type="button"
-                onClick={close}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white/10 hover:bg-white/20"
-              >
-                Schließen
-              </button>
-            </div>
-          </div>
-
-          <div className="relative flex-1 min-h-0 flex items-center justify-center px-14">
-            <button
-              type="button"
-              onClick={goPrev}
-              className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 text-white text-xl"
-              aria-label="Vorheriges Bild"
-            >
-              ‹
-            </button>
-
-            <div className="w-full h-full flex items-center justify-center overflow-auto p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={current.url}
-                alt={current.caption ?? `Immobilienfoto ${index + 1}`}
-                className="max-w-full max-h-full object-contain transition-transform duration-150"
-                style={{ transform: `scale(${zoom})` }}
-                draggable={false}
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={goNext}
-              className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 text-white text-xl"
-              aria-label="Nächstes Bild"
-            >
-              ›
-            </button>
-          </div>
-
-          <div className="shrink-0 px-4 pb-4 pt-2 flex gap-2 overflow-x-auto">
-            {photos.map((p, i) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  setIndex(i);
-                  setZoomIndex(0);
-                }}
-                className={`relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
-                  i === index ? "border-pn-accent" : "border-transparent opacity-70 hover:opacity-100"
-                }`}
-              >
-                <Image src={p.thumbUrl ?? p.url} alt="" fill className="object-cover" sizes="64px" />
-              </button>
-            ))}
-          </div>
-
-          {onDelete && (
-            <div className="shrink-0 px-4 pb-4 flex justify-center">
-              <button
-                type="button"
-                disabled={deletePending}
-                onClick={() => {
-                  if (!window.confirm("Dieses Bild wirklich entfernen?")) return;
-                  onDelete(current.id);
-                  if (photos.length <= 1) close();
-                  else if (index >= photos.length - 1) setIndex(photos.length - 2);
-                }}
-                className="text-sm text-red-300 hover:text-red-200 disabled:opacity-50"
-              >
-                Dieses Bild entfernen
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      <Lightbox
+        open={open}
+        close={close}
+        index={index ?? 0}
+        slides={slides}
+        plugins={[Zoom, Thumbnails, Counter, Captions]}
+        className={`photo-gallery-lightbox${chromeVisible ? "" : " photo-gallery-lightbox--chrome-hidden"}`}
+        carousel={{ finite: false, preload: 1 }}
+        zoom={{ maxZoomPixelRatio: 3, doubleTapDelay: 300, doubleClickDelay: 300 }}
+        controller={{ closeOnPullDown: false, closeOnBackdropClick: false }}
+        thumbnails={{ position: "bottom", width: 64, height: 64, border: 2, borderColor: "transparent" }}
+        labels={{
+          Previous: "Vorheriges Bild",
+          Next: "Nächstes Bild",
+          Close: "Schließen",
+          "Zoom in": "Vergrößern",
+          "Zoom out": "Verkleinern",
+          Lightbox: "Bildergalerie",
+          "{index} of {total}": "{index} von {total}",
+        }}
+        toolbar={{ buttons: toolbarButtons }}
+        on={{
+          view: ({ index: i }) => {
+            setIndex(i);
+            setChromeVisible(true);
+          },
+          click: () => setChromeVisible((visible) => !visible),
+        }}
+      />
     </>
   );
 }
