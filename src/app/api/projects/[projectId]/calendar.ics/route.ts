@@ -35,8 +35,8 @@ export async function GET(
         uid: `pickhome-${v.id}@local`,
         start: v.scheduledAt,
         end,
-        summary: `Besichtigung: ${apt.title}`,
-        description: v.note ?? undefined,
+        summary: v.note?.trim() || `Besichtigung: ${apt.title}`,
+        description: apt.notes ?? undefined,
         location: apt.address ?? undefined,
       };
     })

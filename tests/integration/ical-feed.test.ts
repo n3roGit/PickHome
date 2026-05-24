@@ -67,7 +67,12 @@ describe("iCal feed", () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
     const project = await createTestProject(prisma, user.id);
     const apt = await prisma.apartment.create({
-      data: { projectId: project.id, title: "Nice flat", address: "Bremen" },
+      data: {
+        projectId: project.id,
+        title: "Nice flat",
+        address: "Bremen",
+        notes: "Apartment notes from details",
+      },
     });
     await prisma.viewingAppointment.create({
       data: {
@@ -86,8 +91,34 @@ describe("iCal feed", () => {
     expect(res.headers.get("Content-Type")).toContain("text/calendar");
     const body = await res.text();
     expect(body).toContain("BEGIN:VCALENDAR");
-    expect(body).toContain("Besichtigung: Nice flat");
-    expect(body).toContain("Bring keys");
+    expect(body).toContain("SUMMARY:Bring keys");
+    expect(body).toContain("DESCRIPTION:Apartment notes from details");
+    expect(body).not.toContain("Besichtigung: Nice flat");
+    await prisma.$disconnect();
+  });
+
+  it("falls back to Besichtigung title when viewing note is empty", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Nice flat", notes: "Detail notes" },
+    });
+    await prisma.viewingAppointment.create({
+      data: {
+        apartmentId: apt.id,
+        scheduledAt: new Date("2026-06-01T10:00:00.000Z"),
+      },
+    });
+    const token = await ensureProjectIcalToken(project.id);
+
+    const res = await GET(
+      new Request(`http://localhost/api?token=${token}`),
+      { params: Promise.resolve({ projectId: project.id }) }
+    );
+    const body = await res.text();
+    expect(body).toContain("SUMMARY:Besichtigung: Nice flat");
+    expect(body).toContain("DESCRIPTION:Detail notes");
     await prisma.$disconnect();
   });
 });
