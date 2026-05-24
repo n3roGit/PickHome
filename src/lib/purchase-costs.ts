@@ -357,7 +357,9 @@ export type AffordabilityLevel = "ok" | "warn";
 export type AffordabilityEstimate = {
   monthlyPayment: number;
   monthlyMaintenance: number;
+  monthlyFixedCosts: number;
   totalMonthlyBurden: number;
+  remainingMonthly: number;
   netHouseholdIncome: number;
   burdenShare: number;
   level: AffordabilityLevel;
@@ -367,15 +369,19 @@ export function estimateAffordability(input: {
   monthlyPayment: number;
   netHouseholdIncome: number;
   monthlyMaintenance?: number | null;
+  monthlyFixedCosts?: number | null;
 }): AffordabilityEstimate | null {
   if (input.netHouseholdIncome <= 0) return null;
   const monthlyMaintenance = input.monthlyMaintenance ?? 0;
-  const totalMonthlyBurden = input.monthlyPayment + monthlyMaintenance;
+  const monthlyFixedCosts = input.monthlyFixedCosts ?? 0;
+  const totalMonthlyBurden = input.monthlyPayment + monthlyMaintenance + monthlyFixedCosts;
   const burdenShare = totalMonthlyBurden / input.netHouseholdIncome;
   return {
     monthlyPayment: input.monthlyPayment,
     monthlyMaintenance,
+    monthlyFixedCosts,
     totalMonthlyBurden,
+    remainingMonthly: input.netHouseholdIncome - totalMonthlyBurden,
     netHouseholdIncome: input.netHouseholdIncome,
     burdenShare,
     level: burdenShare > AFFORDABILITY_WARN_THRESHOLD ? "warn" : "ok",
@@ -394,6 +400,7 @@ export type ProjectFinanceSettings = {
   loanTermYears: number | null;
   interestRate: number | null;
   netHouseholdIncome: number | null;
+  monthlyFixedCosts: number | null;
 };
 
 export type ApartmentCompareInput = {
@@ -411,6 +418,7 @@ export type ApartmentCompareInput = {
 export type ApartmentCompareMetrics = {
   totalCost: number | null;
   monthlyPayment: number | null;
+  totalMonthlyBurden: number | null;
   burdenShare: number | null;
   burdenLevel: AffordabilityLevel | null;
 };
@@ -424,7 +432,13 @@ export function apartmentCompareMetrics(
     apartmentAddress: apartment.address,
   });
   if (apartment.price == null || !stateCode) {
-    return { totalCost: null, monthlyPayment: null, burdenShare: null, burdenLevel: null };
+    return {
+      totalCost: null,
+      monthlyPayment: null,
+      totalMonthlyBurden: null,
+      burdenShare: null,
+      burdenLevel: null,
+    };
   }
 
   const costs = estimatePurchaseCosts({
@@ -440,6 +454,7 @@ export function apartmentCompareMetrics(
     return {
       totalCost: acquisitionTotal,
       monthlyPayment: null,
+      totalMonthlyBurden: null,
       burdenShare: null,
       burdenLevel: null,
     };
@@ -455,6 +470,7 @@ export function apartmentCompareMetrics(
     return {
       totalCost: acquisitionTotal,
       monthlyPayment: null,
+      totalMonthlyBurden: null,
       burdenShare: null,
       burdenLevel: null,
     };
@@ -466,12 +482,14 @@ export function apartmentCompareMetrics(
           monthlyPayment: financing.monthlyPayment,
           netHouseholdIncome: finance.netHouseholdIncome,
           monthlyMaintenance,
+          monthlyFixedCosts: finance.monthlyFixedCosts,
         })
       : null;
 
   return {
     totalCost: acquisitionTotal,
     monthlyPayment: financing.monthlyPayment,
+    totalMonthlyBurden: affordability?.totalMonthlyBurden ?? null,
     burdenShare: affordability?.burdenShare ?? null,
     burdenLevel: affordability?.level ?? null,
   };

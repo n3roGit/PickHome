@@ -127,11 +127,17 @@ function FinancingTable({
                   <td className="py-2 text-right">{formatPrice(affordability.monthlyMaintenance)}</td>
                 </tr>
               )}
+              {affordability.monthlyFixedCosts > 0 && (
+                <tr className="border-b border-pn-border">
+                  <td className="py-2 text-pn-text-secondary">Fixkosten / Monat</td>
+                  <td className="py-2 text-right">{formatPrice(affordability.monthlyFixedCosts)}</td>
+                </tr>
+              )}
               <tr className="border-b border-pn-border font-medium">
                 <td className="py-2">Gesamtbelastung / Monat</td>
                 <td className="py-2 text-right">{formatPrice(affordability.totalMonthlyBurden)}</td>
               </tr>
-              <tr>
+              <tr className="border-b border-pn-border">
                 <td className="py-2 text-pn-text-secondary">
                   Anteil vom Netto ({formatPrice(affordability.netHouseholdIncome)})
                 </td>
@@ -141,6 +147,16 @@ function FinancingTable({
                   }`}
                 >
                   {formatBurdenShare(affordability.burdenShare)}
+                </td>
+              </tr>
+              <tr>
+                <td className="py-2 font-medium">Rest nach allen Kosten</td>
+                <td
+                  className={`py-2 text-right font-semibold ${
+                    affordability.remainingMonthly < 0 ? "text-pn-score-low" : "text-pn-text-primary"
+                  }`}
+                >
+                  {formatPrice(affordability.remainingMonthly)}
                 </td>
               </tr>
             </>
@@ -183,6 +199,7 @@ export function ApartmentPurchaseCosts({
   loanTermYears,
   interestRate,
   netHouseholdIncome,
+  monthlyFixedCosts,
   settingsHref,
 }: {
   apartmentId: string;
@@ -202,6 +219,7 @@ export function ApartmentPurchaseCosts({
   loanTermYears: number | null;
   interestRate: number | null;
   netHouseholdIncome: number | null;
+  monthlyFixedCosts: number | null;
   settingsHref: string;
 }) {
   const stateCode = resolveFederalStateCode({
@@ -245,6 +263,7 @@ export function ApartmentPurchaseCosts({
           monthlyPayment: financing.monthlyPayment,
           netHouseholdIncome,
           monthlyMaintenance,
+          monthlyFixedCosts,
         })
       : null;
   const missingFinancingConfig = equityAmount == null || loanTermYears == null;

@@ -22,6 +22,7 @@ export function ProjectSettingsPanel({
   loanTermYears,
   interestRate,
   netHouseholdIncome,
+  monthlyFixedCosts,
   dealbreakerThreshold,
   saved,
   error,
@@ -37,6 +38,7 @@ export function ProjectSettingsPanel({
   loanTermYears: number | null;
   interestRate: number | null;
   netHouseholdIncome: number | null;
+  monthlyFixedCosts: number | null;
   dealbreakerThreshold: number;
   saved?: boolean;
   error?: string;
@@ -171,7 +173,22 @@ export function ProjectSettingsPanel({
               className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
             <span className="text-xs text-pn-text-tertiary mt-1 block">
-              Für den Anteil der Monatsrate am Einkommen (Richtwert: max. ca. 35&nbsp;%).
+              Für den Anteil der Gesamtbelastung am Einkommen (Richtwert: max. ca. 35&nbsp;%).
+            </span>
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-pn-text-secondary">
+              Monatliche Fixkosten (optional, €/Monat)
+            </span>
+            <input
+              name="monthlyFixedCosts"
+              defaultValue={monthlyFixedCosts != null ? String(monthlyFixedCosts) : ""}
+              placeholder="z. B. 1200"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+            <span className="text-xs text-pn-text-tertiary mt-1 block">
+              Lebenshaltung außer Wohnen, z. B. Lebensmittel, Versicherungen, Internet, Auto.
+              Hausgeld/Heizung werden pro Immobilie berechnet.
             </span>
           </label>
         </section>

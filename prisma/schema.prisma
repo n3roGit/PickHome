@@ -78,6 +78,7 @@ model Project {
   loanTermYears     Int?
   interestRate      Float?
   netHouseholdIncome Int?
+  monthlyFixedCosts  Int?
   dealbreakerThreshold Int           @default(3)
   areaFilterOrtKey  String?
   areaFilterConfig  String?

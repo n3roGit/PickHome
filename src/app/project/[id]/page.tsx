@@ -558,6 +558,7 @@ export default async function ProjectPage({
             loanTermYears={project.loanTermYears}
             interestRate={project.interestRate}
             netHouseholdIncome={project.netHouseholdIncome}
+            monthlyFixedCosts={project.monthlyFixedCosts}
             dealbreakerThreshold={dealbreakerThreshold}
             saved={resolvedSearchParams.settings_saved === "1"}
             error={resolvedSearchParams.settings_error}
@@ -636,6 +637,7 @@ export default async function ProjectPage({
               loanTermYears: activeProject.loanTermYears,
               interestRate: activeProject.interestRate,
               netHouseholdIncome: activeProject.netHouseholdIncome,
+              monthlyFixedCosts: activeProject.monthlyFixedCosts,
             }}
             members={activeProject.members}
             criteria={criteriaWithGroup}

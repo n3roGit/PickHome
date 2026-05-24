@@ -162,6 +162,10 @@ export async function updateProjectAction(projectId: string, formData: FormData)
   const netHouseholdIncome = netIncomeRaw
     ? parseInt(netIncomeRaw.replace(/\D/g, ""), 10)
     : null;
+  const fixedCostsRaw = String(formData.get("monthlyFixedCosts") ?? "").trim();
+  const monthlyFixedCosts = fixedCostsRaw
+    ? parseInt(fixedCostsRaw.replace(/\D/g, ""), 10)
+    : null;
   const dealbreakerThreshold = parseDealbreakerThreshold(
     String(formData.get("dealbreakerThreshold") ?? "")
   );
@@ -180,6 +184,7 @@ export async function updateProjectAction(projectId: string, formData: FormData)
       loanTermYears,
       interestRate,
       netHouseholdIncome: Number.isFinite(netHouseholdIncome) ? netHouseholdIncome : null,
+      monthlyFixedCosts: Number.isFinite(monthlyFixedCosts) ? monthlyFixedCosts : null,
       dealbreakerThreshold,
     },
   });

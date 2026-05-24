@@ -467,6 +467,7 @@ export default async function ApartmentPage({
           loanTermYears={project.loanTermYears}
           interestRate={project.interestRate}
           netHouseholdIncome={project.netHouseholdIncome}
+          monthlyFixedCosts={project.monthlyFixedCosts}
           settingsHref={`/project/${project.id}?tab=settings`}
         />
         <ApartmentPhotos

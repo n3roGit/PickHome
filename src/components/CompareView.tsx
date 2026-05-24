@@ -101,6 +101,10 @@ function CompareNumbersTable({
               label="Monatsrate (grob)"
               values={rows.map((r) => formatPrice(r.metrics.monthlyPayment))}
             />
+            <CompareRow
+              label="Gesamtbelastung/Monat (grob)"
+              values={rows.map((r) => formatPrice(r.metrics.totalMonthlyBurden))}
+            />
             {finance.netHouseholdIncome != null && (
               <CompareRow
                 label="Anteil vom Netto"
@@ -116,7 +120,7 @@ function CompareNumbersTable({
         </table>
       </div>
       <p className="text-xs text-pn-text-tertiary mt-2">
-        Monatsrate und Gesamtkosten basieren auf den Finanzierungs-Annahmen im Projekt.
+        Monatsrate, Gesamtbelastung und Gesamtkosten basieren auf den Finanzierungs-Annahmen im Projekt.
       </p>
     </section>
   );
