@@ -4,7 +4,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ["adm-zip", "pdf-parse"],
+  serverExternalPackages: [
+    "adm-zip",
+    "pdf-parse",
+    "@react-pdf/renderer",
+    "@react-pdf/layout",
+    "@react-pdf/font",
+    "@react-pdf/render",
+    "@react-pdf/pdfkit",
+    "@react-pdf/reconciler",
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: "200mb",

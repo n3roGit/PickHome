@@ -383,13 +383,6 @@ export default async function ApartmentPage({
             <Link href={checklistEditHref} className={APARTMENT_TOOLBAR_BTN_NEUTRAL}>
               Checkliste
             </Link>
-            <a
-              href={`/api/apartments/${apartment.id}/pdf`}
-              download
-              className={APARTMENT_TOOLBAR_BTN_NEUTRAL}
-            >
-              PDF
-            </a>
             <ApartmentPhotoCameraButton apartmentId={apartment.id} />
             {llmEnabled && (
               <ApartmentLlmChatButton
@@ -409,6 +402,13 @@ export default async function ApartmentPage({
             aria-hidden
           />
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <a
+              href={`/api/apartments/${apartment.id}/pdf`}
+              download
+              className={APARTMENT_TOOLBAR_BTN_NEUTRAL}
+            >
+              PDF
+            </a>
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} toolbar />
             <ApartmentDeleteButton apartmentId={apartment.id} toolbar />
           </div>

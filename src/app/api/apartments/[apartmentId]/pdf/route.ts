@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { renderApartmentPdfBuffer } from "@/lib/apartment-pdf";
+import { renderApartmentPdfBuffer } from "@/lib/apartment-pdf-render";
 import { apartmentPdfFilename, loadApartmentPdfData } from "@/lib/apartment-pdf-data";
 import { getSessionUser } from "@/lib/auth";
 
