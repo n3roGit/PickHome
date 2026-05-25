@@ -21,6 +21,7 @@ export function ApartmentBasicsForm({
   timeZone,
   sizeSqm,
   plotSizeSqm,
+  yearBuilt,
   energyClass,
   hoaFeeMonthly,
   heatingCostMonthly,
@@ -43,6 +44,7 @@ export function ApartmentBasicsForm({
   timeZone: string;
   sizeSqm?: number | null;
   plotSizeSqm?: number | null;
+  yearBuilt?: number | null;
   energyClass?: string | null;
   hoaFeeMonthly?: number | null;
   heatingCostMonthly?: number | null;
@@ -223,6 +225,15 @@ export function ApartmentBasicsForm({
               name="energyClass"
               defaultValue={energyClass ?? ""}
               placeholder="z. B. C"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block w-28">
+            <span className="text-sm font-medium text-pn-text-secondary">Baujahr</span>
+            <input
+              name="yearBuilt"
+              defaultValue={yearBuilt != null ? String(yearBuilt) : ""}
+              placeholder="z. B. 1998"
               className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
           </label>

@@ -20,6 +20,7 @@ import { ApartmentListingUrlForm } from "@/components/ApartmentListingUrlForm";
 import { ApartmentNotesForm } from "@/components/ApartmentNotesForm";
 import { ApartmentTitleForm } from "@/components/ApartmentTitleForm";
 import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
+import { ApartmentSubsidyPanel } from "@/components/ApartmentSubsidyPanel";
 import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
 import { computeCommuteForMembers } from "@/lib/commute";
 import { prisma } from "@/lib/prisma";
@@ -69,6 +70,10 @@ import {
   buildViewingScheduleWarningsAsync,
   viewingWarningsToRecord,
 } from "@/lib/viewing-schedule-conflicts";
+import {
+  countSubsidyHints,
+  matchApartmentSubsidies,
+} from "@/lib/subsidy-matching";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -325,6 +330,14 @@ export default async function ApartmentPage({
     apartment.revision,
   ].join("|");
 
+  const subsidyMatches = matchApartmentSubsidies({
+    energyClass: apartment.energyClass,
+    yearBuilt: apartment.yearBuilt,
+    renovationCost: apartment.renovationCost,
+    address: apartment.address,
+  });
+  const subsidyHintCount = countSubsidyHints(subsidyMatches);
+
   return (
     <>
       <Nav userName={user.name} isAdmin={admin} />
@@ -427,6 +440,7 @@ export default async function ApartmentPage({
           timeZone={appTimeZone}
           sizeSqm={apartment.sizeSqm}
           plotSizeSqm={apartment.plotSizeSqm}
+          yearBuilt={apartment.yearBuilt}
           energyClass={apartment.energyClass}
           hoaFeeMonthly={apartment.hoaFeeMonthly}
           heatingCostMonthly={apartment.heatingCostMonthly}
@@ -477,6 +491,14 @@ export default async function ApartmentPage({
           monthlyFixedCosts={project.monthlyFixedCosts}
           settingsHref={`/project/${project.id}?tab=settings`}
         />
+        <CollapsibleSection
+          title="Förderungen prüfen"
+          subtitle="Unverbindliche Hinweise auf mögliche KfW-/BAFA-Programme."
+          defaultOpen={false}
+          headerAside={`${subsidyHintCount} Hinweise`}
+        >
+          <ApartmentSubsidyPanel matches={subsidyMatches} />
+        </CollapsibleSection>
         <ApartmentPhotos
           apartmentId={apartment.id}
           photos={apartment.photos.map((p) => ({

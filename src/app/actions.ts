@@ -671,6 +671,8 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   const plotSizeSqmParsed = plotSizeSqmRaw
     ? parseInt(plotSizeSqmRaw.replace(/\D/g, ""), 10)
     : null;
+  const yearBuiltRaw = String(formData.get("yearBuilt") ?? "").trim();
+  const yearBuiltParsed = yearBuiltRaw ? parseInt(yearBuiltRaw.replace(/\D/g, ""), 10) : null;
   const hoaFeeMonthly = parsePositiveInt(String(formData.get("hoaFeeMonthly") ?? ""));
   const heatingCostMonthly = parsePositiveInt(String(formData.get("heatingCostMonthly") ?? ""));
   const propertyTaxAnnual = parsePositiveInt(String(formData.get("propertyTaxAnnual") ?? ""));
@@ -695,6 +697,8 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
       plotSizeSqmParsed != null && Number.isFinite(plotSizeSqmParsed)
         ? plotSizeSqmParsed
         : null,
+    yearBuilt:
+      yearBuiltParsed != null && Number.isFinite(yearBuiltParsed) ? yearBuiltParsed : null,
     energyClass: energyClassRaw ? parseEnergyClassInput(energyClassRaw) : null,
     hoaFeeMonthly,
     heatingCostMonthly,
