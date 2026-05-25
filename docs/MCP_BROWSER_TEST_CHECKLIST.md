@@ -231,7 +231,7 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF download** | Save or controlled no-op; no flicker after save/reload; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF download** | Save or controlled no-op; no flicker after save/reload; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status buttons (○/✕/✓, tap only), notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments; **Gesamtbelastung/Monat (grob)** when finance configured | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |

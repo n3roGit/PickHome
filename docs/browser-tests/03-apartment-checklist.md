@@ -15,7 +15,7 @@ Apply shared rules from the master guide: **§2 Hard rules**, **§7 Evidence req
 - Area badge reflects current project area mode where configured.
 - Score legend and current user context are visible.
 - Archive and delete controls are visible only where permitted.
-- Price and address section supports edit and save, including optional cost fields (Hausgeld, Heizkosten, Grundsteuer, Sanierung).
+- Price and address section supports edit and save, including optional cost fields (Hausgeld, Heizkosten, Grundsteuer, Sanierung) and **Baujahr**.
 - Geocoding action works for this address or returns a controlled failure.
 - Street View link is available when coordinates or a resolvable address exist.
 - Listing URL section can be expanded and saved; URL input uses full width of the section (same row as save button, `flex` layout).
@@ -35,6 +35,10 @@ Apply shared rules from the master guide: **§2 Hard rules**, **§7 Evidence req
 - Auto-Fill does **not** persist to the database by itself.
 - Notes and description sections can be expanded and saved.
 - Collapsible section **Finanzen** (formerly „Kaufnebenkosten & Finanzierung“) reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set); when project **Fixkosten** are set, shows Fixkosten row, **Gesamtbelastung / Monat** (Rate + Wohnnebenkosten + Fixkosten), **Rest nach allen Kosten**, and contextual warnings for rate share (35 / 45 % guidelines), housing share (40 %), and tight/negative remaining buffer; Makler checkbox with **Übernehmen** lives here.
+- Collapsible section **Förderungen prüfen** appears directly after **Finanzen** and before **Bilder**; default closed; header shows hint count (e.g. „8 Hinweise“).
+- **Förderungen prüfen** shows unverbindliche KfW-/BAFA-Hinweise as cards with status **Relevant**, **Möglich**, or **Daten fehlen**; each card has reason, missing data, next step, and official external link.
+- When Baujahr, Energieklasse, or Sanierungskosten are missing, a controlled needs-data hint appears instead of an empty section.
+- Saving **Preis & Adresse** with Baujahr or Sanierungskosten updates visible Förderhinweise after redirect/reload (no stale cards).
 - Commute section shows per-member travel data where account addresses exist.
 - Company car and commuter allowance information appears when configured.
 - Image, camera, and exposé upload inputs accept supported file types and reject unsupported file types.
@@ -64,7 +68,7 @@ Apply shared rules from the master guide: **§2 Hard rules**, **§7 Evidence req
 #### Evidence
 
 - Snapshot at top of page
-- Snapshot of expanded critical sections
+- Snapshot of expanded critical sections (including **Förderungen prüfen** when subsidies feature is in scope)
 - Save result or validation state
 - Reload after one persisted mutation on disposable data (for example empty Grundstück filled by Auto-Fill, then **Preis & Adresse** saved — value still present after reload)
 - Auto-Fill toolbar `title` includes field list and warnings when non-toolbar mode would show message text
@@ -87,6 +91,20 @@ Run on a disposable apartment with **mixed** empty and filled fields (for exampl
 10. Navigate to project list and back to the same apartment — display remains stable (no alternating old/new values).
 
 **Blocker:** Any step where saved DB values are replaced on load by stale session draft data for fields that are not in `pending`.
+
+#### Förderungen prüfen procedure (MCP, subsidies feature)
+
+Run on a disposable apartment after opening apartment detail.
+
+1. Scroll past **Finanzen**; confirm **Förderungen prüfen** section is visible and closed by default with hint count in header.
+2. Expand **Förderungen prüfen**; snapshot cards with status badges and disclaimer text.
+3. `list_console_messages` — no runtime errors.
+4. In **Preis & Adresse**, set **Baujahr** (e.g. 1985) and **Sanierung einmalig** (e.g. 25000); click **Speichern**.
+5. After redirect/reload, expand **Förderungen prüfen** again; expect renovation-related programs (KfW 261/458, BAFA) with **Relevant** or **Möglich** status.
+6. Click one **Offizielle Informationen ↗** link; verify target is kfw.de, bafa.de, or foerderdatenbank.de (no PickHome API call).
+7. Console check after reload.
+
+**Blocker:** Section missing, empty without needs-data hint, runtime error on expand, or Förderhinweise not updating after basics save.
 
 ### 12.16 Checklist fill page
 
