@@ -383,6 +383,13 @@ export default async function ApartmentPage({
             <Link href={checklistEditHref} className={APARTMENT_TOOLBAR_BTN_NEUTRAL}>
               Checkliste
             </Link>
+            <a
+              href={`/api/apartments/${apartment.id}/pdf`}
+              download
+              className={APARTMENT_TOOLBAR_BTN_NEUTRAL}
+            >
+              PDF
+            </a>
             <ApartmentPhotoCameraButton apartmentId={apartment.id} />
             {llmEnabled && (
               <ApartmentLlmChatButton

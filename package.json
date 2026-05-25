@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
+    "@react-pdf/renderer": "^4.5.1",
     "adm-zip": "^0.5.17",
     "bcryptjs": "^3.0.2",
     "leaflet": "^1.9.4",
