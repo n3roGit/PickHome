@@ -121,3 +121,30 @@ URL pattern:
 - Snapshot after status and note save
 - Reload confirmation
 - Console check
+
+### 12.19 Apartment PDF export
+
+#### Must always hold
+
+- Toolbar shows a **„PDF"** button on the apartment detail page.
+- Clicking the button triggers a download of a PDF file named after the apartment title.
+- The PDF contains at minimum: title, address, score, key facts, and description/notes if present.
+- A regular project member can download the PDF for their own project's apartments.
+- An unauthorized user (not project member) receives a 401 or redirect, not a PDF.
+
+#### Data requirements
+
+- Apartment with price, address, at least one rating, at least one viewing, commute cache entries preferred.
+
+#### Negative cases
+
+- Apartment with no optional fields (no address, no description, no viewings) — PDF still downloads without error.
+- Logged-out user calls `/api/apartments/<id>/pdf` directly — gets 401/redirect, not a file.
+- User from a different project calls the URL directly — gets 403/redirect.
+
+#### Evidence
+
+- Snapshot of toolbar with PDF button visible.
+- Network tab confirms `GET /api/apartments/<id>/pdf` returns `200` with `Content-Type: application/pdf`.
+- File downloads successfully (filename visible in browser download bar or snapshot).
+- Console check: no runtime errors during download.

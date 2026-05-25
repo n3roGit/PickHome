@@ -231,7 +231,7 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist | Save or controlled no-op; no flicker after save/reload; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF download** | Save or controlled no-op; no flicker after save/reload; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status buttons (○/✕/✓, tap only), notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments; **Gesamtbelastung/Monat (grob)** when finance configured | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
@@ -296,6 +296,7 @@ Use this matrix to decide where a new feature needs tests.
 | Geocoding and Street View links | Required | Optional | Required | Optional |
 | Calendar and iCal | Required | Required | Required | Optional |
 | Uploads and media routes | Required | Required | Required | Optional |
+| Apartment PDF export | Optional | Optional | Required | Optional |
 | Mobile layout | Not applicable | Not applicable | Required | Optional |
 
 ## 15. Regression case library
@@ -332,6 +333,7 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
 [ ] Photo gallery: grid loads WebP thumbs; lightbox loads original; upload/delete/reload if photo code changed
 [ ] Photo gallery mobile (Android Chrome 412x915 + iPhone 390x844): swipe between images, double-tap or pinch zoom, no pull-down close, lightbox uses 100dvh (no jump when address bar collapses), bottom toolbar above gesture bar
+[ ] PDF download button visible and file downloads without error if apartment-pdf code changed
 [ ] Auto-Fill save + reload verified on disposable apartment
 [ ] Draft restore: after basics save + reload, no flicker between old KI data and DB (if `apartment-listing-draft` or Auto-Fill changed)
 [ ] KI-Vorschlag: Übernehmen changes one field only; Verwerfen removes hint only
