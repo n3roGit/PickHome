@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
   formatSolarTime,
   getSolarArc,
@@ -9,10 +10,12 @@ import {
 } from "@/lib/solar-position";
 
 const AR_FOV_DEG = 60;
-const AR_HORIZON_Y_RATIO = 0.55;
-const AR_ALTITUDE_SCALE = 0.35;
+const AR_VERTICAL_FOV_DEG = 60;
+/** Hide suns this many degrees below the viewer horizon */
+const AR_HORIZON_MARGIN_DEG = 3;
 /** Per animation frame — lower = calmer compass overlay */
 const HEADING_SMOOTH_PER_FRAME = 0.08;
+const PITCH_SMOOTH_PER_FRAME = 0.1;
 const MARKER_SMOOTH_PER_FRAME = 0.14;
 
 type ProjectedSun = {
@@ -37,6 +40,7 @@ type Props = {
   latitude: number;
   longitude: number;
   timeZone: string;
+  initialDayDate?: Date;
 };
 
 function isLocalHost(): boolean {
@@ -107,6 +111,10 @@ function lerpAngleDeg(current: number, target: number, factor: number): number {
   return (current + delta * factor + 360) % 360;
 }
 
+function lerpNumber(current: number, target: number, factor: number): number {
+  return current + (target - current) * factor;
+}
+
 function smoothPoint(
   prev: { x: number; y: number } | undefined,
   target: { x: number; y: number },
@@ -117,6 +125,22 @@ function smoothPoint(
     x: prev.x + (target.x - prev.x) * factor,
     y: prev.y + (target.y - prev.y) * factor,
   };
+}
+
+/**
+ * Camera elevation: 0° = level at horizon, positive = looking up at the sky.
+ * Uses DeviceOrientation beta/gamma (portrait-primary); not GPS.
+ */
+function readPitch(e: DeviceOrientationEvent): number | null {
+  if (e.beta == null || Number.isNaN(e.beta)) return null;
+  const ori = screen.orientation?.angle ?? 0;
+  if (ori === 90) {
+    return e.gamma != null && !Number.isNaN(e.gamma) ? 90 - e.gamma : null;
+  }
+  if (ori === 270) {
+    return e.gamma != null && !Number.isNaN(e.gamma) ? e.gamma - 90 : null;
+  }
+  return -e.beta;
 }
 
 function readHeading(e: DeviceOrientationEvent): number | null {
@@ -133,18 +157,28 @@ function readHeading(e: DeviceOrientationEvent): number | null {
   return null;
 }
 
+function horizonYFromPitch(pitch: number, h: number): number {
+  return h / 2 + (pitch / AR_VERTICAL_FOV_DEG) * (h / 2);
+}
+
 function projectSun(
   sample: SolarSample,
   heading: number,
+  pitch: number,
   w: number,
   h: number
 ): { x: number; y: number } | null {
   if (!sample.isUp) return null;
-  const horizonY = h * AR_HORIZON_Y_RATIO;
+  const relAlt = sample.altitudeDeg - pitch;
+  if (relAlt < -AR_HORIZON_MARGIN_DEG) return null;
+  if (relAlt > AR_VERTICAL_FOV_DEG / 2) return null;
+
   const delta = ((sample.azimuthDeg - heading + 540) % 360) - 180;
+  if (Math.abs(delta) > AR_FOV_DEG / 2 + 5) return null;
+
   const x = w / 2 + (delta / AR_FOV_DEG) * w;
-  const y = horizonY - Math.sin((sample.altitudeDeg * Math.PI) / 180) * (h * AR_ALTITUDE_SCALE);
-  if (x < -20 || x > w + 20) return null;
+  const y = h / 2 - (relAlt / AR_VERTICAL_FOV_DEG) * h;
+  if (x < -20 || x > w + 20 || y < -20 || y > h + 20) return null;
   return { x, y };
 }
 
@@ -161,12 +195,21 @@ function isCurrentHour(sample: Date, now: Date, timeZone: string): boolean {
   return hourFmt(sample) === hourFmt(now);
 }
 
-export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZone }: Props) {
+export function ApartmentSolarAr({
+  backHref,
+  title,
+  latitude,
+  longitude,
+  timeZone,
+  initialDayDate,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const headingRef = useRef<number | null>(null);
+  const pitchRef = useRef<number | null>(null);
   const smoothHeadingRef = useRef<number | null>(null);
+  const smoothPitchRef = useRef<number | null>(null);
   const markerPosRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const rafRef = useRef<number | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
@@ -174,7 +217,7 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
   const [phase, setPhase] = useState<"idle" | "requesting" | "running" | "error">("idle");
   const [error, setError] = useState<ArError | null>(null);
   const [cameraPreDenied, setCameraPreDenied] = useState(false);
-  const [dayDate] = useState(() => new Date());
+  const [dayDate, setDayDate] = useState(() => initialDayDate ?? new Date());
 
   const hourlySamples = useMemo(
     () => getSolarArc(dayDate, latitude, longitude, 60),
@@ -193,6 +236,7 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
     orientationCleanupRef.current?.();
     orientationCleanupRef.current = null;
     smoothHeadingRef.current = null;
+    smoothPitchRef.current = null;
     markerPosRef.current.clear();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -216,21 +260,15 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
     if (!ctx) return;
 
     ctx.clearRect(0, 0, w, h);
-    const horizonY = h * AR_HORIZON_Y_RATIO;
-    ctx.strokeStyle = "rgba(255,255,255,0.6)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, horizonY);
-    ctx.lineTo(w, horizonY);
-    ctx.stroke();
 
     const rawHeading = headingRef.current;
+    const rawPitch = pitchRef.current;
     const now = new Date();
 
-    if (rawHeading == null) {
+    if (rawHeading == null || rawPitch == null) {
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.font = "14px system-ui, sans-serif";
-      ctx.fillText("Kompass wird kalibriert …", 16, 32);
+      ctx.fillText("Kompass & Neigung werden kalibriert …", 16, 32);
       return;
     }
 
@@ -242,17 +280,33 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
     }
     smoothHeadingRef.current = heading;
 
+    let pitch = smoothPitchRef.current;
+    if (pitch == null) {
+      pitch = rawPitch;
+    } else {
+      pitch = lerpNumber(pitch, rawPitch, PITCH_SMOOTH_PER_FRAME);
+    }
+    smoothPitchRef.current = pitch;
+
+    const horizonY = horizonYFromPitch(pitch, h);
+    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, horizonY);
+    ctx.lineTo(w, horizonY);
+    ctx.stroke();
+
     if (sunlitHourly.length === 0) {
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.font = "14px system-ui, sans-serif";
-      ctx.fillText("Heute keine Sonne über dem Horizont", 16, 32);
+      ctx.fillText("An diesem Datum keine Sonne über dem Horizont", 16, 32);
       return;
     }
 
     const projected: ProjectedSun[] = [];
     const activeKeys = new Set<number>();
     for (const sample of sunlitHourly) {
-      const pos = projectSun(sample, heading, w, h);
+      const pos = projectSun(sample, heading, pitch, w, h);
       if (!pos || pos.x < 0 || pos.x > w) continue;
       const key = sample.date.getTime();
       activeKeys.add(key);
@@ -306,7 +360,13 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
     if (projected.length === 0) {
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.font = "14px system-ui, sans-serif";
-      ctx.fillText("Handy drehen — stündliche Sonnen im Sichtfeld", 16, 32);
+      const hint =
+        pitch < -10
+          ? "Blick zu weit nach unten — Handy hoch neigen"
+          : pitch > 50
+            ? "Blick zu weit nach oben — Sonnen außerhalb des Sichtfelds"
+            : "Handy drehen & neigen — stündliche Sonnen im Sichtfeld";
+      ctx.fillText(hint, 16, 32);
     }
 
     const dayLabel = dayDate.toLocaleDateString("de-DE", {
@@ -325,7 +385,7 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
       h - 44
     );
     ctx.fillText(
-      "Orange Marken = volle Stunden heute · große Marke = aktuelle Stunde · Handy drehen",
+      "Marken nur im Sichtfeld · große Marke = aktuelle Stunde (nur am heutigen Tag)",
       12,
       h - 24
     );
@@ -396,6 +456,8 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
       const onOrientation = (e: DeviceOrientationEvent) => {
         const h = readHeading(e);
         if (h != null) headingRef.current = h;
+        const p = readPitch(e);
+        if (p != null) pitchRef.current = p;
       };
       window.addEventListener("deviceorientationabsolute", onOrientation, true);
       window.addEventListener("deviceorientation", onOrientation, true);
@@ -430,19 +492,28 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
 
   return (
     <div className="fixed inset-0 z-50 bg-black text-white flex flex-col">
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between gap-2 p-3 bg-gradient-to-b from-black/70 to-transparent">
-        <Link href={backHref} className="text-sm text-white/90 hover:underline shrink-0">
-          ← Zurück
-        </Link>
-        <p className="text-sm truncate opacity-90">{title}</p>
-        <span className="text-xs opacity-70 shrink-0">Stündlich</span>
+      <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent">
+        <div className="flex items-center justify-between gap-2 p-3 pb-2">
+          <Link href={backHref} className="text-sm text-white/90 hover:underline shrink-0">
+            ← Zurück
+          </Link>
+          <p className="text-sm truncate opacity-90">{title}</p>
+        </div>
+        <div className="px-3 pb-3 max-w-md">
+          <SolarSeasonDateControls
+            dayDate={dayDate}
+            onDayDateChange={setDayDate}
+            variant="dark"
+            showDateLabel={false}
+          />
+        </div>
       </div>
 
       {phase === "idle" && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
           <p className="text-center text-sm text-white/80 max-w-sm">
-            Live-Kamera mit stündlichen Sonnenmarken für heute (volle Stunden). Große Marke =
-            aktuelle Stunde. Handy drehen, um die Bahn im Sichtfeld zu sehen.
+            Live-Kamera mit stündlichen Sonnenmarken für das gewählte Datum (oben
+            einstellbar). Sichtbar nur bei passender Blickrichtung und Neigung.
           </p>
           {isLanHttp() && (
             <p className="text-center text-sm text-amber-200/90 max-w-sm">
