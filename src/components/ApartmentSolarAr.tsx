@@ -14,8 +14,9 @@ import {
   type SolarSample,
 } from "@/lib/solar-position";
 
-const AR_FOV_DEG = 60;
-const AR_VERTICAL_FOV_DEG = 60;
+/** Approximate phone camera FOV in portrait — short side (horizontal) is narrower than long side (vertical). */
+const AR_FOV_DEG = 50;
+const AR_VERTICAL_FOV_DEG = 65;
 /** Hide suns clearly below the viewer horizon (tolerance for sensor noise) */
 const AR_HORIZON_MARGIN_DEG = 12;
 /** Per animation frame — lower = calmer compass overlay */
@@ -151,7 +152,7 @@ function readHeading(e: DeviceOrientationEvent): number | null {
 }
 
 function horizonYFromPitch(pitch: number, h: number): number {
-  return h / 2 + (pitch / AR_VERTICAL_FOV_DEG) * (h / 2);
+  return h / 2 + (pitch / AR_VERTICAL_FOV_DEG) * h;
 }
 
 function projectSun(
@@ -164,7 +165,7 @@ function projectSun(
   if (!sample.isUp) return null;
   const relAlt = sample.altitudeDeg - pitch;
   if (relAlt < -AR_HORIZON_MARGIN_DEG) return null;
-  if (relAlt > AR_VERTICAL_FOV_DEG / 2) return null;
+  if (relAlt > AR_VERTICAL_FOV_DEG / 2 + 5) return null;
 
   const delta = ((sample.azimuthDeg - heading + 540) % 360) - 180;
   if (Math.abs(delta) > AR_FOV_DEG / 2 + 5) return null;
