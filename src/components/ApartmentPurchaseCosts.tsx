@@ -548,7 +548,11 @@ export function ApartmentPurchaseCosts({
         </>
       )}
       <div className="mt-6">
-        <ApartmentBorisInfo apartmentId={apartmentId} snapshot={borisSnapshot} />
+        <ApartmentBorisInfo
+          apartmentId={apartmentId}
+          snapshot={borisSnapshot}
+          plotSizeSqm={plotSizeSqm}
+        />
       </div>
     </CollapsibleSection>
   );

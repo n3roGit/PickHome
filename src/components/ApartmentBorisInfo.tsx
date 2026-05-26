@@ -1,8 +1,9 @@
 import { refreshApartmentBorisAction } from "@/app/actions";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
-import { formatDateTimeDe } from "@/lib/dates";
+import { computeBorisLandValueEur, type BorisResult } from "@/lib/boris";
 import type { ApartmentBorisSnapshot } from "@/lib/boris-cache";
-import type { BorisResult } from "@/lib/boris";
+import { formatDateTimeDe } from "@/lib/dates";
+import { formatPrice } from "@/lib/scoring";
 
 function formatStichtag(value: string | null): string | null {
   if (!value) return null;
@@ -31,9 +32,17 @@ function buildSubline(result: BorisResult): string {
   return parts.join(" · ");
 }
 
-function BorisResultRow({ result }: { result: BorisResult }) {
+function BorisResultRow({
+  result,
+  plotSizeSqm,
+}: {
+  result: BorisResult;
+  plotSizeSqm: number | null;
+}) {
   const subline = buildSubline(result);
   const detailLine = buildDetailLine(result);
+  const landValueEur =
+    plotSizeSqm != null ? computeBorisLandValueEur(result.brwEurPerSqm, plotSizeSqm) : null;
 
   return (
     <li className="rounded-lg border border-pn-border bg-pn-bg-subtle px-4 py-3">
@@ -43,6 +52,11 @@ function BorisResultRow({ result }: { result: BorisResult }) {
         </span>
         <span className="text-sm font-medium text-pn-text-secondary">{result.kategorieLabel}</span>
       </div>
+      {landValueEur != null ? (
+        <p className="mt-1 text-sm text-pn-text-primary">
+          × {plotSizeSqm!.toLocaleString("de-DE")} m² = {formatPrice(landValueEur)}
+        </p>
+      ) : null}
       {subline ? <p className="mt-1 text-sm text-pn-text-secondary">{subline}</p> : null}
       {detailLine ? <p className="mt-1 text-xs text-pn-text-tertiary">{detailLine}</p> : null}
     </li>
@@ -52,27 +66,37 @@ function BorisResultRow({ result }: { result: BorisResult }) {
 export function ApartmentBorisInfo({
   apartmentId,
   snapshot,
+  plotSizeSqm,
 }: {
   apartmentId: string;
   snapshot: ApartmentBorisSnapshot;
+  plotSizeSqm: number | null;
 }) {
   const fetchedAtLabel = formatDateTimeDe(snapshot.fetchedAt);
 
   return (
     <CollapsibleSection
       title="Bodenrichtwert (Info)"
-      subtitle="Orientierungswerte aus BORIS-D — nicht in der Finanzrechnung enthalten."
+      subtitle="Orientierungswerte aus BORIS-D — Bodenwert grob aus BRW × Grundstücksfläche."
       defaultOpen={snapshot.status === "ok"}
     >
       {snapshot.status === "ok" ? (
-        <ul className="space-y-3">
-          {snapshot.results.map((result) => (
-            <BorisResultRow
-              key={`${result.kategorie}-${result.zoneNumber ?? "na"}-${result.brwEurPerSqm}-${result.nutzungsart ?? "na"}`}
-              result={result}
-            />
-          ))}
-        </ul>
+        <>
+          <ul className="space-y-3">
+            {snapshot.results.map((result) => (
+              <BorisResultRow
+                key={`${result.kategorie}-${result.zoneNumber ?? "na"}-${result.brwEurPerSqm}-${result.nutzungsart ?? "na"}`}
+                result={result}
+                plotSizeSqm={plotSizeSqm}
+              />
+            ))}
+          </ul>
+          {plotSizeSqm == null ? (
+            <p className="mt-3 text-sm text-pn-text-secondary">
+              Grundstücksfläche hinterlegen, um den geschätzten Bodenwert zu berechnen.
+            </p>
+          ) : null}
+        </>
       ) : null}
 
       {snapshot.status === "no_coords" ? (

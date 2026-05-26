@@ -126,6 +126,20 @@ function layerLabel(layerName: string): string {
   return LAYER_LABELS[layerName] ?? layerName.replace(/^brw_/, "").replace(/_/g, " ");
 }
 
+export function computeBorisLandValueEur(
+  brwEurPerSqm: number,
+  plotSizeSqm: number
+): number | null {
+  if (!Number.isFinite(brwEurPerSqm) || brwEurPerSqm <= 0) return null;
+  if (!Number.isFinite(plotSizeSqm) || plotSizeSqm <= 0) return null;
+  return Math.round(brwEurPerSqm * plotSizeSqm);
+}
+
+export function primaryBorisResult(results: BorisResult[]): BorisResult | null {
+  if (results.length === 0) return null;
+  return sortBorisResults(results)[0] ?? null;
+}
+
 export function sortBorisResults(results: BorisResult[]): BorisResult[] {
   return [...results].sort((a, b) => {
     const ai = LAYER_SORT_ORDER.indexOf(a.kategorie);
