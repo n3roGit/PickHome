@@ -231,7 +231,7 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest, optional **Kaltmiete / Mietdeckung / Eigenanteil Rate**), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF dialog (Vollständig + Bankberater)** | Save or controlled no-op; no flicker after save/reload; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest, optional **Kaltmiete / Mietdeckung / Eigenanteil Rate**, **Bodenrichtwert (Info)** list from BORIS-D with disclaimer and **Aktualisieren**), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF dialog (Vollständig + Bankberater)** | Save or controlled no-op; no flicker after save/reload; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; Bodenrichtwert list appears for geocoded apartment (or `no_coords` hint); **Aktualisieren** refreshes without runtime errors; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status buttons (○/✕/✓, tap only), notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments; **Gesamtbelastung/Monat (grob)** when finance configured | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
@@ -329,6 +329,7 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] Project settings: **Monatliche Fixkosten** save/reload if finance settings changed
 [ ] Finanzen panel: **Gesamtbelastung/Monat** and **Rest nach allen Kosten** if Fixkosten + Haushaltsnetto set
 [ ] Finanzen panel: Kaltmiete in **Preis & Adresse** speichert; Mietdeckung, Eigenanteil und „nach Miete“-Belastung in Finanzen sichtbar
+[ ] Finanzen panel: **Bodenrichtwert (Info)** shows BORIS list or `no_coords` hint for geocoded apartment; **Aktualisieren** works; disclaimer visible; BRW not mixed into purchase-cost totals
 [ ] Compare tab: **Gesamtbelastung/Monat (grob)** row if compare/finance code changed
 [ ] KI chat: finance/commute/checklist estimate questions answered as **Schätzung** (if LLM context changed)
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
