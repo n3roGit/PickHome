@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { ApartmentPdfDialog } from "@/components/ApartmentPdfDialog";
 import { APARTMENT_TOOLBAR_BTN_NEUTRAL } from "@/lib/apartment-toolbar-styles";
 import { ApartmentLiveScoreSummary } from "@/components/ApartmentLiveScoreSummary";
 import { ApartmentScoreProvider } from "@/components/ApartmentScoreProvider";
@@ -415,13 +416,7 @@ export default async function ApartmentPage({
             aria-hidden
           />
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <a
-              href={`/api/apartments/${apartment.id}/pdf`}
-              download
-              className={APARTMENT_TOOLBAR_BTN_NEUTRAL}
-            >
-              PDF
-            </a>
+            <ApartmentPdfDialog apartmentId={apartment.id} />
             <ApartmentArchiveButton apartmentId={apartment.id} archived={archived} toolbar />
             <ApartmentDeleteButton apartmentId={apartment.id} toolbar />
           </div>

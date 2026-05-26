@@ -13,4 +13,8 @@ describe("apartmentPdfFilename", () => {
   it("falls back when the title is empty", () => {
     expect(apartmentPdfFilename("   ")).toBe("immobilie.pdf");
   });
+
+  it("appends bankberater suffix for bank variant", () => {
+    expect(apartmentPdfFilename("Test Listing", "bank")).toBe("Test-Listing-bankberater.pdf");
+  });
 });

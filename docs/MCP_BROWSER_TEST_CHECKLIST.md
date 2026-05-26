@@ -231,7 +231,7 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF download** | Save or controlled no-op; no flicker after save/reload; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF dialog (Vollständig + Bankberater)** | Save or controlled no-op; no flicker after save/reload; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status buttons (○/✕/✓, tap only), notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments; **Gesamtbelastung/Monat (grob)** when finance configured | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
@@ -333,7 +333,7 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
 [ ] Photo gallery: grid loads WebP thumbs; lightbox loads original; upload/delete/reload if photo code changed
 [ ] Photo gallery mobile (Android Chrome 412x915 + iPhone 390x844): swipe between images, double-tap or pinch zoom, no pull-down close, lightbox uses 100dvh (no jump when address bar collapses), bottom toolbar above gesture bar
-[ ] PDF download button visible and file downloads without error if apartment-pdf code changed
+[ ] PDF dialog opens with two variants; both downloads succeed with correct filenames if apartment-pdf code changed
 [ ] Auto-Fill save + reload verified on disposable apartment
 [ ] Draft restore: after basics save + reload, no flicker between old KI data and DB (if `apartment-listing-draft` or Auto-Fill changed)
 [ ] KI-Vorschlag: Übernehmen changes one field only; Verwerfen removes hint only
@@ -493,6 +493,10 @@ This skeleton is intentionally generic. Adapt tool names to the actual MCP host.
 22. open checklist fill page if configured; on mobile viewport scroll past several points — status unchanged until ○/✕/✓ tap
 23. if llm profile: on Immobilien tab, run listing import on add form (readable URL)
 24. open apartment with listing URL or PDF; run toolbar Auto-Fill; save Preis & Adresse; reload
+24a. open apartment; click PDF button; modal shows two variant cards
+24b. click „Vollständige Übersicht" → downloads `<title>.pdf` (Content-Type application/pdf)
+24c. reopen modal; click „Bankberater-Variante" → downloads `<title>-bankberater.pdf`
+24d. close modal via ESC; verify no console errors
 25. draft restore: reload after save — confirm no flicker; optional second Auto-Fill + KI-Vorschlag Übernehmen/Verwerfen
 26. optional: apartment on blocked portal — Auto-Fill shows controlled failure, no data loss
 27. if calendar data: confirm upcoming viewing shows schedule warning when times are tight; past section has none

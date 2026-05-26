@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ApartmentPdfData } from "@/lib/apartment-pdf-data";
 import { renderApartmentPdfBuffer } from "@/lib/apartment-pdf-render";
 
-function syntheticPdfData(): ApartmentPdfData {
+function syntheticPdfData(overrides?: Partial<ApartmentPdfData>): ApartmentPdfData {
   const ratingGroups = Array.from({ length: 3 }, (_, groupIndex) => ({
     groupName: `Group ${groupIndex + 1}`,
     criteria: Array.from({ length: 12 }, (_, criterionIndex) => ({
@@ -41,7 +41,14 @@ function syntheticPdfData(): ApartmentPdfData {
       archivedAt: null,
     },
     purchaseCosts: null,
-    acquisitionTotal: null,
+    acquisitionTotal: 380_000,
+    finance: {
+      equityAmount: 80_000,
+      loanTermYears: 25,
+      interestRate: 0.035,
+      netHouseholdIncome: 5_000,
+      monthlyFixedCosts: 1_200,
+    },
     ratingGroups,
     commutePeople: [
       {
@@ -64,12 +71,30 @@ function syntheticPdfData(): ApartmentPdfData {
       { scheduledAt: new Date("2026-05-22T15:30:00.000Z"), note: "Besichtigung" },
     ],
     priceHistory: [],
+    ...overrides,
   };
 }
 
-describe("renderApartmentPdfBuffer", () => {
-  it("renders a multi-section PDF buffer", async () => {
-    const buffer = await renderApartmentPdfBuffer(syntheticPdfData());
+describe.each(["full", "bank"] as const)("renderApartmentPdfBuffer (%s)", (variant) => {
+  it("renders a valid PDF buffer", async () => {
+    const buffer = await renderApartmentPdfBuffer(syntheticPdfData(), { variant });
+    expect(buffer.length).toBeGreaterThan(1000);
+    expect(buffer.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+  }, 30_000);
+});
+
+describe("renderApartmentPdfBuffer (bank)", () => {
+  it("renders without finance settings", async () => {
+    const data = syntheticPdfData({
+      finance: {
+        equityAmount: null,
+        loanTermYears: null,
+        interestRate: null,
+        netHouseholdIncome: null,
+        monthlyFixedCosts: null,
+      },
+    });
+    const buffer = await renderApartmentPdfBuffer(data, { variant: "bank" });
     expect(buffer.length).toBeGreaterThan(1000);
     expect(buffer.subarray(0, 5).toString("utf8")).toBe("%PDF-");
   }, 30_000);

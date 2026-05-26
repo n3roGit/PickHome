@@ -15,6 +15,8 @@ import { resolveDealbreakerThreshold } from "@/lib/scoring";
 import { resolveTransitSettings } from "@/lib/transit-settings";
 import { parseTravelMode } from "@/lib/travel-mode";
 
+export type ApartmentPdfVariant = "full" | "bank";
+
 export type ApartmentPdfRatingRow = {
   criterionId: string;
   name: string;
@@ -73,19 +75,30 @@ export type ApartmentPdfData = {
   };
   purchaseCosts: PurchaseCostEstimate | null;
   acquisitionTotal: number | null;
+  finance: {
+    equityAmount: number | null;
+    loanTermYears: number | null;
+    interestRate: number | null;
+    netHouseholdIncome: number | null;
+    monthlyFixedCosts: number | null;
+  };
   ratingGroups: ApartmentPdfRatingGroup[];
   commutePeople: CommutePersonEstimate[];
   viewings: ApartmentPdfViewingRow[];
   priceHistory: ApartmentPdfPriceHistoryRow[];
 };
 
-export function apartmentPdfFilename(title: string): string {
+export function apartmentPdfFilename(
+  title: string,
+  variant: ApartmentPdfVariant = "full"
+): string {
   const base = title.trim() || "immobilie";
   const safe = base
     .replace(/[^\p{L}\p{N}\-_ ]+/gu, "")
     .replace(/\s+/g, "-")
     .slice(0, 80);
-  return `${safe || "immobilie"}.pdf`;
+  const suffix = variant === "bank" ? "-bankberater" : "";
+  return `${safe || "immobilie"}${suffix}.pdf`;
 }
 
 export async function loadApartmentPdfData(
@@ -105,6 +118,11 @@ export async function loadApartmentPdfData(
             dealbreakerThreshold: true,
             federalStateCode: true,
             brokerBuyerRate: true,
+            equityAmount: true,
+            loanTermYears: true,
+            interestRate: true,
+            netHouseholdIncome: true,
+            monthlyFixedCosts: true,
             members: { select: { userId: true } },
             groups: {
               orderBy: { sortOrder: "asc" },
@@ -294,6 +312,13 @@ export async function loadApartmentPdfData(
     },
     purchaseCosts,
     acquisitionTotal,
+    finance: {
+      equityAmount: row.project.equityAmount,
+      loanTermYears: row.project.loanTermYears,
+      interestRate: row.project.interestRate,
+      netHouseholdIncome: row.project.netHouseholdIncome,
+      monthlyFixedCosts: row.project.monthlyFixedCosts,
+    },
     ratingGroups,
     commutePeople,
     viewings: row.viewings,

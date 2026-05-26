@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import type { ApartmentPdfVariant } from "@/lib/apartment-pdf-creator";
 import { renderApartmentPdfBuffer } from "@/lib/apartment-pdf-render";
 import { apartmentPdfFilename, loadApartmentPdfData } from "@/lib/apartment-pdf-data";
 import { getSessionUser } from "@/lib/auth";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ apartmentId: string }> }
 ) {
   const user = await getSessionUser();
@@ -18,8 +19,11 @@ export async function GET(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const buffer = await renderApartmentPdfBuffer(data);
-  const filename = apartmentPdfFilename(data.apartment.title);
+  const raw = new URL(req.url).searchParams.get("variant");
+  const variant: ApartmentPdfVariant = raw === "bank" ? "bank" : "full";
+
+  const buffer = await renderApartmentPdfBuffer(data, { variant });
+  const filename = apartmentPdfFilename(data.apartment.title, variant);
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

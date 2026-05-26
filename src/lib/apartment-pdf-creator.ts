@@ -1,10 +1,13 @@
 import type { ReactElement, ReactNode } from "react";
-import type { ApartmentPdfData } from "@/lib/apartment-pdf-data";
+import type { ApartmentPdfData, ApartmentPdfVariant } from "@/lib/apartment-pdf-data";
 import { formatDateDe, formatDateTimeDe } from "@/lib/dates";
 import {
+  estimateFinancing,
   formatPercent,
   purchaseCostLinesWithRenovation,
 } from "@/lib/purchase-costs";
+
+export type { ApartmentPdfVariant };
 import { formatPrice, formatPricePerPlotSqm, formatPricePerSqm } from "@/lib/scoring";
 import { travelModeLabel } from "@/lib/travel-mode";
 import type { TravelMode } from "@/lib/travel-mode";
@@ -221,14 +224,124 @@ function hasFilledText(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
 }
 
+function renderBankFinancingSection(
+  React: ReactModule,
+  Text: PdfModule["Text"],
+  View: PdfModule["View"],
+  styles: PdfStyles,
+  finance: ApartmentPdfData["finance"],
+  price: number | null,
+  acquisitionTotal: number | null
+): ReactElement | null {
+  if (finance.equityAmount == null && finance.loanTermYears == null) return null;
+
+  const totalCost = acquisitionTotal ?? price ?? null;
+  const equity = finance.equityAmount ?? 0;
+  const term = finance.loanTermYears ?? 0;
+
+  const fin =
+    totalCost != null && term > 0
+      ? estimateFinancing({
+          totalCost,
+          equityAmount: equity,
+          loanTermYears: term,
+          interestRate: finance.interestRate,
+        })
+      : null;
+
+  const equityShare =
+    totalCost && totalCost > 0 && finance.equityAmount != null
+      ? finance.equityAmount / totalCost
+      : null;
+  const ltv = fin && price && price > 0 ? fin.loanAmount / price : null;
+  const rateShare =
+    fin && finance.netHouseholdIncome && finance.netHouseholdIncome > 0
+      ? fin.monthlyPayment / finance.netHouseholdIncome
+      : null;
+
+  const rows = [
+    keyValueRow(React, Text, View, styles, "Eigenkapital", formatOptionalPrice(finance.equityAmount)),
+    keyValueRow(
+      React,
+      Text,
+      View,
+      styles,
+      "Geschätzter Darlehensbedarf",
+      fin ? formatPrice(fin.loanAmount) : "—"
+    ),
+    keyValueRow(
+      React,
+      Text,
+      View,
+      styles,
+      "Eigenkapitalquote",
+      equityShare != null ? formatPercent(equityShare) : "—"
+    ),
+    keyValueRow(
+      React,
+      Text,
+      View,
+      styles,
+      "Beleihungsauslauf (vom Kaufpreis)",
+      ltv != null ? formatPercent(ltv) : "—"
+    ),
+    keyValueRow(
+      React,
+      Text,
+      View,
+      styles,
+      "Gewünschte Laufzeit",
+      term > 0 ? `${term} Jahre` : "—"
+    ),
+    keyValueRow(
+      React,
+      Text,
+      View,
+      styles,
+      "Sollzins (Annahme)",
+      fin
+        ? `${formatPercent(fin.interestRate)}${fin.interestRateIsDefault ? " (PickHome-Standard)" : ""}`
+        : "—"
+    ),
+    keyValueRow(
+      React,
+      Text,
+      View,
+      styles,
+      "Indikative Monatsrate (Annuität)",
+      fin ? `${formatPrice(fin.monthlyPayment)}/Monat` : "—"
+    ),
+    keyValueRow(
+      React,
+      Text,
+      View,
+      styles,
+      "Haushaltsnetto",
+      formatOptionalMonthly(finance.netHouseholdIncome)
+    ),
+    keyValueRow(
+      React,
+      Text,
+      View,
+      styles,
+      "Belastungsquote (Rate / Netto)",
+      rateShare != null ? formatPercent(rateShare) : "—"
+    ),
+  ];
+
+  return section(React, Text, View, styles, "Finanzierungs-Eckdaten (grobe Schätzung)", rows);
+}
+
 function createApartmentPdfBody(
   React: ReactModule,
   pdf: Pick<PdfModule, "Text" | "View">,
   styles: PdfStyles,
-  data: ApartmentPdfData
+  data: ApartmentPdfData,
+  variant: ApartmentPdfVariant
 ): ReactElement {
   const { Text, View } = pdf;
   const { apartment, score, purchaseCosts, acquisitionTotal } = data;
+  const isBank = variant === "bank";
   const scoreColor = scoreBandColor(score.displayScore, score.dealbreaker);
   const scoreLabel = score.dealbreaker
     ? `${score.displayScore}/100 · Dealbreaker`
@@ -262,22 +375,30 @@ function createApartmentPdfBody(
           "Archiviert"
         )
       : null,
-    React.createElement(
-      Text,
-      { style: [styles.scoreBadge, { backgroundColor: scoreColor }], key: "score" },
-      scoreLabel
-    ),
-    React.createElement(
-      Text,
-      { style: styles.metaRow, key: "meta" },
-      [
-        score.rated > 0 ? `${score.rated}/${score.total} Kriterien bewertet` : null,
-        data.userName,
-        apartment.viewedAt ? `besichtigt ${formatDateDe(apartment.viewedAt, data.timeZone)}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    ),
+  ];
+
+  if (!isBank) {
+    children.push(
+      React.createElement(
+        Text,
+        { style: [styles.scoreBadge, { backgroundColor: scoreColor }], key: "score" },
+        scoreLabel
+      ),
+      React.createElement(
+        Text,
+        { style: styles.metaRow, key: "meta" },
+        [
+          score.rated > 0 ? `${score.rated}/${score.total} Kriterien bewertet` : null,
+          data.userName,
+          apartment.viewedAt ? `besichtigt ${formatDateDe(apartment.viewedAt, data.timeZone)}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      )
+    );
+  }
+
+  children.push(
     optionalSection(React, Text, View, styles, "Eckdaten", [
       keyValueRow(React, Text, View, styles, "Kaufpreis", formatOptionalPrice(apartment.price)),
       apartment.sizeSqm != null
@@ -341,8 +462,8 @@ function createApartmentPdfBody(
         "Sanierung (einmalig, grob)",
         formatOptionalPrice(apartment.renovationCost)
       ),
-    ]),
-  ];
+    ])
+  );
 
   if (purchaseCosts && apartment.price != null) {
     children.push(
@@ -380,165 +501,221 @@ function createApartmentPdfBody(
     );
   }
 
-  if (apartment.description?.trim()) {
-    children.push(
-      section(
-        React,
-        Text,
-        View,
-        styles,
-        "Beschreibung",
-        React.createElement(Text, { style: styles.bodyText }, apartment.description.trim())
-      )
+  if (isBank) {
+    const bankFinancing = renderBankFinancingSection(
+      React,
+      Text,
+      View,
+      styles,
+      data.finance,
+      apartment.price,
+      acquisitionTotal
     );
-  }
+    if (bankFinancing) children.push(bankFinancing);
 
-  if (apartment.notes?.trim()) {
-    children.push(
-      section(
-        React,
-        Text,
-        View,
-        styles,
-        "Notizen",
-        React.createElement(Text, { style: styles.bodyText }, apartment.notes.trim())
-      )
-    );
-  }
-
-  children.push(
-    ...(() => {
-      const ratingGroups = data.ratingGroups
-        .map((group) => {
-          const criteria = group.criteria.filter(
-            (criterion) => criterion.score != null || hasFilledText(criterion.note)
-          );
-          if (criteria.length === 0) return null;
-          return React.createElement(
-            View,
-            { key: group.groupName },
-            React.createElement(Text, { style: styles.groupTitle }, group.groupName),
-            criteria.map((criterion) =>
-              React.createElement(
-                View,
-                { key: criterion.criterionId, style: styles.ratingRow },
-                React.createElement(
-                  Text,
-                  { style: styles.ratingName },
-                  `${criterion.name}${criterion.isDealbreaker ? " (DB)" : ""}`
-                ),
-                React.createElement(
-                  Text,
-                  { style: styles.ratingScore },
-                  criterion.score != null ? formatScoreValue(criterion.score) : ""
-                ),
-                React.createElement(
-                  Text,
-                  { style: styles.ratingNote },
-                  criterion.note?.trim() ?? ""
-                )
-              )
-            )
-          );
-        })
-        .filter(Boolean);
-      if (ratingGroups.length === 0) return [];
-      return [
-        section(React, Text, View, styles, "Kriterien-Bewertungen", ratingGroups),
-      ];
-    })()
-  );
-
-  const commuteContent = data.commutePeople
-    .map((person) => {
-      const legs = person.legs
-        .map((leg) => {
-          if (leg.durationText) {
-            const distance = leg.distanceText ? ` · ${leg.distanceText}` : "";
-            const connection = leg.connectionSummary ? ` · ${leg.connectionSummary}` : "";
-            const mode = leg.effectiveMode ? ` (${commuteModeLabel(leg.effectiveMode)})` : "";
-            return React.createElement(
-              Text,
-              { key: leg.addressId, style: styles.commuteLeg },
-              `${leg.label}: ${leg.durationText}${distance}${connection}${mode}`
-            );
-          }
-          return null;
-        })
-        .filter(Boolean);
-      if (legs.length === 0) return null;
-      return React.createElement(
-        View,
-        { key: person.userId, style: styles.commuteMember },
-        React.createElement(
+    if (apartment.description?.trim()) {
+      children.push(
+        section(
+          React,
           Text,
-          { style: { fontFamily: "Helvetica-Bold", marginBottom: 2 } },
-          `${person.name} · ${travelModeLabel(person.travelMode)}`
-        ),
-        ...legs
+          View,
+          styles,
+          "Beschreibung",
+          React.createElement(Text, { style: styles.bodyText }, apartment.description.trim())
+        )
       );
-    })
-    .filter(Boolean);
+    }
 
-  if (commuteContent.length > 0) {
-    children.push(section(React, Text, View, styles, "Fahrtwege", commuteContent));
-  }
-
-  if (data.viewings.length > 0) {
-    children.push(
-      section(
-        React,
-        Text,
-        View,
-        styles,
-        "Besichtigungen",
-        data.viewings.map((viewing, index) => {
-          const note = viewing.note?.trim();
-          return React.createElement(
-            View,
-            { key: `${viewing.scheduledAt.toISOString()}-${index}`, style: styles.row },
+    if (data.priceHistory.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Preis-Historie",
+          data.priceHistory.map((entry, index) =>
             React.createElement(
-              Text,
-              { style: note ? styles.rowLabel : styles.rowValue },
-              formatDateTimeDe(viewing.scheduledAt, data.timeZone)
-            ),
-            note
-              ? React.createElement(Text, { style: styles.rowValue }, note)
-              : null
-          );
-        })
-      )
-    );
-  }
-
-  if (data.priceHistory.length > 0) {
-    children.push(
-      section(
-        React,
-        Text,
-        View,
-        styles,
-        "Preis-Historie",
-        data.priceHistory.map((entry, index) =>
-          React.createElement(
-            View,
-            { key: `${entry.recordedAt.toISOString()}-${index}`, style: styles.row },
-            React.createElement(
-              Text,
-              { style: styles.rowLabel },
-              `${formatDateDe(entry.recordedAt, data.timeZone)} · ${entry.sourceLabel}`
-            ),
-            React.createElement(
-              Text,
-              { style: styles.rowValue },
-              `${formatPrice(entry.price)}${
-                entry.previousPrice != null ? ` (vorher ${formatPrice(entry.previousPrice)})` : ""
-              }`
+              View,
+              { key: `${entry.recordedAt.toISOString()}-${index}`, style: styles.row },
+              React.createElement(
+                Text,
+                { style: styles.rowLabel },
+                `${formatDateDe(entry.recordedAt, data.timeZone)} · ${entry.sourceLabel}`
+              ),
+              React.createElement(
+                Text,
+                { style: styles.rowValue },
+                `${formatPrice(entry.price)}${
+                  entry.previousPrice != null ? ` (vorher ${formatPrice(entry.previousPrice)})` : ""
+                }`
+              )
             )
           )
         )
-      )
+      );
+    }
+  } else {
+    if (apartment.description?.trim()) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Beschreibung",
+          React.createElement(Text, { style: styles.bodyText }, apartment.description.trim())
+        )
+      );
+    }
+
+    if (apartment.notes?.trim()) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Notizen",
+          React.createElement(Text, { style: styles.bodyText }, apartment.notes.trim())
+        )
+      );
+    }
+
+    children.push(
+      ...(() => {
+        const ratingGroups = data.ratingGroups
+          .map((group) => {
+            const criteria = group.criteria.filter(
+              (criterion) => criterion.score != null || hasFilledText(criterion.note)
+            );
+            if (criteria.length === 0) return null;
+            return React.createElement(
+              View,
+              { key: group.groupName },
+              React.createElement(Text, { style: styles.groupTitle }, group.groupName),
+              criteria.map((criterion) =>
+                React.createElement(
+                  View,
+                  { key: criterion.criterionId, style: styles.ratingRow },
+                  React.createElement(
+                    Text,
+                    { style: styles.ratingName },
+                    `${criterion.name}${criterion.isDealbreaker ? " (DB)" : ""}`
+                  ),
+                  React.createElement(
+                    Text,
+                    { style: styles.ratingScore },
+                    criterion.score != null ? formatScoreValue(criterion.score) : ""
+                  ),
+                  React.createElement(
+                    Text,
+                    { style: styles.ratingNote },
+                    criterion.note?.trim() ?? ""
+                  )
+                )
+              )
+            );
+          })
+          .filter(Boolean);
+        if (ratingGroups.length === 0) return [];
+        return [
+          section(React, Text, View, styles, "Kriterien-Bewertungen", ratingGroups),
+        ];
+      })()
     );
+
+    const commuteContent = data.commutePeople
+      .map((person) => {
+        const legs = person.legs
+          .map((leg) => {
+            if (leg.durationText) {
+              const distance = leg.distanceText ? ` · ${leg.distanceText}` : "";
+              const connection = leg.connectionSummary ? ` · ${leg.connectionSummary}` : "";
+              const mode = leg.effectiveMode ? ` (${commuteModeLabel(leg.effectiveMode)})` : "";
+              return React.createElement(
+                Text,
+                { key: leg.addressId, style: styles.commuteLeg },
+                `${leg.label}: ${leg.durationText}${distance}${connection}${mode}`
+              );
+            }
+            return null;
+          })
+          .filter(Boolean);
+        if (legs.length === 0) return null;
+        return React.createElement(
+          View,
+          { key: person.userId, style: styles.commuteMember },
+          React.createElement(
+            Text,
+            { style: { fontFamily: "Helvetica-Bold", marginBottom: 2 } },
+            `${person.name} · ${travelModeLabel(person.travelMode)}`
+          ),
+          ...legs
+        );
+      })
+      .filter(Boolean);
+
+    if (commuteContent.length > 0) {
+      children.push(section(React, Text, View, styles, "Fahrtwege", commuteContent));
+    }
+
+    if (data.viewings.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Besichtigungen",
+          data.viewings.map((viewing, index) => {
+            const note = viewing.note?.trim();
+            return React.createElement(
+              View,
+              { key: `${viewing.scheduledAt.toISOString()}-${index}`, style: styles.row },
+              React.createElement(
+                Text,
+                { style: note ? styles.rowLabel : styles.rowValue },
+                formatDateTimeDe(viewing.scheduledAt, data.timeZone)
+              ),
+              note
+                ? React.createElement(Text, { style: styles.rowValue }, note)
+                : null
+            );
+          })
+        )
+      );
+    }
+
+    if (data.priceHistory.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Preis-Historie",
+          data.priceHistory.map((entry, index) =>
+            React.createElement(
+              View,
+              { key: `${entry.recordedAt.toISOString()}-${index}`, style: styles.row },
+              React.createElement(
+                Text,
+                { style: styles.rowLabel },
+                `${formatDateDe(entry.recordedAt, data.timeZone)} · ${entry.sourceLabel}`
+              ),
+              React.createElement(
+                Text,
+                { style: styles.rowValue },
+                `${formatPrice(entry.price)}${
+                  entry.previousPrice != null ? ` (vorher ${formatPrice(entry.previousPrice)})` : ""
+                }`
+              )
+            )
+          )
+        )
+      );
+    }
   }
 
   return React.createElement(View, null, ...children.filter(Boolean));
@@ -548,36 +725,40 @@ function createApartmentPdfFooter(
   React: ReactModule,
   Text: PdfModule["Text"],
   styles: PdfStyles,
-  data: ApartmentPdfData
+  data: ApartmentPdfData,
+  variant: ApartmentPdfVariant
 ): ReactElement {
+  const label = variant === "bank" ? "Datenauszug" : "Datenauszug Full";
   return React.createElement(
     Text,
     { style: styles.footer, fixed: true, wrap: false },
-    `PickHome · Export ${formatDateTimeDe(data.exportedAt, data.timeZone)} · Grobe Schätzungen, keine Rechts- oder Steuerberatung`
+    `PickHome · ${label} · ${formatDateTimeDe(data.exportedAt, data.timeZone)}`
   );
 }
 
 export function createApartmentPdfDocument(
   React: ReactModule,
   pdf: PdfModule,
-  data: ApartmentPdfData
+  data: ApartmentPdfData,
+  options: { variant?: ApartmentPdfVariant } = {}
 ): ReactElement {
   const { Document, Page, StyleSheet } = pdf;
   const styles = createStyles(StyleSheet);
   const { apartment } = data;
+  const variant = options.variant ?? "full";
 
   return React.createElement(
     Document,
     {
       title: apartment.title,
       author: "PickHome",
-      subject: "Immobilien-Zusammenfassung",
+      subject: variant === "bank" ? "Finanzierungsdaten" : "Immobilien-Zusammenfassung",
     },
     React.createElement(
       Page,
       { size: "A4", style: styles.page, wrap: true },
-      createApartmentPdfBody(React, pdf, styles, data),
-      createApartmentPdfFooter(React, pdf.Text, styles, data)
+      createApartmentPdfBody(React, pdf, styles, data, variant),
+      createApartmentPdfFooter(React, pdf.Text, styles, data, variant)
     )
   );
 }

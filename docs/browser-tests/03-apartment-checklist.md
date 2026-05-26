@@ -145,24 +145,29 @@ URL pattern:
 #### Must always hold
 
 - Toolbar shows a **„PDF"** button on the apartment detail page.
-- Clicking the button triggers a download of a PDF file named after the apartment title.
-- The PDF contains at minimum: title, address, score, key facts, and description/notes if present.
-- A regular project member can download the PDF for their own project's apartments.
-- An unauthorized user (not project member) receives a 401 or redirect, not a PDF.
+- Clicking the button opens a modal with two options: **„Vollständige Übersicht"** and **„Bankberater-Variante"**.
+- Choosing **„Vollständige Übersicht"** downloads `<title>.pdf` (full export incl. score, ratings, viewings, commute).
+- Choosing **„Bankberater-Variante"** downloads `<title>-bankberater.pdf` (object + cost breakdown + Finanzierungs-Eckdaten + Beschreibung + Preis-Historie; no score, no ratings, no notes, no commute, no viewings).
+- A regular project member can download both variants for their own project's apartments.
+- An unauthorized user (not project member) receives a 401 or redirect, not a PDF, for either variant.
+- Closing the modal via Backdrop or ESC works.
 
 #### Data requirements
 
-- Apartment with price, address, at least one rating, at least one viewing, commute cache entries preferred.
+- Apartment with price, address, at least one rating, at least one viewing, commute cache entries preferred (full variant).
+- For meaningful bank variant: project finance settings (Eigenkapital, Laufzeit, Haushaltsnetto) configured; otherwise the Finanzierungs-Eckdaten section is omitted gracefully.
 
 #### Negative cases
 
-- Apartment with no optional fields (no address, no description, no viewings) — PDF still downloads without error.
-- Logged-out user calls `/api/apartments/<id>/pdf` directly — gets 401/redirect, not a file.
+- Apartment with no optional fields (no address, no description, no viewings) — both PDF variants still download without error.
+- Project with no finance settings — bank PDF still downloads; Finanzierungs-Eckdaten section is omitted, no crash.
+- Apartment with no purchase costs (e.g. missing federal state) — bank PDF downloads; Kaufnebenkosten section omitted; Finanzierungs-Eckdaten uses Kaufpreis as Gesamtkosten fallback.
+- Logged-out user calls `/api/apartments/<id>/pdf` or `/api/apartments/<id>/pdf?variant=bank` directly — gets 401/redirect, not a file.
 - User from a different project calls the URL directly — gets 403/redirect.
 
 #### Evidence
 
-- Snapshot of toolbar with PDF button visible.
-- Network tab confirms `GET /api/apartments/<id>/pdf` returns `200` with `Content-Type: application/pdf`.
-- File downloads successfully (filename visible in browser download bar or snapshot).
+- Snapshot of opened PDF modal showing both variant cards.
+- Network tab: both `GET /api/apartments/<id>/pdf` and `GET /api/apartments/<id>/pdf?variant=bank` return `200` with `Content-Type: application/pdf`.
+- Both filenames visible in browser download list (one with `-bankberater` suffix).
 - Console check: no runtime errors during download.
