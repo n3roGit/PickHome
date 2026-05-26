@@ -20,6 +20,8 @@ import {
 } from "@/lib/purchase-costs";
 import { formatPrice, formatPricePerPlotSqm } from "@/lib/scoring";
 import { apartmentBrokerFormId } from "@/lib/listing-import-form";
+import { ApartmentBorisInfo } from "@/components/ApartmentBorisInfo";
+import type { ApartmentBorisSnapshot } from "@/lib/boris-cache";
 
 function CostTable({
   estimate,
@@ -392,6 +394,7 @@ export function ApartmentPurchaseCosts({
   netHouseholdIncome,
   monthlyFixedCosts,
   settingsHref,
+  borisSnapshot,
 }: {
   apartmentId: string;
   revision: number;
@@ -413,6 +416,7 @@ export function ApartmentPurchaseCosts({
   netHouseholdIncome: number | null;
   monthlyFixedCosts: number | null;
   settingsHref: string;
+  borisSnapshot: ApartmentBorisSnapshot;
 }) {
   const stateCode = resolveFederalStateCode({
     projectFederalStateCode: federalStateCode,
@@ -543,6 +547,9 @@ export function ApartmentPurchaseCosts({
           )}
         </>
       )}
+      <div className="mt-6">
+        <ApartmentBorisInfo apartmentId={apartmentId} snapshot={borisSnapshot} />
+      </div>
     </CollapsibleSection>
   );
 }
