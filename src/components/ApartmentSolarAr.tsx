@@ -10,7 +10,14 @@ import {
   minutesFromDate,
 } from "@/lib/solar-position";
 
-type ArError = "https_required" | "camera_denied" | "orientation_denied" | "orientation_unsupported";
+type ArError =
+  | "https_required"
+  | "camera_denied"
+  | "camera_unavailable"
+  | "camera_busy"
+  | "camera_unsupported"
+  | "orientation_denied"
+  | "orientation_unsupported";
 
 type Props = {
   backHref: string;
@@ -27,6 +34,60 @@ function isLocalHost(): boolean {
 
 function isSecureContextForSensors(): boolean {
   return window.isSecureContext || isLocalHost();
+}
+
+function isLanHttp(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.location.protocol === "https:") return false;
+  const host = window.location.hostname;
+  return !isLocalHost() && /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(host);
+}
+
+async function queryCameraPermission(): Promise<PermissionState | "unknown"> {
+  try {
+    if (!navigator.permissions?.query) return "unknown";
+    const status = await navigator.permissions.query({
+      name: "camera" as PermissionName,
+    });
+    return status.state;
+  } catch {
+    return "unknown";
+  }
+}
+
+async function requestCameraStream(): Promise<MediaStream> {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw Object.assign(new Error("unsupported"), { code: "unsupported" });
+  }
+  const attempts: MediaStreamConstraints[] = [
+    { video: { facingMode: { ideal: "environment" } }, audio: false },
+    { video: { facingMode: { ideal: "user" } }, audio: false },
+    { video: true, audio: false },
+  ];
+  let lastError: unknown;
+  for (const constraints of attempts) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (e) {
+      lastError = e;
+      if (e instanceof DOMException && e.name === "NotAllowedError") break;
+    }
+  }
+  throw lastError ?? new Error("unknown");
+}
+
+function mapStartError(err: unknown): ArError {
+  if (err instanceof Error && (err as Error & { code?: string }).code === "unsupported") {
+    return "camera_unsupported";
+  }
+  if (err instanceof DOMException) {
+    if (err.name === "NotAllowedError") return "camera_denied";
+    if (err.name === "NotFoundError" || err.name === "OverconstrainedError") {
+      return "camera_unavailable";
+    }
+    if (err.name === "NotReadableError" || err.name === "AbortError") return "camera_busy";
+  }
+  return "camera_denied";
 }
 
 function readHeading(e: DeviceOrientationEvent): number | null {
@@ -53,6 +114,7 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
 
   const [phase, setPhase] = useState<"idle" | "requesting" | "running" | "error">("idle");
   const [error, setError] = useState<ArError | null>(null);
+  const [cameraPreDenied, setCameraPreDenied] = useState(false);
   const [dayDate, setDayDate] = useState(() => new Date());
   const [minutes, setMinutes] = useState(() => minutesFromDate(new Date()));
   const [showControls, setShowControls] = useState(false);
@@ -171,6 +233,7 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
 
   async function start() {
     setError(null);
+    setCameraPreDenied(false);
     if (!isSecureContextForSensors()) {
       setPhase("error");
       setError("https_required");
@@ -196,15 +259,24 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
         }
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
-      });
+      const cameraPerm = await queryCameraPermission();
+      if (cameraPerm === "denied") {
+        setPhase("error");
+        setCameraPreDenied(true);
+        setError("camera_denied");
+        return;
+      }
+
+      const stream = await requestCameraStream();
       streamRef.current = stream;
       const video = videoRef.current;
       if (video) {
         video.srcObject = stream;
-        await video.play();
+        try {
+          await video.play();
+        } catch {
+          /* stream attached; iOS may still show frames */
+        }
       }
 
       const onOrientation = (e: DeviceOrientationEvent) => {
@@ -219,18 +291,26 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
       };
 
       setPhase("running");
-    } catch {
+    } catch (e) {
       stop();
       setPhase("error");
-      setError("camera_denied");
+      setError(mapStartError(e));
     }
   }
 
   const errorMessages: Record<ArError, string> = {
-    https_required:
-      "Kamera und Kompass benötigen HTTPS (oder localhost). Bitte PickHome über TLS oder lokal testen.",
-    camera_denied: "Kamerazugriff wurde verweigert.",
-    orientation_denied: "Kompasszugriff wurde verweigert.",
+    https_required: isLanHttp()
+      ? "Über http://192.168… vom Handy aus funktioniert die Kamera nicht. Am PC localhost nutzen oder PickHome hinter HTTPS (z. B. Reverse-Proxy) bereitstellen."
+      : "Kamera und Kompass benötigen HTTPS (oder localhost). Bitte PickHome über TLS oder lokal am Rechner testen.",
+    camera_denied: cameraPreDenied
+      ? "Die Kamera ist für diese Seite blockiert — deshalb erscheint oft kein Dialog. Chrome/Edge: Schloss-Symbol in der Adresszeile → Website-Einstellungen → Kamera auf „Zulassen“, dann Seite neu laden (Strg+F5). Windows: Einstellungen → Datenschutz → Kamera → Zugriff für Desktop-Apps erlauben."
+      : "Kamerazugriff wurde verweigert. In den Browser-Einstellungen für diese Seite die Kamera erlauben und erneut versuchen.",
+    camera_unavailable:
+      "Keine Kamera gefunden oder gewünschte Rückkamera nicht verfügbar.",
+    camera_busy:
+      "Kamera wird bereits von einer anderen App genutzt (z. B. Videoanruf).",
+    camera_unsupported: "Kamera-API wird in diesem Browser nicht unterstützt.",
+    orientation_denied: "Kompass-/Bewegungssensor wurde verweigert.",
     orientation_unsupported: "Kompass wird in diesem Browser nicht unterstützt.",
   };
 
@@ -256,6 +336,12 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
             Live-Kamera mit Sonnenmarkierung. Kompass kann ungenau sein — Handy vom Magnetfeld
             weghalten und in Achterform bewegen.
           </p>
+          {isLanHttp() && (
+            <p className="text-center text-sm text-amber-200/90 max-w-sm">
+              Du erreichst PickHome über die LAN-IP ohne HTTPS — die Kamera blockiert das oft.
+              Am Handy nur mit HTTPS testen.
+            </p>
+          )}
           <button
             type="button"
             data-testid="solar-ar-start"
@@ -276,7 +362,7 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
           className="flex-1 flex flex-col items-center justify-center gap-4 p-6"
           data-testid="solar-ar-error"
         >
-          <p className="text-center text-sm max-w-sm">{errorMessages[error]}</p>
+          <p className="text-center text-sm max-w-sm whitespace-pre-line">{errorMessages[error]}</p>
           <button
             type="button"
             onClick={() => setPhase("idle")}
