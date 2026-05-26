@@ -1,0 +1,196 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { ApartmentSunMap } from "@/components/ApartmentSunMap";
+import {
+  compassFromAzimuth,
+  dateAtMinutesOnDay,
+  formatSolarTime,
+  getSolarDayTimes,
+  getSolarSample,
+  minutesFromDate,
+} from "@/lib/solar-position";
+
+type Props = {
+  projectId: string;
+  apartmentId: string;
+  latitude: number;
+  longitude: number;
+  timeZone: string;
+  nextViewingIso: string | null;
+};
+
+function toDateInputValue(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function parseDateInput(value: string): Date {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y!, m! - 1, d!, 12, 0, 0, 0);
+}
+
+export function ApartmentSolarPanel({
+  projectId,
+  apartmentId,
+  latitude,
+  longitude,
+  timeZone,
+  nextViewingIso,
+}: Props) {
+  const [dayDate, setDayDate] = useState(() => new Date());
+  const [minutes, setMinutes] = useState(() => minutesFromDate(new Date()));
+  const [showMap, setShowMap] = useState(false);
+  const [hasOrientationApi, setHasOrientationApi] = useState(false);
+
+  useEffect(() => {
+    setHasOrientationApi(typeof window !== "undefined" && "DeviceOrientationEvent" in window);
+  }, []);
+
+  const selectedDate = useMemo(
+    () => dateAtMinutesOnDay(dayDate, minutes),
+    [dayDate, minutes]
+  );
+
+  const sample = useMemo(
+    () => getSolarSample(selectedDate, latitude, longitude),
+    [selectedDate, latitude, longitude]
+  );
+
+  const dayTimes = useMemo(
+    () => getSolarDayTimes(dayDate, latitude, longitude),
+    [dayDate, latitude, longitude]
+  );
+
+  const viewingSample = useMemo(() => {
+    if (!nextViewingIso) return null;
+    const at = new Date(nextViewingIso);
+    if (Number.isNaN(at.getTime())) return null;
+    return getSolarSample(at, latitude, longitude);
+  }, [nextViewingIso, latitude, longitude]);
+
+  const direction = compassFromAzimuth(sample.azimuthDeg);
+  const arHref = `/project/${projectId}/apartment/${apartmentId}/sonne-ar`;
+
+  return (
+    <CollapsibleSection
+      title="Sonnenstand"
+      subtitle="Sonnenverlauf und Licht zur gewählten Uhrzeit — Orientierung für Besichtigung und Sonneneinstrahlung."
+      defaultOpen={false}
+    >
+      <div data-testid="solar-panel" className="space-y-4 text-sm">
+        <div className="rounded-lg bg-pn-bg-subtle border border-pn-border px-4 py-3">
+          <p className="font-medium text-pn-text-primary">
+            {sample.isUp ? "Sonne steht am Himmel" : "Sonne ist untergegangen"}
+          </p>
+          <p className="mt-1 text-pn-text-secondary tabular-nums">
+            Höhe {sample.altitudeDeg.toFixed(1)}° · Richtung {direction} ({sample.azimuthDeg.toFixed(0)}°)
+          </p>
+        </div>
+
+        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-pn-text-secondary">
+          <div>
+            <dt className="text-xs text-pn-text-tertiary">Sonnenaufgang</dt>
+            <dd className="tabular-nums">{formatSolarTime(dayTimes.sunrise, timeZone)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-pn-text-tertiary">Sonnenuntergang</dt>
+            <dd className="tabular-nums">{formatSolarTime(dayTimes.sunset, timeZone)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-pn-text-tertiary">Solarmittag</dt>
+            <dd className="tabular-nums">{formatSolarTime(dayTimes.solarNoon, timeZone)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-pn-text-tertiary">Goldene Stunde (morgens)</dt>
+            <dd className="tabular-nums">
+              {formatSolarTime(dayTimes.goldenHourMorningEnd, timeZone)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-pn-text-tertiary">Goldene Stunde (abends)</dt>
+            <dd className="tabular-nums">
+              {formatSolarTime(dayTimes.goldenHourEveningStart, timeZone)}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+          <label className="flex flex-col gap-1 min-w-0">
+            <span className="text-xs text-pn-text-tertiary">Datum</span>
+            <input
+              type="date"
+              value={toDateInputValue(dayDate)}
+              onChange={(e) => setDayDate(parseDateInput(e.target.value))}
+              className="border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-bg-surface"
+            />
+          </label>
+          <label className="flex flex-col gap-1 flex-1 min-w-0">
+            <span className="text-xs text-pn-text-tertiary">
+              Uhrzeit ({formatSolarTime(selectedDate, timeZone)})
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1440}
+              step={15}
+              value={minutes}
+              onChange={(e) => setMinutes(Number(e.target.value))}
+              data-testid="solar-time-slider"
+              className="w-full accent-pn-accent"
+            />
+          </label>
+        </div>
+
+        {viewingSample && nextViewingIso && (
+          <p className="text-pn-text-secondary">
+            Beim nächsten Besichtigungstermin am{" "}
+            <time dateTime={nextViewingIso}>
+              {new Date(nextViewingIso).toLocaleString("de-DE", {
+                timeZone,
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </time>{" "}
+            steht die Sonne im{" "}
+            <strong>{compassFromAzimuth(viewingSample.azimuthDeg)}</strong> (
+            {viewingSample.azimuthDeg.toFixed(0)}°, {viewingSample.altitudeDeg.toFixed(0)}° Höhe
+            {viewingSample.isUp ? "" : ", unter Horizont"}).
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            data-testid="solar-show-map"
+            onClick={() => setShowMap((v) => !v)}
+            className="text-sm font-medium px-4 py-2 rounded-lg border border-pn-border bg-pn-bg-subtle hover:bg-pn-bg-surface"
+          >
+            {showMap ? "Karte ausblenden" : "Auf Karte zeigen"}
+          </button>
+          {hasOrientationApi && (
+            <Link
+              href={arHref}
+              data-testid="solar-open-ar"
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-pn-accent text-white hover:opacity-90"
+            >
+              AR vor Ort öffnen
+            </Link>
+          )}
+        </div>
+
+        {showMap && (
+          <ApartmentSunMap
+            latitude={latitude}
+            longitude={longitude}
+            selectedDate={selectedDate}
+          />
+        )}
+      </div>
+    </CollapsibleSection>
+  );
+}

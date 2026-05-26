@@ -76,6 +76,8 @@ import {
   matchApartmentSubsidies,
 } from "@/lib/subsidy-matching";
 import { getOrFetchBorisForApartment } from "@/lib/boris-cache";
+import { nextViewing } from "@/lib/viewings";
+import { ApartmentSolarPanel } from "@/components/ApartmentSolarPanel";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -499,6 +501,16 @@ export default async function ApartmentPage({
         >
           <ApartmentSubsidyPanel matches={subsidyMatches} />
         </CollapsibleSection>
+        {apartment.latitude != null && apartment.longitude != null && (
+          <ApartmentSolarPanel
+            projectId={project.id}
+            apartmentId={apartment.id}
+            latitude={apartment.latitude}
+            longitude={apartment.longitude}
+            timeZone={appTimeZone}
+            nextViewingIso={nextViewing(apartment.viewings)?.toISOString() ?? null}
+          />
+        )}
         <ApartmentPhotos
           apartmentId={apartment.id}
           photos={apartment.photos.map((p) => ({
