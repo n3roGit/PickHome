@@ -45,6 +45,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           <input
             name="username"
             autoComplete="username"
+            autoFocus
             required
             disabled={pending}
             className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2"

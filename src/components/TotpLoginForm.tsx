@@ -54,6 +54,7 @@ export function TotpLoginForm({ initialError }: { initialError?: string }) {
             name="code"
             autoComplete="one-time-code"
             inputMode="text"
+            autoFocus
             required
             disabled={pending}
             placeholder="123456 oder xxxx-xxxx-xxxx"

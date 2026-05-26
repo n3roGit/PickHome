@@ -248,6 +248,7 @@ export default async function SettingsPage({
                   name="code"
                   inputMode="numeric"
                   autoComplete="one-time-code"
+                  autoFocus
                   required
                   className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 font-mono"
                 />

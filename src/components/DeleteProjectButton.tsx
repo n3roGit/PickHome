@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { deleteProjectAction } from "@/app/actions";
+import { useFocusWhen } from "@/hooks/use-focus-when";
 
 export function DeleteProjectButton({
   projectId,
@@ -13,6 +14,7 @@ export function DeleteProjectButton({
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [confirmName, setConfirmName] = useState("");
+  const confirmInputRef = useFocusWhen<HTMLInputElement>(open);
 
   const nameMatches = confirmName.trim() === projectName;
 
@@ -48,6 +50,8 @@ export function DeleteProjectButton({
       <label className="block">
         <span className="text-sm font-medium text-pn-text-secondary">Projektname</span>
         <input
+          ref={confirmInputRef}
+          name="confirmName"
           type="text"
           value={confirmName}
           onChange={(e) => setConfirmName(e.target.value)}

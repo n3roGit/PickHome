@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useFocusWhen } from "@/hooks/use-focus-when";
 import { APARTMENT_TOOLBAR_BTN_ACCENT } from "@/lib/apartment-toolbar-styles";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -31,6 +32,7 @@ export function ApartmentLlmChatButton({
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<ChatTurn[]>([]);
+  const inputRef = useFocusWhen<HTMLInputElement>(open);
 
   const MAX_CHAT_TURNS = 12;
 
@@ -173,6 +175,7 @@ export function ApartmentLlmChatButton({
 
             <form onSubmit={sendMessage} className="p-4 border-t border-pn-border flex gap-2">
               <input
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={loading}
