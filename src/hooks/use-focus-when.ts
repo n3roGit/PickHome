@@ -5,8 +5,8 @@ type FocusableElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectEleme
 export function useFocusWhen<T extends FocusableElement>(
   active: boolean,
   options: { select?: boolean } = {},
-): RefObject<T | null> {
-  const ref = useRef<T | null>(null);
+): RefObject<T> {
+  const ref = useRef<T>(null);
   const select = options.select ?? false;
 
   useEffect(() => {

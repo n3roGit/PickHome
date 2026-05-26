@@ -3,7 +3,7 @@
   "version": "1.3.19",
   "private": true,
   "scripts": {
-    "predev": "node scripts/ensure-data-dirs.mjs",
+    "predev": "node scripts/ensure-data-dirs.mjs && node scripts/ensure-deps.mjs",
     "dev": "next dev",
     "build:plz-reference": "node scripts/build-plz-reference.mjs",
     "build:ortsteile-reference": "node scripts/build-ortsteile-reference.mjs",
