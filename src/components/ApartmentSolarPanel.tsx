@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { ApartmentSunMap } from "@/components/ApartmentSunMap";
+import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
   compassFromAzimuth,
   dateAtMinutesOnDay,
@@ -12,6 +13,7 @@ import {
   getSolarSample,
   minutesFromDate,
 } from "@/lib/solar-position";
+import { buildSolarArHref } from "@/lib/solar-seasons";
 
 type Props = {
   projectId: string;
@@ -21,18 +23,6 @@ type Props = {
   timeZone: string;
   nextViewingIso: string | null;
 };
-
-function toDateInputValue(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function parseDateInput(value: string): Date {
-  const [y, m, d] = value.split("-").map(Number);
-  return new Date(y!, m! - 1, d!, 12, 0, 0, 0);
-}
 
 export function ApartmentSolarPanel({
   projectId,
@@ -74,7 +64,10 @@ export function ApartmentSolarPanel({
   }, [nextViewingIso, latitude, longitude]);
 
   const direction = compassFromAzimuth(sample.azimuthDeg);
-  const arHref = `/project/${projectId}/apartment/${apartmentId}/sonne-ar`;
+  const arHref = buildSolarArHref(
+    `/project/${projectId}/apartment/${apartmentId}/sonne-ar`,
+    dayDate
+  );
 
   return (
     <CollapsibleSection
@@ -120,15 +113,9 @@ export function ApartmentSolarPanel({
         </dl>
 
         <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-          <label className="flex flex-col gap-1 min-w-0">
-            <span className="text-xs text-pn-text-tertiary">Datum</span>
-            <input
-              type="date"
-              value={toDateInputValue(dayDate)}
-              onChange={(e) => setDayDate(parseDateInput(e.target.value))}
-              className="border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-bg-surface"
-            />
-          </label>
+          <div className="min-w-0 sm:max-w-xs">
+            <SolarSeasonDateControls dayDate={dayDate} onDayDateChange={setDayDate} />
+          </div>
           <label className="flex flex-col gap-1 flex-1 min-w-0">
             <span className="text-xs text-pn-text-tertiary">
               Uhrzeit ({formatSolarTime(selectedDate, timeZone)})

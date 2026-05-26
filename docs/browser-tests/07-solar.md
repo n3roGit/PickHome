@@ -6,11 +6,13 @@
 - Without coordinates, the section is **not** shown and the page loads without runtime errors.
 - The panel shows sun altitude and compass direction for the selected date/time; sunrise, sunset, solar noon, and golden-hour times use the app timezone.
 - The time slider (`data-testid="solar-time-slider"`) updates displayed altitude, direction, and map overlay without a full page reload.
+- Season shortcuts (`data-testid="solar-season-summer"` etc.) set the date to mid-season (15 Jan / Apr / Jul / Oct of the current year).
 - **Auf Karte zeigen** toggles a Leaflet mini map (`data-testid="solar-map"`) with a sun-path arc and a marker for the current slider time.
 - When a future viewing appointment exists, a line describes sun position at that appointment time.
 - **AR vor Ort öffnen** (only when `DeviceOrientationEvent` is available) navigates to `/project/.../apartment/.../sonne-ar` without crashing.
 - The AR page shows controlled errors for HTTPS/camera/compass denial — no uncaught exceptions or Next.js overlay.
-- After **Kamera + Kompass starten**, hourly sun markers for **today** appear in the camera view (no time slider); the current hour uses a larger marker.
+- After **Kamera + Kompass starten**, hourly sun markers for the selected date appear (`data-testid="solar-date-input"` in AR header); the current hour uses a larger marker only when the date is today.
+- Opening AR from the panel passes `?date=YYYY-MM-DD` matching the panel date.
 
 ## Data requirements
 
