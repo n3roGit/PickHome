@@ -142,22 +142,22 @@ export function ListingImportAssist({ projectId }: { projectId: string }) {
         <input
           name="price"
           placeholder="Preis €"
-          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-28 min-w-0"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-auto sm:min-w-[5.5rem] sm:shrink-0"
         />
         <input
           name="sizeSqm"
           placeholder="Wohnfl. m²"
-          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-24 min-w-0"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-auto sm:min-w-[6.75rem] sm:shrink-0"
         />
         <input
           name="plotSizeSqm"
           placeholder="Grundst. m²"
-          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-24 min-w-0"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-auto sm:min-w-[7.25rem] sm:shrink-0"
         />
         <input
           name="energyClass"
           placeholder="Energieklasse"
-          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-24 min-w-0"
+          className="border border-pn-border rounded-lg px-3 py-2 text-sm w-full sm:w-auto sm:min-w-[9.5rem] sm:shrink-0"
         />
         <input
           name="address"
