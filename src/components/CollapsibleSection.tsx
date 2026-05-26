@@ -25,6 +25,7 @@ export function CollapsibleSection({
   headerAside,
   children,
   className = "",
+  onOpenChange,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -32,8 +33,17 @@ export function CollapsibleSection({
   headerAside?: ReactNode;
   children: ReactNode;
   className?: string;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+
+  function toggleOpen() {
+    setOpen((value) => {
+      const next = !value;
+      onOpenChange?.(next);
+      return next;
+    });
+  }
 
   return (
     <section className={`bg-pn-bg-surface border border-pn-border rounded-xl p-5 mb-6 ${className}`}>
@@ -41,7 +51,7 @@ export function CollapsibleSection({
         type="button"
         className="w-full flex items-start justify-between gap-3 text-left group"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
       >
         <div className="min-w-0 flex-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <h2 className="font-semibold min-w-0">{title}</h2>

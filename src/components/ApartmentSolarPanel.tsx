@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { ApartmentSunMap } from "@/components/ApartmentSunMap";
 import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
@@ -36,6 +36,15 @@ export function ApartmentSolarPanel({
   const [minutes, setMinutes] = useState(() => minutesFromDate(new Date()));
   const [showMap, setShowMap] = useState(false);
   const [hasOrientationApi, setHasOrientationApi] = useState(false);
+
+  const syncTimeToNow = useCallback(() => {
+    setMinutes(minutesFromDate(new Date()));
+  }, []);
+
+  const handleDayDateChange = useCallback((date: Date) => {
+    setDayDate(date);
+    setMinutes(minutesFromDate(new Date()));
+  }, []);
 
   useEffect(() => {
     setHasOrientationApi(typeof window !== "undefined" && "DeviceOrientationEvent" in window);
@@ -74,6 +83,9 @@ export function ApartmentSolarPanel({
       title="Sonnenstand"
       subtitle="Sonnenverlauf und Licht zur gewählten Uhrzeit — Orientierung für Besichtigung und Sonneneinstrahlung."
       defaultOpen={false}
+      onOpenChange={(open) => {
+        if (open) syncTimeToNow();
+      }}
     >
       <div data-testid="solar-panel" className="space-y-4 text-sm">
         <div className="rounded-lg bg-pn-bg-subtle border border-pn-border px-4 py-3">
@@ -114,7 +126,7 @@ export function ApartmentSolarPanel({
 
         <div className="flex flex-col sm:flex-row sm:items-end gap-4">
           <div className="min-w-0 sm:max-w-xs">
-            <SolarSeasonDateControls dayDate={dayDate} onDayDateChange={setDayDate} />
+            <SolarSeasonDateControls dayDate={dayDate} onDayDateChange={handleDayDateChange} />
           </div>
           <label className="flex flex-col gap-1 flex-1 min-w-0">
             <span className="text-xs text-pn-text-tertiary">
