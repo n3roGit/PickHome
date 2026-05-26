@@ -33,35 +33,37 @@ export function pitchFromOrientation(
   return -beta;
 }
 
-/** Pitch from gravity vector (m/s²), screen-adjusted. */
+/**
+ * Pitch from gravity (m/s²). Portrait: Y up along screen, camera looks toward -Z.
+ * 0° = level at horizon, positive = toward sky.
+ */
 export function pitchFromGravity(
   x: number,
   y: number,
   z: number,
   screenAngleDeg: number
 ): number {
-  let gx = x;
-  let gy = y;
-  let gz = z;
   const norm = normalizeScreenAngle(screenAngleDeg);
+  let ay = y;
+  let az = z;
 
   if (norm === 90) {
-    gx = y;
-    gy = -x;
+    ay = -x;
+    az = y;
   } else if (norm === 270) {
-    gx = -y;
-    gy = x;
+    ay = x;
+    az = -y;
   } else if (norm === 180) {
-    gy = -y;
-    gz = -z;
+    ay = -y;
+    az = -z;
   }
 
-  return (Math.atan2(gx, Math.hypot(gy, gz)) * 180) / Math.PI;
+  return (Math.atan2(az, -ay) * 180) / Math.PI;
 }
 
 export function mergePitchReadings(orientationPitch: number | null, gravityPitch: number | null): number | null {
   if (orientationPitch != null && gravityPitch != null) {
-    return orientationPitch * 0.4 + gravityPitch * 0.6;
+    return orientationPitch * 0.75 + gravityPitch * 0.25;
   }
   return gravityPitch ?? orientationPitch;
 }

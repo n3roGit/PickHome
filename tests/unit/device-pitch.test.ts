@@ -20,6 +20,18 @@ describe("device-pitch", () => {
 
   it("pitchFromGravity is near 0 when gravity pulls along device Y", () => {
     const pitch = pitchFromGravity(0, -9.8, 0, 0);
-    expect(Math.abs(pitch)).toBeLessThan(10);
+    expect(Math.abs(pitch)).toBeLessThan(5);
+  });
+
+  it("pitchFromGravity positive when top tilted back (look at sky)", () => {
+    const pitch = pitchFromGravity(0, -8.5, 4.9, 0);
+    expect(pitch).toBeGreaterThan(20);
+    expect(pitch).toBeLessThan(40);
+  });
+
+  it("pitchFromGravity negative when top tilted forward (look down)", () => {
+    const pitch = pitchFromGravity(0, -8.5, -4.9, 0);
+    expect(pitch).toBeLessThan(-20);
+    expect(pitch).toBeGreaterThan(-40);
   });
 });
