@@ -1,32 +1,47 @@
 import { describe, expect, it } from "vitest";
 import {
-  compassHeadingFromOrientation,
+  normalizeBetaForVerticalAr,
+  viewHeadingFromOrientation,
   viewOrientationFromEvent,
   viewPitchFromOrientation,
 } from "@/lib/device-orientation-ar";
 
 describe("device-orientation-ar", () => {
+  it("normalizeBetaForVerticalAr maps Android upright beta 0 to W3C 90", () => {
+    expect(normalizeBetaForVerticalAr(0)).toBe(90);
+    expect(normalizeBetaForVerticalAr(90)).toBe(90);
+  });
+
   it("vertical hold (W3C beta=90): pitch near horizon", () => {
-    const pitch = viewPitchFromOrientation(0, 90, 0, 0);
-    expect(Math.abs(pitch)).toBeLessThan(8);
+    expect(Math.abs(viewPitchFromOrientation(0, 90, 0, 0))).toBeLessThan(8);
   });
 
-  it("tilt top back (beta 90→45): positive pitch toward sky", () => {
-    const pitch = viewPitchFromOrientation(0, 45, 0, 0);
+  it("Android-style vertical (beta=0): pitch near horizon", () => {
+    expect(Math.abs(viewPitchFromOrientation(0, 0, 0, 0))).toBeLessThan(8);
+  });
+
+  it("tilt top back (beta 90→60): positive pitch toward sky", () => {
+    const pitch = viewPitchFromOrientation(0, 60, 0, 0);
     expect(pitch).toBeGreaterThan(15);
-    expect(pitch).toBeLessThan(50);
+    expect(pitch).toBeLessThan(40);
   });
 
-  it("tilt top forward (beta 90→135): negative pitch toward ground", () => {
-    const pitch = viewPitchFromOrientation(0, 135, 0, 0);
+  it("tilt top forward (beta 90→120): negative pitch toward ground", () => {
+    const pitch = viewPitchFromOrientation(0, 120, 0, 0);
     expect(pitch).toBeLessThan(-15);
-    expect(pitch).toBeGreaterThan(-50);
+    expect(pitch).toBeGreaterThan(-40);
   });
 
-  it("compass heading follows alpha when vertical", () => {
-    const h0 = compassHeadingFromOrientation(0, 90, 0);
-    const h90 = compassHeadingFromOrientation(90, 90, 0);
+  it("camera heading follows alpha when vertical (iOS and Android beta)", () => {
+    const h0 = viewHeadingFromOrientation(0, 90, 0, 0);
+    const h90 = viewHeadingFromOrientation(90, 0, 0, 0);
     expect(Math.abs(h90 - h0)).toBeGreaterThan(45);
+  });
+
+  it("portrait vertical: heading uses alpha as compass bearing", () => {
+    expect(viewHeadingFromOrientation(142, 90, 0, 0)).toBe(142);
+    expect(viewHeadingFromOrientation(142, 0, 0, 0)).toBe(142);
+    expect(viewHeadingFromOrientation(90, 90, 0, 0)).toBe(90);
   });
 
   it("viewOrientationFromEvent returns null for missing values", () => {

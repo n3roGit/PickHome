@@ -134,14 +134,7 @@ function getScreenAngle(): number {
 }
 
 function readOrientation(e: DeviceOrientationEvent): { heading: number; pitch: number } | null {
-  const ios = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
-  const view = viewOrientationFromEvent(e.alpha, e.beta, e.gamma, getScreenAngle());
-  if (!view) return null;
-
-  if (typeof ios.webkitCompassHeading === "number" && !Number.isNaN(ios.webkitCompassHeading)) {
-    return { heading: ios.webkitCompassHeading, pitch: view.pitch };
-  }
-  return view;
+  return viewOrientationFromEvent(e.alpha, e.beta, e.gamma, getScreenAngle());
 }
 
 function horizonYFromPitch(pitch: number, h: number): number {

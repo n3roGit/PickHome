@@ -58,15 +58,85 @@ export function mat3RotateZ(deg: number): number[] {
 }
 
 /**
- * Compass heading (degrees, 0 = north, clockwise) when the device is held vertically
- * for AR — W3C worked example A.1.
+ * Map device beta to W3C portrait-vertical frame (beta ≈ 90 when held for AR).
+ * iOS reports ~90 upright; Android/Chrome often ~0 upright.
  */
+export function normalizeBetaForVerticalAr(beta: number): number {
+  if (Math.abs(beta) < 45) {
+    return 90 + beta;
+  }
+  return beta;
+}
+
+function earthFrameMatrix(
+  alpha: number,
+  beta: number,
+  gamma: number,
+  screenAngleDeg: number
+): number[] {
+  const b = normalizeBetaForVerticalAr(beta);
+  const r = getRotationMatrix(alpha, b, gamma);
+  const rs = mat3RotateZ(-normalizeScreenAngle(screenAngleDeg));
+  return multiplyMat3(rs, r);
+}
+
+/** Rear-camera look vector in Earth frame (horizontal dx/dy, vertical dz). */
+function cameraLookVector(
+  alpha: number,
+  beta: number,
+  gamma: number,
+  screenAngleDeg: number
+): { dx: number; dy: number; dz: number } {
+  const m = earthFrameMatrix(alpha, beta, gamma, screenAngleDeg);
+  return { dx: -m[2], dy: -m[5], dz: -m[8] };
+}
+
+/**
+ * Compass heading (0 = north, clockwise) from camera look direction.
+ */
+function isPortraitVerticalAr(beta: number, gamma: number): boolean {
+  const b = normalizeBetaForVerticalAr(beta);
+  return Math.abs(b - 90) < 25 && Math.abs(gamma) < 25;
+}
+
+/**
+ * Compass heading for portrait AR from device alpha (absolute orientation).
+ * Alpha is compass bearing of the device frame; screen rotation shifts the reference.
+ */
+function portraitArHeadingFromAlpha(alpha: number, screenAngleDeg: number): number {
+  const screen = normalizeScreenAngle(screenAngleDeg);
+  // Portrait (0°/180°): alpha tracks compass; landscape needs a quarter-turn offset.
+  const offset = screen === 90 || screen === 270 ? 90 : 0;
+  return normalizeScreenAngle(alpha + offset);
+}
+
+export function viewHeadingFromOrientation(
+  alpha: number,
+  beta: number,
+  gamma: number,
+  screenAngleDeg: number
+): number {
+  if (isPortraitVerticalAr(beta, gamma)) {
+    return portraitArHeadingFromAlpha(alpha, screenAngleDeg);
+  }
+
+  const { dx, dy } = cameraLookVector(alpha, beta, gamma, screenAngleDeg);
+
+  let heading = Math.atan2(dx, dy);
+  if (dy < 0) heading += Math.PI;
+  else if (dx < 0) heading += 2 * Math.PI;
+
+  return (heading * 180) / Math.PI;
+}
+
+/** @deprecated Use viewHeadingFromOrientation; kept for tests comparing W3C top-edge formula. */
 export function compassHeadingFromOrientation(
   alpha: number,
   beta: number,
   gamma: number
 ): number {
-  const _x = beta * DEG2RAD;
+  const b = normalizeBetaForVerticalAr(beta);
+  const _x = b * DEG2RAD;
   const _y = gamma * DEG2RAD;
   const _z = alpha * DEG2RAD;
 
@@ -89,7 +159,6 @@ export function compassHeadingFromOrientation(
 
 /**
  * Camera elevation: 0° = level at horizon, positive = toward sky.
- * Uses back-camera look direction (-Z in device frame) in the Earth frame.
  */
 export function viewPitchFromOrientation(
   alpha: number,
@@ -97,15 +166,7 @@ export function viewPitchFromOrientation(
   gamma: number,
   screenAngleDeg: number
 ): number {
-  const r = getRotationMatrix(alpha, beta, gamma);
-  const rs = mat3RotateZ(-normalizeScreenAngle(screenAngleDeg));
-  const m = multiplyMat3(rs, r);
-
-  // Device -Z (rear camera forward) in world coordinates = negative third column
-  const dx = -m[2];
-  const dy = -m[5];
-  const dz = -m[8];
-
+  const { dx, dy, dz } = cameraLookVector(alpha, beta, gamma, screenAngleDeg);
   const horizontal = Math.hypot(dx, dy);
   return (Math.atan2(-dz, horizontal) * 180) / Math.PI;
 }
@@ -133,7 +194,7 @@ export function viewOrientationFromEvent(
   }
 
   return {
-    heading: compassHeadingFromOrientation(alpha, beta, gamma),
+    heading: viewHeadingFromOrientation(alpha, beta, gamma, screenAngleDeg),
     pitch: viewPitchFromOrientation(alpha, beta, gamma, screenAngleDeg),
   };
 }
