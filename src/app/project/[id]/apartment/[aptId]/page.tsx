@@ -75,6 +75,7 @@ import {
   countSubsidyHints,
   matchApartmentSubsidies,
 } from "@/lib/subsidy-matching";
+import { getOrFetchBorisForApartment } from "@/lib/boris-cache";
 
 const ApartmentPhotos = dynamic(() => import("@/components/ApartmentPhotos"));
 
@@ -338,6 +339,7 @@ export default async function ApartmentPage({
     address: apartment.address,
   });
   const subsidyHintCount = countSubsidyHints(subsidyMatches);
+  const borisSnapshot = await getOrFetchBorisForApartment(prisma, apartment.id);
 
   return (
     <>
@@ -487,6 +489,7 @@ export default async function ApartmentPage({
           netHouseholdIncome={project.netHouseholdIncome}
           monthlyFixedCosts={project.monthlyFixedCosts}
           settingsHref={`/project/${project.id}?tab=settings`}
+          borisSnapshot={borisSnapshot}
         />
         <CollapsibleSection
           title="Förderungen prüfen"

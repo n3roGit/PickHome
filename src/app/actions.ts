@@ -24,6 +24,7 @@ import {
   invalidateCommuteCacheForUser,
   invalidateCommuteCacheForUserAddress,
 } from "@/lib/commute-cache";
+import { refreshBorisForApartment } from "@/lib/boris-cache";
 import {
   resolveApartmentGeocode,
   scheduleApartmentAddressEnrichment,
@@ -650,6 +651,15 @@ export async function geocodeApartmentAddressAction(apartmentId: string, formDat
     redirectParams.set("address_geocode_failed", "1");
   }
   redirect(`${base}?${redirectParams.toString()}`);
+}
+
+export async function refreshApartmentBorisAction(apartmentId: string) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user);
+  if (!apt) redirect("/dashboard");
+
+  await refreshBorisForApartment(prisma, apartmentId);
+  revalidateApartment(apt.projectId, apartmentId);
 }
 
 export async function updateApartmentBasicsAction(apartmentId: string, formData: FormData) {
