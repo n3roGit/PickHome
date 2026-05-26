@@ -1,14 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  compassFromAzimuth,
-  dateAtMinutesOnDay,
   formatSolarTime,
-  getSolarSample,
-  minutesFromDate,
+  getSolarArc,
+  type SolarSample,
 } from "@/lib/solar-position";
+
+const AR_FOV_DEG = 60;
+const AR_HORIZON_Y_RATIO = 0.55;
+const AR_ALTITUDE_SCALE = 0.35;
+/** Per animation frame — lower = calmer compass overlay */
+const HEADING_SMOOTH_PER_FRAME = 0.08;
+const MARKER_SMOOTH_PER_FRAME = 0.14;
+
+type ProjectedSun = {
+  sample: SolarSample;
+  x: number;
+  y: number;
+  isNow: boolean;
+};
 
 type ArError =
   | "https_required"
@@ -90,6 +102,23 @@ function mapStartError(err: unknown): ArError {
   return "camera_denied";
 }
 
+function lerpAngleDeg(current: number, target: number, factor: number): number {
+  const delta = ((target - current + 540) % 360) - 180;
+  return (current + delta * factor + 360) % 360;
+}
+
+function smoothPoint(
+  prev: { x: number; y: number } | undefined,
+  target: { x: number; y: number },
+  factor: number
+): { x: number; y: number } {
+  if (!prev) return target;
+  return {
+    x: prev.x + (target.x - prev.x) * factor,
+    y: prev.y + (target.y - prev.y) * factor,
+  };
+}
+
 function readHeading(e: DeviceOrientationEvent): number | null {
   const ios = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
   if (typeof ios.webkitCompassHeading === "number" && !Number.isNaN(ios.webkitCompassHeading)) {
@@ -104,23 +133,57 @@ function readHeading(e: DeviceOrientationEvent): number | null {
   return null;
 }
 
+function projectSun(
+  sample: SolarSample,
+  heading: number,
+  w: number,
+  h: number
+): { x: number; y: number } | null {
+  if (!sample.isUp) return null;
+  const horizonY = h * AR_HORIZON_Y_RATIO;
+  const delta = ((sample.azimuthDeg - heading + 540) % 360) - 180;
+  const x = w / 2 + (delta / AR_FOV_DEG) * w;
+  const y = horizonY - Math.sin((sample.altitudeDeg * Math.PI) / 180) * (h * AR_ALTITUDE_SCALE);
+  if (x < -20 || x > w + 20) return null;
+  return { x, y };
+}
+
+function isSameCalendarDay(a: Date, b: Date, timeZone: string): boolean {
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+  return fmt(a) === fmt(b);
+}
+
+function isCurrentHour(sample: Date, now: Date, timeZone: string): boolean {
+  if (!isSameCalendarDay(sample, now, timeZone)) return false;
+  const hourFmt = (d: Date) =>
+    d.toLocaleTimeString("en-GB", { timeZone, hour: "2-digit", hour12: false });
+  return hourFmt(sample) === hourFmt(now);
+}
+
 export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZone }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const headingRef = useRef<number | null>(null);
+  const smoothHeadingRef = useRef<number | null>(null);
+  const markerPosRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const rafRef = useRef<number | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
 
   const [phase, setPhase] = useState<"idle" | "requesting" | "running" | "error">("idle");
   const [error, setError] = useState<ArError | null>(null);
   const [cameraPreDenied, setCameraPreDenied] = useState(false);
-  const [dayDate, setDayDate] = useState(() => new Date());
-  const [minutes, setMinutes] = useState(() => minutesFromDate(new Date()));
-  const [showControls, setShowControls] = useState(false);
+  const [dayDate] = useState(() => new Date());
 
-  const selectedDate = dateAtMinutesOnDay(dayDate, minutes);
-  const sample = getSolarSample(selectedDate, latitude, longitude);
+  const hourlySamples = useMemo(
+    () => getSolarArc(dayDate, latitude, longitude, 60),
+    [dayDate, latitude, longitude]
+  );
+  const sunlitHourly = useMemo(
+    () => hourlySamples.filter((s) => s.isUp),
+    [hourlySamples]
+  );
 
   const stop = useCallback(() => {
     if (rafRef.current != null) {
@@ -129,6 +192,8 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
     }
     orientationCleanupRef.current?.();
     orientationCleanupRef.current = null;
+    smoothHeadingRef.current = null;
+    markerPosRef.current.clear();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     if (videoRef.current) {
@@ -151,7 +216,7 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
     if (!ctx) return;
 
     ctx.clearRect(0, 0, w, h);
-    const horizonY = h * 0.55;
+    const horizonY = h * AR_HORIZON_Y_RATIO;
     ctx.strokeStyle = "rgba(255,255,255,0.6)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -159,63 +224,112 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
     ctx.lineTo(w, horizonY);
     ctx.stroke();
 
-    const heading = headingRef.current;
-    const fov = 60;
-    const sunAz = sample.azimuthDeg;
-    const sunAlt = sample.altitudeDeg;
+    const rawHeading = headingRef.current;
+    const now = new Date();
 
-    if (heading == null) {
+    if (rawHeading == null) {
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.font = "14px system-ui, sans-serif";
       ctx.fillText("Kompass wird kalibriert …", 16, 32);
       return;
     }
 
-    if (!sample.isUp) {
+    let heading = smoothHeadingRef.current;
+    if (heading == null) {
+      heading = rawHeading;
+    } else {
+      heading = lerpAngleDeg(heading, rawHeading, HEADING_SMOOTH_PER_FRAME);
+    }
+    smoothHeadingRef.current = heading;
+
+    if (sunlitHourly.length === 0) {
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.font = "14px system-ui, sans-serif";
-      ctx.fillText("Sonne unter Horizont zur gewählten Zeit", 16, 32);
+      ctx.fillText("Heute keine Sonne über dem Horizont", 16, 32);
       return;
     }
 
-    const delta = ((sunAz - heading + 540) % 360) - 180;
-    const x = w / 2 + (delta / fov) * w;
-    const y = horizonY - Math.sin((sunAlt * Math.PI) / 180) * (h * 0.35);
-
-    if (x >= 0 && x <= w) {
-      ctx.beginPath();
-      ctx.arc(x, y, 14, 0, Math.PI * 2);
-      ctx.fillStyle = "#f59e0b";
-      ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    } else {
-      const arrowX = x < 0 ? 24 : w - 24;
-      ctx.fillStyle = "rgba(255,255,255,0.95)";
-      ctx.font = "bold 20px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(x < 0 ? "←" : "→", arrowX, horizonY - 8);
-      ctx.textAlign = "left";
-      ctx.font = "13px system-ui, sans-serif";
-      ctx.fillText("Handy drehen", arrowX - (x < 0 ? 0 : 40), horizonY + 20);
+    const projected: ProjectedSun[] = [];
+    const activeKeys = new Set<number>();
+    for (const sample of sunlitHourly) {
+      const pos = projectSun(sample, heading, w, h);
+      if (!pos || pos.x < 0 || pos.x > w) continue;
+      const key = sample.date.getTime();
+      activeKeys.add(key);
+      const smoothed = smoothPoint(
+        markerPosRef.current.get(key),
+        pos,
+        MARKER_SMOOTH_PER_FRAME
+      );
+      markerPosRef.current.set(key, smoothed);
+      projected.push({
+        sample,
+        x: smoothed.x,
+        y: smoothed.y,
+        isNow: isCurrentHour(sample.date, now, timeZone),
+      });
+    }
+    for (const key of markerPosRef.current.keys()) {
+      if (!activeKeys.has(key)) markerPosRef.current.delete(key);
     }
 
+    if (projected.length > 0) {
+      ctx.strokeStyle = "rgba(245, 158, 11, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const sorted = [...projected].sort((a, b) => a.x - b.x);
+      ctx.moveTo(sorted[0]!.x, sorted[0]!.y);
+      for (let i = 1; i < sorted.length; i++) {
+        ctx.lineTo(sorted[i]!.x, sorted[i]!.y);
+      }
+      ctx.stroke();
+    }
+
+    for (const { sample, x, y, isNow } of projected) {
+      const r = isNow ? 14 : 9;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = isNow ? "#f59e0b" : "rgba(245, 158, 11, 0.75)";
+      ctx.fill();
+      ctx.strokeStyle = isNow ? "#fff" : "rgba(255,255,255,0.7)";
+      ctx.lineWidth = isNow ? 2 : 1;
+      ctx.stroke();
+
+      const label = formatSolarTime(sample.date, timeZone);
+      ctx.font = isNow ? "bold 11px system-ui, sans-serif" : "10px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(label, x, y - r - 6);
+      ctx.textAlign = "left";
+    }
+
+    if (projected.length === 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.fillText("Handy drehen — stündliche Sonnen im Sichtfeld", 16, 32);
+    }
+
+    const dayLabel = dayDate.toLocaleDateString("de-DE", {
+      timeZone,
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+    });
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(0, h - 72, w, 72);
     ctx.fillStyle = "#fff";
     ctx.font = "12px system-ui, sans-serif";
     ctx.fillText(
-      `Heading ${heading.toFixed(0)}° · Sonne ${compassFromAzimuth(sunAz)} ${sunAz.toFixed(0)}° · ${sunAlt.toFixed(0)}° · ${formatSolarTime(selectedDate, timeZone)}`,
+      `Heading ${heading.toFixed(0)}° · ${sunlitHourly.length} Stunden mit Sonne · ${dayLabel}`,
       12,
       h - 44
     );
     ctx.fillText(
-      "Kompass kann ungenau sein. Vom Magnetfeld weghalten, Handy in Achterform bewegen.",
+      "Orange Marken = volle Stunden heute · große Marke = aktuelle Stunde · Handy drehen",
       12,
       h - 24
     );
-  }, [phase, sample, selectedDate, timeZone]);
+  }, [phase, sunlitHourly, dayDate, timeZone]);
 
   useEffect(() => {
     if (phase !== "running") return;
@@ -321,20 +435,14 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
           ← Zurück
         </Link>
         <p className="text-sm truncate opacity-90">{title}</p>
-        <button
-          type="button"
-          className="text-xs px-2 py-1 rounded border border-white/30 shrink-0"
-          onClick={() => setShowControls((v) => !v)}
-        >
-          Zeit
-        </button>
+        <span className="text-xs opacity-70 shrink-0">Stündlich</span>
       </div>
 
       {phase === "idle" && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
           <p className="text-center text-sm text-white/80 max-w-sm">
-            Live-Kamera mit Sonnenmarkierung. Kompass kann ungenau sein — Handy vom Magnetfeld
-            weghalten und in Achterform bewegen.
+            Live-Kamera mit stündlichen Sonnenmarken für heute (volle Stunden). Große Marke =
+            aktuelle Stunde. Handy drehen, um die Bahn im Sichtfeld zu sehen.
           </p>
           {isLanHttp() && (
             <p className="text-center text-sm text-amber-200/90 max-w-sm">
@@ -390,20 +498,6 @@ export function ApartmentSolarAr({ backHref, title, latitude, longitude, timeZon
         </>
       )}
 
-      {showControls && phase === "running" && (
-        <div className="absolute bottom-20 left-3 right-3 z-20 rounded-lg bg-black/80 p-3 text-sm space-y-2">
-          <input
-            type="range"
-            min={0}
-            max={1440}
-            step={15}
-            value={minutes}
-            onChange={(e) => setMinutes(Number(e.target.value))}
-            className="w-full accent-pn-accent"
-          />
-          <p className="text-xs opacity-80">{formatSolarTime(selectedDate, timeZone)}</p>
-        </div>
-      )}
     </div>
   );
 }

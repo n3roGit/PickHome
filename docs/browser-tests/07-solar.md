@@ -10,6 +10,7 @@
 - When a future viewing appointment exists, a line describes sun position at that appointment time.
 - **AR vor Ort öffnen** (only when `DeviceOrientationEvent` is available) navigates to `/project/.../apartment/.../sonne-ar` without crashing.
 - The AR page shows controlled errors for HTTPS/camera/compass denial — no uncaught exceptions or Next.js overlay.
+- After **Kamera + Kompass starten**, hourly sun markers for **today** appear in the camera view (no time slider); the current hour uses a larger marker.
 
 ## Data requirements
 
