@@ -172,8 +172,18 @@ model Apartment {
   documents   ApartmentDocument[]
   viewings      ViewingAppointment[]
   commuteCaches CommuteCache[]
+  borisCache        ApartmentBorisCache?
   priceHistory      ApartmentPriceHistory[]
   checklistEntries  ChecklistEntry[]
+}
+
+model ApartmentBorisCache {
+  apartmentId  String    @id
+  fetchedAt    DateTime  @default(now())
+  status       String
+  errorMessage String?
+  resultsJson  String?
+  apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
 }
 
 model ChecklistItem {
