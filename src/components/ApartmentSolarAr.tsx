@@ -3,11 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
-import {
-  mergePitchReadings,
-  pitchFromGravity,
-  pitchFromOrientation,
-} from "@/lib/device-pitch";
+import { viewOrientationFromEvent } from "@/lib/device-orientation-ar";
 import {
   formatSolarTime,
   getSolarArc,
@@ -137,18 +133,15 @@ function getScreenAngle(): number {
   return screen.orientation?.angle ?? (typeof window.orientation === "number" ? window.orientation : 0);
 }
 
-function readHeading(e: DeviceOrientationEvent): number | null {
+function readOrientation(e: DeviceOrientationEvent): { heading: number; pitch: number } | null {
   const ios = e as DeviceOrientationEvent & { webkitCompassHeading?: number };
+  const view = viewOrientationFromEvent(e.alpha, e.beta, e.gamma, getScreenAngle());
+  if (!view) return null;
+
   if (typeof ios.webkitCompassHeading === "number" && !Number.isNaN(ios.webkitCompassHeading)) {
-    return ios.webkitCompassHeading;
+    return { heading: ios.webkitCompassHeading, pitch: view.pitch };
   }
-  if (e.absolute && e.alpha != null && !Number.isNaN(e.alpha)) {
-    return (360 - e.alpha) % 360;
-  }
-  if (e.alpha != null && !Number.isNaN(e.alpha)) {
-    return (360 - e.alpha) % 360;
-  }
-  return null;
+  return view;
 }
 
 function horizonYFromPitch(pitch: number, h: number): number {
@@ -202,7 +195,6 @@ export function ApartmentSolarAr({
   const streamRef = useRef<MediaStream | null>(null);
   const headingRef = useRef<number | null>(null);
   const pitchRef = useRef<number | null>(null);
-  const gravityPitchRef = useRef<number | null>(null);
   const smoothHeadingRef = useRef<number | null>(null);
   const smoothPitchRef = useRef<number | null>(null);
   const markerPosRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -232,7 +224,6 @@ export function ApartmentSolarAr({
     orientationCleanupRef.current = null;
     smoothHeadingRef.current = null;
     smoothPitchRef.current = null;
-    gravityPitchRef.current = null;
     markerPosRef.current.clear();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -450,28 +441,17 @@ export function ApartmentSolarAr({
       }
 
       const onOrientation = (e: DeviceOrientationEvent) => {
-        const h = readHeading(e);
-        if (h != null) headingRef.current = h;
-        const oriPitch = pitchFromOrientation(e.beta, e.gamma, getScreenAngle());
-        const merged = mergePitchReadings(oriPitch, gravityPitchRef.current);
-        if (merged != null) pitchRef.current = merged;
-      };
-
-      const onMotion = (e: DeviceMotionEvent) => {
-        const acc = e.accelerationIncludingGravity;
-        if (!acc || acc.x == null || acc.y == null || acc.z == null) return;
-        gravityPitchRef.current = pitchFromGravity(acc.x, acc.y, acc.z, getScreenAngle());
+        const view = readOrientation(e);
+        if (!view) return;
+        headingRef.current = view.heading;
+        pitchRef.current = view.pitch;
       };
 
       window.addEventListener("deviceorientationabsolute", onOrientation, true);
       window.addEventListener("deviceorientation", onOrientation, true);
-      if ("DeviceMotionEvent" in window) {
-        window.addEventListener("devicemotion", onMotion, true);
-      }
       orientationCleanupRef.current = () => {
         window.removeEventListener("deviceorientationabsolute", onOrientation, true);
         window.removeEventListener("deviceorientation", onOrientation, true);
-        window.removeEventListener("devicemotion", onMotion, true);
       };
 
       setPhase("running");
