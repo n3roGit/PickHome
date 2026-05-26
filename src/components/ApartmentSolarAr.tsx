@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
+  mergePitchReadings,
+  pitchFromGravity,
+  pitchFromOrientation,
+} from "@/lib/device-pitch";
+import {
   formatSolarTime,
   getSolarArc,
   type SolarSample,
@@ -11,8 +16,8 @@ import {
 
 const AR_FOV_DEG = 60;
 const AR_VERTICAL_FOV_DEG = 60;
-/** Hide suns this many degrees below the viewer horizon */
-const AR_HORIZON_MARGIN_DEG = 3;
+/** Hide suns clearly below the viewer horizon (tolerance for sensor noise) */
+const AR_HORIZON_MARGIN_DEG = 12;
 /** Per animation frame — lower = calmer compass overlay */
 const HEADING_SMOOTH_PER_FRAME = 0.08;
 const PITCH_SMOOTH_PER_FRAME = 0.1;
@@ -127,20 +132,8 @@ function smoothPoint(
   };
 }
 
-/**
- * Camera elevation: 0° = level at horizon, positive = looking up at the sky.
- * Uses DeviceOrientation beta/gamma (portrait-primary); not GPS.
- */
-function readPitch(e: DeviceOrientationEvent): number | null {
-  if (e.beta == null || Number.isNaN(e.beta)) return null;
-  const ori = screen.orientation?.angle ?? 0;
-  if (ori === 90) {
-    return e.gamma != null && !Number.isNaN(e.gamma) ? 90 - e.gamma : null;
-  }
-  if (ori === 270) {
-    return e.gamma != null && !Number.isNaN(e.gamma) ? e.gamma - 90 : null;
-  }
-  return -e.beta;
+function getScreenAngle(): number {
+  return screen.orientation?.angle ?? (typeof window.orientation === "number" ? window.orientation : 0);
 }
 
 function readHeading(e: DeviceOrientationEvent): number | null {
@@ -208,6 +201,7 @@ export function ApartmentSolarAr({
   const streamRef = useRef<MediaStream | null>(null);
   const headingRef = useRef<number | null>(null);
   const pitchRef = useRef<number | null>(null);
+  const gravityPitchRef = useRef<number | null>(null);
   const smoothHeadingRef = useRef<number | null>(null);
   const smoothPitchRef = useRef<number | null>(null);
   const markerPosRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -237,6 +231,7 @@ export function ApartmentSolarAr({
     orientationCleanupRef.current = null;
     smoothHeadingRef.current = null;
     smoothPitchRef.current = null;
+    gravityPitchRef.current = null;
     markerPosRef.current.clear();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -380,7 +375,7 @@ export function ApartmentSolarAr({
     ctx.fillStyle = "#fff";
     ctx.font = "12px system-ui, sans-serif";
     ctx.fillText(
-      `Heading ${heading.toFixed(0)}° · ${sunlitHourly.length} Stunden mit Sonne · ${dayLabel}`,
+      `Heading ${heading.toFixed(0)}° · Neigung ${pitch.toFixed(0)}° · ${sunlitHourly.length} h Sonne · ${dayLabel}`,
       12,
       h - 44
     );
@@ -456,14 +451,26 @@ export function ApartmentSolarAr({
       const onOrientation = (e: DeviceOrientationEvent) => {
         const h = readHeading(e);
         if (h != null) headingRef.current = h;
-        const p = readPitch(e);
-        if (p != null) pitchRef.current = p;
+        const oriPitch = pitchFromOrientation(e.beta, e.gamma, getScreenAngle());
+        const merged = mergePitchReadings(oriPitch, gravityPitchRef.current);
+        if (merged != null) pitchRef.current = merged;
       };
+
+      const onMotion = (e: DeviceMotionEvent) => {
+        const acc = e.accelerationIncludingGravity;
+        if (!acc || acc.x == null || acc.y == null || acc.z == null) return;
+        gravityPitchRef.current = pitchFromGravity(acc.x, acc.y, acc.z, getScreenAngle());
+      };
+
       window.addEventListener("deviceorientationabsolute", onOrientation, true);
       window.addEventListener("deviceorientation", onOrientation, true);
+      if ("DeviceMotionEvent" in window) {
+        window.addEventListener("devicemotion", onMotion, true);
+      }
       orientationCleanupRef.current = () => {
         window.removeEventListener("deviceorientationabsolute", onOrientation, true);
         window.removeEventListener("deviceorientation", onOrientation, true);
+        window.removeEventListener("devicemotion", onMotion, true);
       };
 
       setPhase("running");
