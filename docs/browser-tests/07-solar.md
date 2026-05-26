@@ -1,0 +1,36 @@
+# Feature: Apartment Sonnenstand, Sonnenbahn, AR-Kompass
+
+## Must always hold
+
+- On an apartment detail page with geocoded coordinates (`latitude` and `longitude` set), a collapsible section **Sonnenstand** is visible (`data-testid="solar-panel"`).
+- Without coordinates, the section is **not** shown and the page loads without runtime errors.
+- The panel shows sun altitude and compass direction for the selected date/time; sunrise, sunset, solar noon, and golden-hour times use the app timezone.
+- The time slider (`data-testid="solar-time-slider"`) updates displayed altitude, direction, and map overlay without a full page reload.
+- **Auf Karte zeigen** toggles a Leaflet mini map (`data-testid="solar-map"`) with a sun-path arc and a marker for the current slider time.
+- When a future viewing appointment exists, a line describes sun position at that appointment time.
+- **AR vor Ort öffnen** (only when `DeviceOrientationEvent` is available) navigates to `/project/.../apartment/.../sonne-ar` without crashing.
+- The AR page shows controlled errors for HTTPS/camera/compass denial — no uncaught exceptions or Next.js overlay.
+
+## Data requirements
+
+- Profile `rich` or `map`: at least one apartment with geocoded coordinates.
+- Optional: same or another apartment with a **future** viewing appointment for the viewing-time line.
+- Optional: one apartment without coordinates to verify the section is hidden.
+
+## Negative cases
+
+- Apartment without coordinates: no solar section; no console errors.
+- AR on desktop or without permissions: `data-testid="solar-ar-error"` or idle state with clear message; no crash.
+- AR over plain HTTP (non-localhost): `https_required` message is acceptable (Severity: Medium).
+
+## Evidence
+
+- Snapshot: solar panel expanded with day times visible.
+- Snapshot: map visible after **Auf Karte zeigen**; sun marker moves when slider changes.
+- Snapshot: AR page after opening link (error or running state).
+- `list_console_messages` after each step — no red errors.
+- Mobile viewport 390×844: panel and slider usable without horizontal overflow.
+
+## Run order hint
+
+After opening an apartment detail (main checklist §9 step 9), expand **Sonnenstand**, exercise slider and map, then optionally open AR. Re-check **Preis & Adresse** save and PDF dialog if this was a release regression pass.

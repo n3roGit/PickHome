@@ -231,7 +231,7 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Finanzen** (Fixkosten, Gesamtbelastung, Rest, optional **Kaltmiete / Mietdeckung / Eigenanteil Rate**, **Bodenrichtwert (Info)** list from BORIS-D with disclaimer and **Aktualisieren**), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF dialog (Vollständig + Bankberater)** | Save or controlled no-op; no flicker after save/reload; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; Bodenrichtwert list appears for geocoded apartment (or `no_coords` hint); **Aktualisieren** refreshes without runtime errors; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Sonnenstand** (Tagesdaten, time slider, optional map arc, viewing-time line), **Finanzen** (Fixkosten, Gesamtbelastung, Rest, optional **Kaltmiete / Mietdeckung / Eigenanteil Rate**, **Bodenrichtwert (Info)** list from BORIS-D with disclaimer and **Aktualisieren**), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF dialog (Vollständig + Bankberater)** | Save or controlled no-op; no flicker after save/reload; solar panel only with coordinates; slider updates sun values and map marker; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; Bodenrichtwert list appears for geocoded apartment (or `no_coords` hint); **Aktualisieren** refreshes without runtime errors; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status buttons (○/✕/✓, tap only), notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments; **Gesamtbelastung/Monat (grob)** when finance configured | Comparison table appears |
 | Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
@@ -252,6 +252,7 @@ Stable per-area contracts. UI labels may change; user outcomes must not break. S
 | Listing import, Auto-Fill, Immobilien-Assistent (KI chat) | [04-listing-llm.md](browser-tests/04-listing-llm.md) |
 | Backup export/restore, mobile viewport | [05-backup-mobile.md](browser-tests/05-backup-mobile.md) |
 | Photo gallery, thumbnails, upload queue, camera | [06-photo-gallery.md](browser-tests/06-photo-gallery.md) |
+| Apartment Sonnenstand, sun path map, AR compass | [07-solar.md](browser-tests/07-solar.md) |
 | Regression case library (reference table) | [regression-library.md](browser-tests/regression-library.md) |
 
 New features: add or extend the matching contract file and register it in this table. Template: **§17**.
@@ -334,6 +335,7 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] KI chat: finance/commute/checklist estimate questions answered as **Schätzung** (if LLM context changed)
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
 [ ] Photo gallery: grid loads WebP thumbs; lightbox loads original; upload/delete/reload if photo code changed
+[ ] Solar: Sonnenstand panel (geocoded apartment), slider changes values, map shows sun path (if solar code changed)
 [ ] Photo gallery mobile (Android Chrome 412x915 + iPhone 390x844): swipe between images, double-tap or pinch zoom, no pull-down close, lightbox uses 100dvh (no jump when address bar collapses), bottom toolbar above gesture bar
 [ ] PDF dialog opens with two variants; both downloads succeed with correct filenames if apartment-pdf code changed
 [ ] Auto-Fill save + reload verified on disposable apartment
