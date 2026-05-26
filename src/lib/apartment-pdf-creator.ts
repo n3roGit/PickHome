@@ -18,6 +18,9 @@ const SCORE_COLORS = {
   low: "#dc2626",
 } as const;
 
+/** Reserved bottom area on every page so flowing content does not overlap the fixed footer. */
+const PDF_FOOTER_RESERVED_PT = 56;
+
 function scoreBandColor(displayScore: number, dealbreaker: boolean): string {
   if (dealbreaker || displayScore <= 40) return SCORE_COLORS.low;
   if (displayScore >= 71) return SCORE_COLORS.high;
@@ -51,7 +54,7 @@ function createStyles(StyleSheet: PdfModule["StyleSheet"]) {
   return StyleSheet.create({
     page: {
       paddingTop: 40,
-      paddingBottom: 48,
+      paddingBottom: PDF_FOOTER_RESERVED_PT,
       paddingHorizontal: 40,
       fontSize: 10,
       fontFamily: "Helvetica",
@@ -60,9 +63,10 @@ function createStyles(StyleSheet: PdfModule["StyleSheet"]) {
     },
     footer: {
       position: "absolute",
-      bottom: 24,
+      bottom: 20,
       left: 40,
       right: 40,
+      marginBottom: -PDF_FOOTER_RESERVED_PT,
       fontSize: 8,
       color: "#64748b",
       borderTopWidth: 1,
@@ -107,6 +111,7 @@ function createStyles(StyleSheet: PdfModule["StyleSheet"]) {
       borderBottomWidth: 1,
       borderBottomColor: "#cbd5e1",
       color: "#0f172a",
+      minPresenceAhead: 20,
     },
     row: {
       flexDirection: "row",
@@ -536,15 +541,20 @@ function createApartmentPdfBody(
     );
   }
 
-  children.push(
-    React.createElement(
-      Text,
-      { style: styles.footer, fixed: true },
-      `PickHome · Export ${formatDateTimeDe(data.exportedAt, data.timeZone)} · Grobe Schätzungen, keine Rechts- oder Steuerberatung`
-    )
-  );
-
   return React.createElement(View, null, ...children.filter(Boolean));
+}
+
+function createApartmentPdfFooter(
+  React: ReactModule,
+  Text: PdfModule["Text"],
+  styles: PdfStyles,
+  data: ApartmentPdfData
+): ReactElement {
+  return React.createElement(
+    Text,
+    { style: styles.footer, fixed: true, wrap: false },
+    `PickHome · Export ${formatDateTimeDe(data.exportedAt, data.timeZone)} · Grobe Schätzungen, keine Rechts- oder Steuerberatung`
+  );
 }
 
 export function createApartmentPdfDocument(
@@ -565,8 +575,9 @@ export function createApartmentPdfDocument(
     },
     React.createElement(
       Page,
-      { size: "A4", style: styles.page },
-      createApartmentPdfBody(React, pdf, styles, data)
+      { size: "A4", style: styles.page, wrap: true },
+      createApartmentPdfBody(React, pdf, styles, data),
+      createApartmentPdfFooter(React, pdf.Text, styles, data)
     )
   );
 }
