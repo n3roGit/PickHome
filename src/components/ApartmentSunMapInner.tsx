@@ -107,12 +107,15 @@ export default function ApartmentSunMapInner({
     if (!map) return;
 
     function redrawSunLayers() {
-      const { arc, ray, marker } = layersRef.current;
-      if (arc) map.removeLayer(arc);
-      if (ray) map.removeLayer(ray);
-      if (marker) map.removeLayer(marker);
+      const activeMap = mapRef.current;
+      if (!activeMap) return;
 
-      const distanceM = arcDistanceMeters(map, latitude, longitude);
+      const { arc, ray, marker } = layersRef.current;
+      if (arc) activeMap.removeLayer(arc);
+      if (ray) activeMap.removeLayer(ray);
+      if (marker) activeMap.removeLayer(marker);
+
+      const distanceM = arcDistanceMeters(activeMap, latitude, longitude);
       const arcPoints: L.LatLngExpression[] = [];
       for (const sample of getSolarArc(selectedDate, latitude, longitude, 30)) {
         if (sample.altitudeDeg <= 0) continue;
@@ -126,7 +129,7 @@ export default function ApartmentSunMapInner({
           color: "#f59e0b",
           weight: 3,
           opacity: 0.85,
-        }).addTo(map);
+        }).addTo(activeMap);
       }
 
       const current = getSolarSample(selectedDate, latitude, longitude);
@@ -140,8 +143,8 @@ export default function ApartmentSunMapInner({
             [end.lat, end.lng],
           ],
           { color: "#ea580c", weight: 4, opacity: 1 }
-        ).addTo(map);
-        newMarker = L.marker([end.lat, end.lng], { icon: sunIcon() }).addTo(map);
+        ).addTo(activeMap);
+        newMarker = L.marker([end.lat, end.lng], { icon: sunIcon() }).addTo(activeMap);
       }
 
       layersRef.current.arc = newArc;
