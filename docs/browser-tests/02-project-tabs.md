@@ -223,6 +223,7 @@ calendar
 - Up to five apartments can be selected.
 - Selecting two or more apartments shows comparison tables.
 - Comparison includes scores, criteria, purchase or finance data where available, and partner divergence where supported.
+- Finance comparison includes **Gesamtbelastung/Monat (grob)**; when at least one selected apartment has **Kaltmiete**, also shows **Kaltmiete**, **Mietdeckung Rate**, **Gesamtbelastung/Monat nach Miete (grob)**, and **Anteil Rate am Netto (nach Miete)** when Haushaltsnetto is configured.
 - Deselecting apartments updates the comparison state.
 
 #### Negative cases

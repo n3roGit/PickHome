@@ -101,6 +101,7 @@ export async function getApartmentLlmBundle(
       heatingCostMonthly: row.heatingCostMonthly,
       propertyTaxAnnual: row.propertyTaxAnnual,
       renovationCost: row.renovationCost,
+      coldRentMonthly: row.coldRentMonthly,
       sizeSqm: row.sizeSqm,
       plotSizeSqm: row.plotSizeSqm,
     },

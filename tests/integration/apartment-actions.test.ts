@@ -198,6 +198,60 @@ describe("apartment server actions", () => {
     await prisma.$disconnect();
   });
 
+  it("updateApartmentBasicsAction stores and clears cold rent", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Rent test", revision: 0 },
+    });
+
+    const saveForm = new FormData();
+    saveForm.set(APARTMENT_REVISION_FIELD, "0");
+    saveForm.set("price", "350000");
+    saveForm.set("coldRentMonthly", "900");
+
+    await catchRedirect(() => updateApartmentBasicsAction(apt.id, saveForm));
+
+    let updated = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
+    expect(updated.coldRentMonthly).toBe(900);
+    expect(updated.revision).toBe(1);
+
+    const clearForm = new FormData();
+    clearForm.set(APARTMENT_REVISION_FIELD, String(updated.revision));
+    clearForm.set("price", "350000");
+    clearForm.set("coldRentMonthly", "");
+
+    await catchRedirect(() => updateApartmentBasicsAction(apt.id, clearForm));
+
+    updated = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
+    expect(updated.coldRentMonthly).toBeNull();
+    expect(updated.revision).toBe(2);
+    await prisma.$disconnect();
+  });
+
+  it("updateApartmentBasicsAction rejects invalid cold rent input", async () => {
+    const prisma = createTestPrisma();
+    const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });
+    const project = await createTestProject(prisma, user.id);
+    const apt = await prisma.apartment.create({
+      data: { projectId: project.id, title: "Rent invalid", revision: 0, coldRentMonthly: 500 },
+    });
+
+    const form = new FormData();
+    form.set(APARTMENT_REVISION_FIELD, "0");
+    form.set("price", "350000");
+    form.set("coldRentMonthly", "-100");
+
+    const { redirect: url } = await catchRedirect(() => updateApartmentBasicsAction(apt.id, form));
+    expect(url).toContain("basics_error=invalid_rent");
+
+    const unchanged = await prisma.apartment.findUniqueOrThrow({ where: { id: apt.id } });
+    expect(unchanged.coldRentMonthly).toBe(500);
+    expect(unchanged.revision).toBe(0);
+    await prisma.$disconnect();
+  });
+
   it("deleteApartmentAction removes apartment and upload folder", async () => {
     const prisma = createTestPrisma();
     const user = await prisma.user.findUniqueOrThrow({ where: { username: "testuser" } });

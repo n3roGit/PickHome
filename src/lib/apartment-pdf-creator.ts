@@ -3,6 +3,7 @@ import type { ApartmentPdfData, ApartmentPdfVariant } from "@/lib/apartment-pdf-
 import { formatDateDe, formatDateTimeDe } from "@/lib/dates";
 import {
   estimateFinancing,
+  formatBurdenShare,
   formatPercent,
   purchaseCostLinesWithRenovation,
 } from "@/lib/purchase-costs";
@@ -231,7 +232,8 @@ function renderBankFinancingSection(
   styles: PdfStyles,
   finance: ApartmentPdfData["finance"],
   price: number | null,
-  acquisitionTotal: number | null
+  acquisitionTotal: number | null,
+  coldRentMonthly: number | null
 ): ReactElement | null {
   if (finance.equityAmount == null && finance.loanTermYears == null) return null;
 
@@ -311,6 +313,26 @@ function renderBankFinancingSection(
       "Indikative Monatsrate (Annuität)",
       fin ? `${formatPrice(fin.monthlyPayment)}/Monat` : "—"
     ),
+    coldRentMonthly != null && coldRentMonthly > 0
+      ? keyValueRow(
+          React,
+          Text,
+          View,
+          styles,
+          "Kaltmiete / Monat",
+          `${formatPrice(coldRentMonthly)}/Monat`
+        )
+      : null,
+    fin && coldRentMonthly != null && coldRentMonthly > 0
+      ? keyValueRow(
+          React,
+          Text,
+          View,
+          styles,
+          "Mietdeckung der Rate",
+          formatBurdenShare(coldRentMonthly / fin.monthlyPayment)
+        )
+      : null,
     keyValueRow(
       React,
       Text,
@@ -462,6 +484,16 @@ function createApartmentPdfBody(
         "Sanierung (einmalig, grob)",
         formatOptionalPrice(apartment.renovationCost)
       ),
+      apartment.coldRentMonthly != null && apartment.coldRentMonthly > 0
+        ? keyValueRow(
+            React,
+            Text,
+            View,
+            styles,
+            "Kaltmiete (Einnahme)",
+            formatOptionalMonthly(apartment.coldRentMonthly)
+          )
+        : null,
     ])
   );
 
@@ -509,7 +541,8 @@ function createApartmentPdfBody(
       styles,
       data.finance,
       apartment.price,
-      acquisitionTotal
+      acquisitionTotal,
+      apartment.coldRentMonthly
     );
     if (bankFinancing) children.push(bankFinancing);
 

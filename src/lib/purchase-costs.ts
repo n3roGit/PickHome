@@ -15,6 +15,9 @@ export const REMAINING_CAUTION_SHARE = 0.1;
 /** Fallback when no project interest rate is set (rough estimate only). */
 export const DEFAULT_INTEREST_RATE = 0.035;
 
+/** Banks often credit only ~70 % of cold rent in affordability checks. */
+export const CONSERVATIVE_RENT_FACTOR = 0.7;
+
 export type FederalStateCode =
   | "BY"
   | "SN"
@@ -378,7 +381,32 @@ export type AffordabilityEstimate = {
   burdenShare: number;
   /** Alias for compare: rate affordability level. */
   level: AffordabilityLevel;
+  rentConfigured: boolean;
+  coldRentMonthly: number;
+  rentCoverageShare: number | null;
+  netRateBurden: number;
+  conservativeNetRateBurden: number;
+  effectiveHousingBurden: number;
+  effectiveTotalMonthlyBurden: number;
+  effectiveRemainingMonthly: number;
+  effectiveRateShare: number;
+  effectiveHousingShare: number;
+  effectiveRateLevel: AffordabilityLevel;
+  effectiveHousingLevel: AffordabilityLevel;
+  effectiveRemainingLevel: AffordabilityLevel;
 };
+
+export function netRateBurdenAfterRent(monthlyPayment: number, coldRentMonthly: number): number {
+  return Math.max(0, monthlyPayment - coldRentMonthly);
+}
+
+export function conservativeNetRateBurdenAfterRent(
+  monthlyPayment: number,
+  coldRentMonthly: number
+): number {
+  const credited = Math.round(coldRentMonthly * CONSERVATIVE_RENT_FACTOR);
+  return Math.max(0, monthlyPayment - credited);
+}
 
 export function levelFromRateShare(share: number): AffordabilityLevel {
   if (share > RATE_WARN_THRESHOLD) return "warn";
@@ -413,12 +441,15 @@ export function estimateAffordability(input: {
   netHouseholdIncome: number;
   monthlyMaintenance?: number | null;
   monthlyFixedCosts?: number | null;
+  coldRentMonthly?: number | null;
 }): AffordabilityEstimate | null {
   if (input.netHouseholdIncome <= 0) return null;
   const netto = input.netHouseholdIncome;
   const monthlyMaintenance = input.monthlyMaintenance ?? 0;
   const fixedCostsConfigured = input.monthlyFixedCosts != null;
   const monthlyFixedCosts = input.monthlyFixedCosts ?? 0;
+  const coldRentMonthly = input.coldRentMonthly != null && input.coldRentMonthly > 0 ? input.coldRentMonthly : 0;
+  const rentConfigured = coldRentMonthly > 0;
   const housingBurden = input.monthlyPayment + monthlyMaintenance;
   const totalMonthlyBurden = housingBurden + monthlyFixedCosts;
   const remainingMonthly = fixedCostsConfigured
@@ -430,6 +461,29 @@ export function estimateAffordability(input: {
   const rateLevel = levelFromRateShare(rateShare);
   const housingLevel = levelFromHousingShare(housingShare);
   const remainingLevel = levelFromRemaining(remainingMonthly, netto, fixedCostsConfigured);
+
+  const netRateBurden = netRateBurdenAfterRent(input.monthlyPayment, coldRentMonthly);
+  const conservativeNetRateBurden = conservativeNetRateBurdenAfterRent(
+    input.monthlyPayment,
+    coldRentMonthly
+  );
+  const rentCoverageShare =
+    rentConfigured && input.monthlyPayment > 0 ? coldRentMonthly / input.monthlyPayment : null;
+  const effectiveHousingBurden = netRateBurden + monthlyMaintenance;
+  const effectiveTotalMonthlyBurden = effectiveHousingBurden + monthlyFixedCosts;
+  const effectiveRemainingMonthly = fixedCostsConfigured
+    ? netto - effectiveTotalMonthlyBurden
+    : netto - effectiveHousingBurden;
+  const effectiveRateShare = netRateBurden / netto;
+  const effectiveHousingShare = effectiveHousingBurden / netto;
+  const effectiveRateLevel = levelFromRateShare(effectiveRateShare);
+  const effectiveHousingLevel = levelFromHousingShare(effectiveHousingShare);
+  const effectiveRemainingLevel = levelFromRemaining(
+    effectiveRemainingMonthly,
+    netto,
+    fixedCostsConfigured
+  );
+
   return {
     monthlyPayment: input.monthlyPayment,
     monthlyMaintenance,
@@ -447,6 +501,19 @@ export function estimateAffordability(input: {
     fixedCostsConfigured,
     burdenShare: rateShare,
     level: rateLevel,
+    rentConfigured,
+    coldRentMonthly,
+    rentCoverageShare,
+    netRateBurden,
+    conservativeNetRateBurden,
+    effectiveHousingBurden,
+    effectiveTotalMonthlyBurden,
+    effectiveRemainingMonthly,
+    effectiveRateShare,
+    effectiveHousingShare,
+    effectiveRateLevel,
+    effectiveHousingLevel,
+    effectiveRemainingLevel,
   };
 }
 
@@ -475,6 +542,7 @@ export type ApartmentCompareInput = {
   heatingCostMonthly?: number | null;
   propertyTaxAnnual?: number | null;
   renovationCost?: number | null;
+  coldRentMonthly?: number | null;
 };
 
 export type ApartmentCompareMetrics = {
@@ -483,6 +551,9 @@ export type ApartmentCompareMetrics = {
   totalMonthlyBurden: number | null;
   burdenShare: number | null;
   burdenLevel: AffordabilityLevel | null;
+  coldRentMonthly: number | null;
+  rentCoverageShare: number | null;
+  effectiveTotalMonthlyBurden: number | null;
 };
 
 export function apartmentCompareMetrics(
@@ -500,6 +571,9 @@ export function apartmentCompareMetrics(
       totalMonthlyBurden: null,
       burdenShare: null,
       burdenLevel: null,
+      coldRentMonthly: null,
+      rentCoverageShare: null,
+      effectiveTotalMonthlyBurden: null,
     };
   }
 
@@ -519,6 +593,9 @@ export function apartmentCompareMetrics(
       totalMonthlyBurden: null,
       burdenShare: null,
       burdenLevel: null,
+      coldRentMonthly: apartment.coldRentMonthly ?? null,
+      rentCoverageShare: null,
+      effectiveTotalMonthlyBurden: null,
     };
   }
 
@@ -535,6 +612,9 @@ export function apartmentCompareMetrics(
       totalMonthlyBurden: null,
       burdenShare: null,
       burdenLevel: null,
+      coldRentMonthly: apartment.coldRentMonthly ?? null,
+      rentCoverageShare: null,
+      effectiveTotalMonthlyBurden: null,
     };
   }
 
@@ -545,14 +625,26 @@ export function apartmentCompareMetrics(
           netHouseholdIncome: finance.netHouseholdIncome,
           monthlyMaintenance,
           monthlyFixedCosts: finance.monthlyFixedCosts,
+          coldRentMonthly: apartment.coldRentMonthly,
         })
       : null;
+
+  const rentConfigured = affordability?.rentConfigured ?? false;
 
   return {
     totalCost: acquisitionTotal,
     monthlyPayment: financing.monthlyPayment,
     totalMonthlyBurden: affordability?.totalMonthlyBurden ?? null,
-    burdenShare: affordability?.rateShare ?? null,
-    burdenLevel: affordability?.rateLevel ?? null,
+    burdenShare: rentConfigured
+      ? (affordability?.effectiveRateShare ?? null)
+      : (affordability?.rateShare ?? null),
+    burdenLevel: rentConfigured
+      ? (affordability?.effectiveRateLevel ?? null)
+      : (affordability?.rateLevel ?? null),
+    coldRentMonthly: apartment.coldRentMonthly ?? null,
+    rentCoverageShare: affordability?.rentCoverageShare ?? null,
+    effectiveTotalMonthlyBurden: rentConfigured
+      ? (affordability?.effectiveTotalMonthlyBurden ?? null)
+      : null,
   };
 }

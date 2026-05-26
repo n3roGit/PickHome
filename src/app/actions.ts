@@ -677,6 +677,17 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
   const heatingCostMonthly = parsePositiveInt(String(formData.get("heatingCostMonthly") ?? ""));
   const propertyTaxAnnual = parsePositiveInt(String(formData.get("propertyTaxAnnual") ?? ""));
   const renovationCost = parsePositiveInt(String(formData.get("renovationCost") ?? ""));
+  const coldRentRaw = String(formData.get("coldRentMonthly") ?? "").trim();
+  let coldRentMonthly: number | null = null;
+  if (coldRentRaw) {
+    if (/^\s*-/.test(coldRentRaw)) {
+      redirect(`${base}?basics_error=invalid_rent`);
+    }
+    coldRentMonthly = parsePositiveInt(coldRentRaw);
+    if (coldRentMonthly == null) {
+      redirect(`${base}?basics_error=invalid_rent`);
+    }
+  }
   const resolvedPrice = Number.isFinite(price) ? price : null;
   const expectedRevision = requireRevisionFromForm(formData, apt.projectId, apartmentId);
 
@@ -704,6 +715,7 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
     heatingCostMonthly,
     propertyTaxAnnual,
     renovationCost,
+    coldRentMonthly,
   });
   if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
 

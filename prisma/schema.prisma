@@ -150,6 +150,7 @@ model Apartment {
   heatingCostMonthly  Int?
   propertyTaxAnnual   Int?
   renovationCost      Int?
+  coldRentMonthly     Int?
   sizeSqm         Int?
   plotSizeSqm     Int?
   floor       Int?

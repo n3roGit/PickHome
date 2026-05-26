@@ -68,6 +68,7 @@ export type ApartmentPdfData = {
     heatingCostMonthly: number | null;
     propertyTaxAnnual: number | null;
     renovationCost: number | null;
+    coldRentMonthly: number | null;
     description: string | null;
     notes: string | null;
     viewedAt: Date | null;
@@ -305,6 +306,7 @@ export async function loadApartmentPdfData(
       heatingCostMonthly: row.heatingCostMonthly,
       propertyTaxAnnual: row.propertyTaxAnnual,
       renovationCost: row.renovationCost,
+      coldRentMonthly: row.coldRentMonthly,
       description: row.description,
       notes: row.notes,
       viewedAt: row.viewedAt,

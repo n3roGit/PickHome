@@ -27,6 +27,7 @@ export function ApartmentBasicsForm({
   heatingCostMonthly,
   propertyTaxAnnual,
   renovationCost,
+  coldRentMonthly,
   budget,
   saved,
   addressUnresolved,
@@ -50,6 +51,7 @@ export function ApartmentBasicsForm({
   heatingCostMonthly?: number | null;
   propertyTaxAnnual?: number | null;
   renovationCost?: number | null;
+  coldRentMonthly?: number | null;
   budget: number | null;
   saved?: boolean;
   addressUnresolved?: boolean;
@@ -195,6 +197,18 @@ export function ApartmentBasicsForm({
                 name="renovationCost"
                 defaultValue={renovationCost != null ? String(renovationCost) : ""}
                 placeholder="z. B. 30000"
+                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm text-pn-text-secondary">Kaltmiete / Monat (€)</span>
+              <span className="block text-xs text-pn-text-tertiary mt-0.5">
+                Einnahme bei Vermietung oder Teilvermietung — wird in der Finanzschätzung von der Rate abgezogen.
+              </span>
+              <input
+                name="coldRentMonthly"
+                defaultValue={coldRentMonthly != null ? String(coldRentMonthly) : ""}
+                placeholder="z. B. Einliegerwohnung"
                 className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm"
               />
             </label>

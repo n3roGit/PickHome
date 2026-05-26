@@ -20,6 +20,7 @@ export type ApartmentLlmFinanceApartmentInput = {
   heatingCostMonthly: number | null;
   propertyTaxAnnual: number | null;
   renovationCost: number | null;
+  coldRentMonthly: number | null;
   sizeSqm: number | null;
   plotSizeSqm: number | null;
 };
@@ -141,8 +142,17 @@ export function buildApartmentFinanceLlmSection(
             netHouseholdIncome: finance.netHouseholdIncome,
             monthlyMaintenance,
             monthlyFixedCosts: finance.monthlyFixedCosts,
+            coldRentMonthly: apartment.coldRentMonthly,
           });
           if (affordability) {
+            if (affordability.rentConfigured) {
+              lines.push(`Kaltmiete/Monat: ${formatPrice(affordability.coldRentMonthly)}`);
+              if (affordability.rentCoverageShare != null) {
+                lines.push(
+                  `Mietdeckung der Rate: ${formatBurdenShare(affordability.rentCoverageShare)}; Eigenanteil Rate ${formatPrice(affordability.netRateBurden)}/Monat`
+                );
+              }
+            }
             const fixedPart =
               affordability.monthlyFixedCosts > 0
                 ? ` + Fixkosten ${formatPrice(affordability.monthlyFixedCosts)}`
@@ -150,18 +160,33 @@ export function buildApartmentFinanceLlmSection(
             lines.push(
               `Gesamtbelastung/Monat: Rate ${formatPrice(financing.monthlyPayment)} + Wohnkosten ${formatPrice(monthlyMaintenance)}${fixedPart} = ${formatPrice(affordability.totalMonthlyBurden)}`
             );
-            lines.push(
-              `Rate-Anteil: ${formatBurdenShare(affordability.rateShare)} (Richtwert <= 35 %)`
-            );
+            if (affordability.rentConfigured) {
+              lines.push(
+                `Gesamtbelastung nach Miete: ${formatPrice(affordability.effectiveTotalMonthlyBurden)}/Monat`
+              );
+              lines.push(
+                `Rate-Anteil nach Miete: ${formatBurdenShare(affordability.effectiveRateShare)} (Richtwert <= 35 %)`
+              );
+            } else {
+              lines.push(
+                `Rate-Anteil: ${formatBurdenShare(affordability.rateShare)} (Richtwert <= 35 %)`
+              );
+            }
             if (monthlyMaintenance > 0) {
               lines.push(
-                `Wohnkosten-Anteil: ${formatBurdenShare(affordability.housingShare)} (Richtwert <= 40 %)`
+                `Wohnkosten-Anteil${affordability.rentConfigured ? " nach Miete" : ""}: ${formatBurdenShare(affordability.rentConfigured ? affordability.effectiveHousingShare : affordability.housingShare)} (Richtwert <= 40 %)`
               );
             }
             const restLabel = affordability.fixedCostsConfigured
-              ? "Rest nach allen Kosten"
-              : "Rest nach Rate und Wohnkosten (ohne Lebenshaltung)";
-            lines.push(`${restLabel}: ${formatPrice(affordability.remainingMonthly)}/Monat`);
+              ? affordability.rentConfigured
+                ? "Rest nach allen Kosten (nach Miete)"
+                : "Rest nach allen Kosten"
+              : affordability.rentConfigured
+                ? "Rest nach Rate und Wohnkosten nach Miete (ohne Lebenshaltung)"
+                : "Rest nach Rate und Wohnkosten (ohne Lebenshaltung)";
+            lines.push(
+              `${restLabel}: ${formatPrice(affordability.rentConfigured ? affordability.effectiveRemainingMonthly : affordability.remainingMonthly)}/Monat`
+            );
           }
         }
       }

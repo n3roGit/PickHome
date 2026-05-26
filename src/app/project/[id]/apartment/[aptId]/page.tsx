@@ -441,6 +441,7 @@ export default async function ApartmentPage({
           heatingCostMonthly={apartment.heatingCostMonthly}
           propertyTaxAnnual={apartment.propertyTaxAnnual}
           renovationCost={apartment.renovationCost}
+          coldRentMonthly={apartment.coldRentMonthly}
           budget={project.budget}
           saved={resolvedSearchParams.basics_saved === "1"}
           addressUnresolved={resolvedSearchParams.address_unresolved === "1"}
@@ -473,6 +474,7 @@ export default async function ApartmentPage({
           federalStateCode={project.federalStateCode}
           brokerBuyerRate={project.brokerBuyerRate}
           brokerInvolved={apartment.brokerInvolved}
+          coldRentMonthly={apartment.coldRentMonthly}
           hoaFeeMonthly={apartment.hoaFeeMonthly}
           heatingCostMonthly={apartment.heatingCostMonthly}
           propertyTaxAnnual={apartment.propertyTaxAnnual}

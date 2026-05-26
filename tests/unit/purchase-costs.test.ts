@@ -213,6 +213,64 @@ describe("estimateAffordability", () => {
     expect(result?.remainingMonthly).toBe(2_600);
     expect(result?.remainingLevel).toBe("ok");
   });
+
+  it("matches legacy output when cold rent is unset", () => {
+    const withoutRent = estimateAffordability({
+      monthlyPayment: 1_500,
+      netHouseholdIncome: 5_000,
+      monthlyMaintenance: 400,
+      monthlyFixedCosts: 800,
+    });
+    const withZeroRent = estimateAffordability({
+      monthlyPayment: 1_500,
+      netHouseholdIncome: 5_000,
+      monthlyMaintenance: 400,
+      monthlyFixedCosts: 800,
+      coldRentMonthly: 0,
+    });
+    expect(withZeroRent).toEqual(withoutRent);
+    expect(withZeroRent?.rentConfigured).toBe(false);
+  });
+
+  it("computes rent coverage and effective burden when rent is below rate", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 2_000,
+      netHouseholdIncome: 5_000,
+      monthlyMaintenance: 200,
+      monthlyFixedCosts: 500,
+      coldRentMonthly: 900,
+    });
+    expect(result?.rentConfigured).toBe(true);
+    expect(result?.rentCoverageShare).toBeCloseTo(0.45);
+    expect(result?.netRateBurden).toBe(1_100);
+    expect(result?.conservativeNetRateBurden).toBe(1_370);
+    expect(result?.effectiveTotalMonthlyBurden).toBe(1_800);
+    expect(result?.effectiveRemainingMonthly).toBe(3_200);
+    expect(result?.effectiveRateShare).toBeCloseTo(0.22);
+    expect(result?.effectiveRateLevel).toBe("ok");
+    expect(result?.rateLevel).toBe("caution");
+  });
+
+  it("covers full rate when rent equals payment", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 1_000,
+      netHouseholdIncome: 4_000,
+      coldRentMonthly: 1_000,
+    });
+    expect(result?.rentCoverageShare).toBe(1);
+    expect(result?.netRateBurden).toBe(0);
+    expect(result?.effectiveRateLevel).toBe("ok");
+  });
+
+  it("allows rent coverage above 100 percent without negative net rate burden", () => {
+    const result = estimateAffordability({
+      monthlyPayment: 800,
+      netHouseholdIncome: 4_000,
+      coldRentMonthly: 900,
+    });
+    expect(result?.rentCoverageShare).toBeGreaterThan(1);
+    expect(result?.netRateBurden).toBe(0);
+  });
 });
 
 describe("estimatePropertyTaxAnnual", () => {
@@ -376,5 +434,27 @@ describe("apartmentCompareMetrics", () => {
     );
     expect(result.totalCost).toBe(322_500);
     expect(result.monthlyPayment).toBeNull();
+  });
+
+  it("uses effective burden metrics when cold rent is set", () => {
+    const withoutRent = apartmentCompareMetrics(
+      { price: 300_000, sizeSqm: 100, brokerInvolved: true, address: null },
+      finance
+    );
+    const withRent = apartmentCompareMetrics(
+      {
+        price: 300_000,
+        sizeSqm: 100,
+        brokerInvolved: true,
+        address: null,
+        coldRentMonthly: 900,
+      },
+      finance
+    );
+    expect(withRent.coldRentMonthly).toBe(900);
+    expect(withRent.rentCoverageShare).not.toBeNull();
+    expect(withRent.effectiveTotalMonthlyBurden).not.toBeNull();
+    expect(withRent.effectiveTotalMonthlyBurden!).toBeLessThan(withRent.totalMonthlyBurden!);
+    expect(withRent.burdenShare).toBeLessThan(withoutRent.burdenShare!);
   });
 });

@@ -625,6 +625,7 @@ export default async function ProjectPage({
               sizeSqm: a.sizeSqm,
               plotSizeSqm: a.plotSizeSqm,
               brokerInvolved: a.brokerInvolved,
+              coldRentMonthly: a.coldRentMonthly,
               hoaFeeMonthly: a.hoaFeeMonthly,
               heatingCostMonthly: a.heatingCostMonthly,
               propertyTaxAnnual: a.propertyTaxAnnual,

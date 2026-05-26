@@ -15,7 +15,7 @@ Apply shared rules from the master guide: **§2 Hard rules**, **§7 Evidence req
 - Area badge reflects current project area mode where configured.
 - Score legend and current user context are visible.
 - Archive and delete controls are visible only where permitted.
-- Price and address section supports edit and save, including optional cost fields (Hausgeld, Heizkosten, Grundsteuer, Sanierung) and **Baujahr**.
+- Price and address section supports edit and save, including optional cost fields (Hausgeld, Heizkosten, Grundsteuer, Sanierung, **Kaltmiete / Monat**) and **Baujahr**.
 - Geocoding action works for this address or returns a controlled failure.
 - Street View link is available when coordinates or a resolvable address exist.
 - Listing URL section can be expanded and saved; URL input uses full width of the section (same row as save button, `flex` layout).
@@ -34,7 +34,7 @@ Apply shared rules from the master guide: **§2 Hard rules**, **§7 Evidence req
 - Auto-Fill marks newly filled inputs with green highlight (`pn-field-prefilled`); after **Preis & Adresse** save, highlights are cleared (including Hausgeld/Heizkosten/Grundsteuer/Sanierung).
 - Auto-Fill does **not** persist to the database by itself.
 - Notes and description sections can be expanded and saved.
-- Collapsible section **Finanzen** (formerly „Kaufnebenkosten & Finanzierung“) reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set); when project **Fixkosten** are set, shows Fixkosten row, **Gesamtbelastung / Monat** (Rate + Wohnnebenkosten + Fixkosten), **Rest nach allen Kosten**, and contextual warnings for rate share (35 / 45 % guidelines), housing share (40 %), and tight/negative remaining buffer; Makler checkbox with **Übernehmen** lives here.
+- Collapsible section **Finanzen** (formerly „Kaufnebenkosten & Finanzierung“) reflects project defaults and apartment cost fields (Sanierung in Gesamtkosten, laufende Kosten in Monatsbelastung when net income is set); when project **Fixkosten** are set, shows Fixkosten row, **Gesamtbelastung / Monat** (Rate + Wohnnebenkosten + Fixkosten), **Rest nach allen Kosten**, and contextual warnings for rate share (35 / 45 % guidelines), housing share (40 %), and tight/negative remaining buffer; Makler checkbox with **Übernehmen** lives here; when **Kaltmiete** is set in **Preis & Adresse** and financing is configured, shows **Mietdeckung der Rate**, **Eigenanteil Rate / Monat**, **Gesamtbelastung nach Miete**, **Anteil Rate am Netto nach Miete**, **Rest nach allen Kosten nach Miete**, and dezent **Konservativ (Bank-Sicht, 70 %)**; warning thresholds use effective values when rent is set.
 - Collapsible section **Förderungen prüfen** appears directly after **Finanzen** and before **Bilder**; default closed; header shows hint count (e.g. „8 Hinweise“).
 - **Förderungen prüfen** shows unverbindliche KfW-/BAFA-Hinweise as cards with status **Relevant**, **Möglich**, or **Daten fehlen**; each card has reason, missing data, next step, and official external link.
 - When Baujahr, Energieklasse, or Sanierungskosten are missing, a controlled needs-data hint appears instead of an empty section.
@@ -57,6 +57,8 @@ Apply shared rules from the master guide: **§2 Hard rules**, **§7 Evidence req
 - Apartment without price
 - Apartment without address
 - Invalid address
+- Invalid cold rent input (negative or non-numeric) shows controlled error; DB value unchanged
+- Kaltmiete greater than rate shows coverage above 100 % without negative Eigenanteil
 - Unsaved field changes followed by navigation
 - PDF upload too large
 - Image upload too large

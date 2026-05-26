@@ -28,6 +28,7 @@ type Apartment = {
   heatingCostMonthly?: number | null;
   propertyTaxAnnual?: number | null;
   renovationCost?: number | null;
+  coldRentMonthly?: number | null;
 };
 type Criterion = { id: string; name: string; weight: number; isDealbreaker: boolean; groupName: string };
 type Rating = {
@@ -106,9 +107,45 @@ function CompareNumbersTable({
               label="Gesamtbelastung/Monat (grob)"
               values={rows.map((r) => formatPrice(r.metrics.totalMonthlyBurden))}
             />
+            {rows.some(
+              (r) => r.metrics.coldRentMonthly != null && r.metrics.coldRentMonthly > 0
+            ) && (
+              <>
+                <CompareRow
+                  label="Kaltmiete"
+                  values={rows.map((r) =>
+                    r.metrics.coldRentMonthly != null && r.metrics.coldRentMonthly > 0
+                      ? formatPrice(r.metrics.coldRentMonthly)
+                      : "—"
+                  )}
+                />
+                <CompareRow
+                  label="Mietdeckung Rate"
+                  values={rows.map((r) =>
+                    r.metrics.rentCoverageShare != null
+                      ? formatBurdenShare(r.metrics.rentCoverageShare)
+                      : "—"
+                  )}
+                />
+                <CompareRow
+                  label="Gesamtbelastung/Monat nach Miete (grob)"
+                  values={rows.map((r) =>
+                    r.metrics.effectiveTotalMonthlyBurden != null
+                      ? formatPrice(r.metrics.effectiveTotalMonthlyBurden)
+                      : "—"
+                  )}
+                />
+              </>
+            )}
             {finance.netHouseholdIncome != null && (
               <CompareRow
-                label="Anteil Rate am Netto"
+                label={
+                  rows.some(
+                    (r) => r.metrics.coldRentMonthly != null && r.metrics.coldRentMonthly > 0
+                  )
+                    ? "Anteil Rate am Netto (nach Miete)"
+                    : "Anteil Rate am Netto"
+                }
                 valueClassNames={rows.map((r) => {
                   if (r.metrics.burdenLevel == null) return "";
                   const cls = affordabilityLevelClass(r.metrics.burdenLevel);
