@@ -31,7 +31,7 @@ Use `resetTestDatabase()` before integration tests that need a clean DB.
 ## CI
 
 - Workflow runs `npm test` on push/PR.
-- Docker publish: `.github/workflows/docker-publish.yml` → `n3ro88/pickhome`.
+- Docker image: `release.yml` builds/pushes `n3ro88/pickhome` on push to `main` (or manual **Release** run).
 - Docker build needs `DATABASE_URL` at build time; data dir via `PICKHOME_DATA_DIR`.
 
 After schema or action changes, run `npm test` locally before push.

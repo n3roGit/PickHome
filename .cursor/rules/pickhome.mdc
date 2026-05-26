@@ -56,7 +56,7 @@ Existing backfills: `sizeSqm` ← description/notes (`src/lib/backfill-size-sqm.
 ## Releases and versioning
 
 - Version source: `"version"` in `package.json`.
-- Push to `main` → CI bumps patch (`1.2.0` → `1.2.1`), builds/pushes Docker (`n3ro88/pickhome:latest`, `n3ro88/pickhome:1.2.1`, …) with that bumped `package.json`, then tags `v*` and creates a [GitHub Release](https://github.com/n3roGit/PickHome/releases). Set major/minor in `package.json` manually when needed. `docker-publish.yml` is manual-only (`workflow_dispatch`).
+- Push to `main` → CI bumps patch (`1.2.0` → `1.2.1`), builds/pushes Docker (`n3ro88/pickhome:latest`, `n3ro88/pickhome:1.2.1`, …) with that bumped `package.json`, then tags `v*` and creates a [GitHub Release](https://github.com/n3roGit/PickHome/releases). Set major/minor in `package.json` manually when needed. Manual rebuild: **Release** workflow (`workflow_dispatch`).
 - Update `CHANGELOG.md` manually when releasing.
 
 ## Git workflow
