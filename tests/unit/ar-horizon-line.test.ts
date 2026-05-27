@@ -20,6 +20,40 @@ const H = 844;
 const INTR = intrinsicsFromFov(W, H, 50, 65);
 
 describe("ar-horizon-line", () => {
+  it("yaw offset shifts sun azimuth in projection", () => {
+    const gravity = { x: 0, y: -9.8, z: 0 };
+    const horizon = computeHorizonLineInCanvas(W, H, INTR, gravity, 0)!;
+    const base = projectSunOnHorizonToCanvas(
+      W,
+      H,
+      horizon,
+      300,
+      0,
+      310,
+      0,
+      50,
+      65,
+      12,
+      0
+    );
+    const shifted = projectSunOnHorizonToCanvas(
+      W,
+      H,
+      horizon,
+      300,
+      0,
+      310,
+      0,
+      50,
+      65,
+      12,
+      -10
+    );
+    expect(base).not.toBeNull();
+    expect(shifted).not.toBeNull();
+    expect(shifted!.x).toBeGreaterThan(base!.x + 20);
+  });
+
   it("pitchDegFromHorizonMid inverts pitch-only horizon placement", () => {
     const pitchIn = 12;
     const midY = H / 2 + (pitchIn / 65) * H;
@@ -135,7 +169,7 @@ describe("ar-horizon-line", () => {
     const gravity = { x: 0, y: -9.8, z: 0.2 };
     const horizon = computeHorizonLineInCanvas(W, H, INTR, gravity, 0)!;
     const heading = viewHeadingFromOrientation(200, 0, 0, 0);
-    const pitch = pitchDegFromHorizonMid(horizon, H, 65);
+    const pitch = 0;
     for (const az of [52, 120, 200, 280, 308]) {
       const pos = projectSunOnHorizonToCanvas(
         W,

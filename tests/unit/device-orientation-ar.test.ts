@@ -57,12 +57,11 @@ describe("device-orientation-ar", () => {
     expect(view?.pitch).toBeNull();
   });
 
-  it("upright portrait (Android beta≈0 + gravity): heading and pitch for AR", () => {
+  it("upright portrait (Android beta≈0 + gravity): heading tracks alpha, pitch for AR", () => {
     const uprightGravity = { x: 0.2, y: -9.7, z: 0.8 };
     const view = viewOrientationFromEvent(254.8, 0, -0.3, 0, uprightGravity);
     expect(view?.flat).toBe(false);
-    expect(view?.heading).toBeGreaterThan(280);
-    expect(view?.heading).toBeLessThan(292);
+    expect(view?.heading).toBeCloseTo(254.8, 0);
     expect(Math.abs(view?.pitch ?? 99)).toBeLessThan(12);
   });
 

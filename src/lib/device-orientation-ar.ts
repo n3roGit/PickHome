@@ -161,12 +161,20 @@ export function viewHeadingFromCameraLook(
   return (heading * 180) / Math.PI;
 }
 
+/**
+ * Compass heading for AR yaw (sun azimuth vs camera).
+ * Android portrait reports beta≈0; mapping beta→90 for the look vector makes heading
+ * complete two 360° cycles per physical turn. Use alpha (screen-compensated) instead.
+ */
 export function viewHeadingFromOrientation(
   alpha: number,
   beta: number,
   gamma: number,
   screenAngleDeg: number
 ): number {
+  if (Math.abs(beta) < 45) {
+    return normalizeScreenAngle(alpha - normalizeScreenAngle(screenAngleDeg));
+  }
   return viewHeadingFromCameraLook(alpha, beta, gamma, screenAngleDeg);
 }
 
