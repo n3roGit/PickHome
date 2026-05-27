@@ -20,10 +20,6 @@ export default async function ApartmentSolarArPage({
   const apartment = await getApartmentForUser(projectId, aptId, user);
   if (!apartment) redirect(`/project/${projectId}`);
 
-  if (apartment.latitude == null || apartment.longitude == null) {
-    redirect(`/project/${projectId}/apartment/${aptId}`);
-  }
-
   const timeZone = await getAppTimeZone();
   const backHref = `/project/${projectId}/apartment/${aptId}`;
 
@@ -33,8 +29,6 @@ export default async function ApartmentSolarArPage({
     <ApartmentSolarAr
       backHref={backHref}
       title={apartment.title}
-      latitude={apartment.latitude}
-      longitude={apartment.longitude}
       timeZone={timeZone}
       initialDayDate={initialDayDate}
     />

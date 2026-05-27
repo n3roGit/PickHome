@@ -223,7 +223,7 @@ npm run dev
 
 ### Sun AR on mobile (HTTPS)
 
-The apartment **AR vor Ort** view (`/project/.../apartment/.../sonne-ar`) uses the device camera and compass. Browsers allow this only on **HTTPS** or **localhost**. For LAN access from a phone (e.g. `http://192.168.x.x:3000`), put PickHome behind a TLS reverse proxy (Caddy, nginx, Traefik) or use `npm run dev` on the phone via USB port forwarding.
+The apartment **AR vor Ort** view (`/project/.../apartment/.../sonne-ar`) uses the device camera, compass, and **current GPS position** for sun markers. Browsers allow this only on **HTTPS** or **localhost**. For LAN access from a phone (e.g. `http://192.168.x.x:3000`), put PickHome behind a TLS reverse proxy (Caddy, nginx, Traefik) or use `npm run dev` on the phone via USB port forwarding.
 
 ## Backup (export / import)
 

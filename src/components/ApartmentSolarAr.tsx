@@ -8,6 +8,15 @@ import {
   type GravitySample,
 } from "@/lib/device-orientation-ar";
 import {
+  isGeolocationSupported,
+  mapGeolocationError,
+  queryGeolocationPermission,
+  requestCurrentPosition,
+  watchArPosition,
+  type GeoPosition,
+  type GeolocationArError,
+} from "@/lib/geolocation-ar";
+import {
   formatSolarTime,
   getSolarArc,
   type SolarSample,
@@ -37,13 +46,12 @@ type ArError =
   | "camera_busy"
   | "camera_unsupported"
   | "orientation_denied"
-  | "orientation_unsupported";
+  | "orientation_unsupported"
+  | GeolocationArError;
 
 type Props = {
   backHref: string;
   title: string;
-  latitude: number;
-  longitude: number;
   timeZone: string;
   initialDayDate?: Date;
 };
@@ -184,8 +192,6 @@ function isCurrentHour(sample: Date, now: Date, timeZone: string): boolean {
 export function ApartmentSolarAr({
   backHref,
   title,
-  latitude,
-  longitude,
   timeZone,
   initialDayDate,
 }: Props) {
@@ -202,16 +208,19 @@ export function ApartmentSolarAr({
   const rafRef = useRef<number | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
   const motionCleanupRef = useRef<(() => void) | null>(null);
+  const geoWatchCleanupRef = useRef<(() => void) | null>(null);
 
   const [phase, setPhase] = useState<"idle" | "requesting" | "running" | "error">("idle");
   const [error, setError] = useState<ArError | null>(null);
   const [cameraPreDenied, setCameraPreDenied] = useState(false);
+  const [locationPreDenied, setLocationPreDenied] = useState(false);
   const [dayDate, setDayDate] = useState(() => initialDayDate ?? new Date());
+  const [livePosition, setLivePosition] = useState<GeoPosition | null>(null);
 
-  const hourlySamples = useMemo(
-    () => getSolarArc(dayDate, latitude, longitude, 60),
-    [dayDate, latitude, longitude]
-  );
+  const hourlySamples = useMemo(() => {
+    if (!livePosition) return [];
+    return getSolarArc(dayDate, livePosition.latitude, livePosition.longitude, 60);
+  }, [dayDate, livePosition]);
   const sunlitHourly = useMemo(
     () => hourlySamples.filter((s) => s.isUp),
     [hourlySamples]
@@ -226,6 +235,8 @@ export function ApartmentSolarAr({
     orientationCleanupRef.current = null;
     motionCleanupRef.current?.();
     motionCleanupRef.current = null;
+    geoWatchCleanupRef.current?.();
+    geoWatchCleanupRef.current = null;
     flatRef.current = false;
     gravityRef.current = null;
     smoothHeadingRef.current = null;
@@ -236,6 +247,7 @@ export function ApartmentSolarAr({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setLivePosition(null);
   }, []);
 
   const drawOverlay = useCallback(() => {
@@ -424,6 +436,7 @@ export function ApartmentSolarAr({
   async function start() {
     setError(null);
     setCameraPreDenied(false);
+    setLocationPreDenied(false);
     if (!isSecureContextForSensors()) {
       setPhase("error");
       setError("https_required");
@@ -432,6 +445,11 @@ export function ApartmentSolarAr({
     if (!("DeviceOrientationEvent" in window)) {
       setPhase("error");
       setError("orientation_unsupported");
+      return;
+    }
+    if (!isGeolocationSupported()) {
+      setPhase("error");
+      setError("location_unsupported");
       return;
     }
 
@@ -448,6 +466,17 @@ export function ApartmentSolarAr({
           return;
         }
       }
+
+      const locationPerm = await queryGeolocationPermission();
+      if (locationPerm === "denied") {
+        setPhase("error");
+        setLocationPreDenied(true);
+        setError("location_denied");
+        return;
+      }
+
+      const initialPosition = await requestCurrentPosition();
+      setLivePosition(initialPosition);
 
       const cameraPerm = await queryCameraPermission();
       if (cameraPerm === "denied") {
@@ -468,6 +497,13 @@ export function ApartmentSolarAr({
           /* stream attached; iOS may still show frames */
         }
       }
+
+      geoWatchCleanupRef.current = watchArPosition(
+        (position) => setLivePosition(position),
+        () => {
+          /* keep last known position while AR is running */
+        }
+      );
 
       const onDeviceMotion = (e: DeviceMotionEvent) => {
         const g = e.accelerationIncludingGravity;
@@ -517,14 +553,19 @@ export function ApartmentSolarAr({
     } catch (e) {
       stop();
       setPhase("error");
+      if (e instanceof GeolocationPositionError) {
+        if (e.code === e.PERMISSION_DENIED) setLocationPreDenied(true);
+        setError(mapGeolocationError(e));
+        return;
+      }
       setError(mapStartError(e));
     }
   }
 
   const errorMessages: Record<ArError, string> = {
     https_required: isLanHttp()
-      ? "Über http://192.168… vom Handy aus funktioniert die Kamera nicht. Am PC localhost nutzen oder PickHome hinter HTTPS (z. B. Reverse-Proxy) bereitstellen."
-      : "Kamera und Kompass benötigen HTTPS (oder localhost). Bitte PickHome über TLS oder lokal am Rechner testen.",
+      ? "Über http://192.168… vom Handy aus funktionieren Kamera, Kompass und GPS oft nicht. Am PC localhost nutzen oder PickHome hinter HTTPS (z. B. Reverse-Proxy) bereitstellen."
+      : "Kamera, Kompass und Standort benötigen HTTPS (oder localhost). Bitte PickHome über TLS oder lokal am Rechner testen.",
     camera_denied: cameraPreDenied
       ? "Die Kamera ist für diese Seite blockiert — deshalb erscheint oft kein Dialog. Chrome/Edge: Schloss-Symbol in der Adresszeile → Website-Einstellungen → Kamera auf „Zulassen“, dann Seite neu laden (Strg+F5). Windows: Einstellungen → Datenschutz → Kamera → Zugriff für Desktop-Apps erlauben."
       : "Kamerazugriff wurde verweigert. In den Browser-Einstellungen für diese Seite die Kamera erlauben und erneut versuchen.",
@@ -535,6 +576,13 @@ export function ApartmentSolarAr({
     camera_unsupported: "Kamera-API wird in diesem Browser nicht unterstützt.",
     orientation_denied: "Kompass-/Bewegungssensor wurde verweigert.",
     orientation_unsupported: "Kompass wird in diesem Browser nicht unterstützt.",
+    location_denied: locationPreDenied
+      ? "Der Standort ist für diese Seite blockiert — deshalb erscheint oft kein Dialog. Chrome/Edge: Schloss-Symbol → Website-Einstellungen → Standort auf „Zulassen“, dann Seite neu laden."
+      : "Standortzugriff wurde verweigert. AR nutzt deine aktuelle GPS-Position — bitte in den Browser-Einstellungen erlauben und erneut versuchen.",
+    location_unavailable:
+      "Aktuelle Position konnte nicht ermittelt werden (GPS aus oder kein Empfang).",
+    location_timeout: "Standortabfrage hat zu lange gedauert — bitte erneut versuchen.",
+    location_unsupported: "Standort-API wird in diesem Browser nicht unterstützt.",
   };
 
   return (
@@ -559,13 +607,14 @@ export function ApartmentSolarAr({
       {phase === "idle" && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
           <p className="text-center text-sm text-white/80 max-w-sm">
-            Live-Kamera mit stündlichen Sonnenmarken für das gewählte Datum (oben
-            einstellbar). Sichtbar nur bei passender Blickrichtung und Neigung.
+            Live-Kamera mit stündlichen Sonnenmarken für deinen aktuellen Standort
+            und das gewählte Datum (oben einstellbar). Sichtbar nur bei passender
+            Blickrichtung und Neigung.
           </p>
           {isLanHttp() && (
             <p className="text-center text-sm text-amber-200/90 max-w-sm">
-              Du erreichst PickHome über die LAN-IP ohne HTTPS — die Kamera blockiert das oft.
-              Am Handy nur mit HTTPS testen.
+              Du erreichst PickHome über die LAN-IP ohne HTTPS — Kamera und GPS
+              blockiert das oft. Am Handy nur mit HTTPS testen.
             </p>
           )}
           <button
@@ -574,7 +623,7 @@ export function ApartmentSolarAr({
             onClick={() => void start()}
             className="bg-pn-accent text-white font-semibold px-6 py-3 rounded-lg text-sm min-h-[44px]"
           >
-            Kamera + Kompass starten
+            Kamera, Kompass & Standort starten
           </button>
         </div>
       )}
