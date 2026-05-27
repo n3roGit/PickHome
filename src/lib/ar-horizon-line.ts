@@ -26,6 +26,11 @@ export type HorizonLineSegment = {
   y2: number;
 };
 
+/** Interpolate horizon canvas Y (downward) at pixel x. */
+export function horizonYAtX(line: HorizonLineSegment, x: number, width: number): number {
+  return line.y1 + ((line.y2 - line.y1) * x) / width;
+}
+
 /** Focal lengths in pixels from horizontal/vertical FOV (degrees). */
 export function intrinsicsFromFov(
   width: number,
@@ -154,7 +159,43 @@ export type ArOrientationAngles = {
 };
 
 /**
- * Project sun position into canvas pixels using the same frame as the horizon line.
+ * Project sun into the live preview anchored to the gravity horizon line.
+ * Horizontal position uses compass heading (yaw); vertical uses camera pitch vs sun altitude.
+ * This matches a correct horizon (pitch/roll/intrinsics) while isolating yaw error to azimuth only.
+ */
+export function projectSunOnHorizonToCanvas(
+  width: number,
+  height: number,
+  horizon: HorizonLineSegment,
+  sunAzimuthDeg: number,
+  sunAltitudeDeg: number,
+  cameraHeadingDeg: number,
+  cameraPitchDeg: number,
+  hFovDeg: number,
+  vFovDeg: number,
+  horizonMarginDeg = 12,
+  yawOffsetDeg = 0
+): { x: number; y: number } | null {
+  const relAlt = sunAltitudeDeg - cameraPitchDeg;
+  if (relAlt < -horizonMarginDeg) return null;
+
+  let delta = sunAzimuthDeg - (cameraHeadingDeg + yawOffsetDeg);
+  delta = ((delta + 540) % 360) - 180;
+
+  const maxH = hFovDeg / 2 + 5;
+  if (Math.abs(delta) > maxH) return null;
+  if (relAlt > vFovDeg / 2 + 5) return null;
+
+  const x = width / 2 + (delta / hFovDeg) * width;
+  const yHorizon = horizonYAtX(horizon, x, width);
+  const y = yHorizon - (relAlt / vFovDeg) * height;
+
+  if (x < -20 || x > width + 20 || y < -20 || y > height + 20) return null;
+  return { x, y };
+}
+
+/**
+ * Full 3D pinhole projection via device orientation (sensitive to compass yaw error).
  */
 export function projectSunToCanvas(
   width: number,

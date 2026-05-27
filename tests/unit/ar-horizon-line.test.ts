@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   computeHorizonLineInCanvas,
   deviceToCameraViewVector,
+  horizonYAtX,
   intrinsicsFromFov,
-  projectSunToCanvas,
+  projectSunOnHorizonToCanvas,
   sunDirectionEarth,
 } from "@/lib/ar-horizon-line";
 import {
   cameraLookDirectionEarth,
   earthToDeviceDirection,
+  viewHeadingFromOrientation,
+  viewPitchFromOrientation,
 } from "@/lib/device-orientation-ar";
 
 const W = 390;
@@ -98,30 +101,45 @@ describe("ar-horizon-line", () => {
     expect(view.z).toBeGreaterThan(0.1);
   });
 
-  it("sun in camera look direction: near image center", () => {
-    const ori = { alpha: 286, beta: 0, gamma: 0, screenAngleDeg: 0 };
-    const look = cameraLookDirectionEarth(ori.alpha, ori.beta, ori.gamma, ori.screenAngleDeg);
-    let az = (Math.atan2(look.east, look.north) * 180) / Math.PI;
-    if (az < 0) az += 360;
-    const alt = (Math.asin(Math.max(-1, Math.min(1, look.up))) * 180) / Math.PI;
-    const pos = projectSunToCanvas(W, H, INTR, az, alt, ori, 50, 65, 12);
+  it("sun in camera look direction: near horizontal center on horizon", () => {
+    const gravity = { x: 0, y: -9.8, z: 0.5 };
+    const horizon = computeHorizonLineInCanvas(W, H, INTR, gravity, 0)!;
+    const heading = viewHeadingFromOrientation(286, 0, 0, 0);
+    const pitch = viewPitchFromOrientation(286, 0, 0, 0);
+    const pos = projectSunOnHorizonToCanvas(
+      W,
+      H,
+      horizon,
+      heading,
+      pitch,
+      heading,
+      pitch,
+      50,
+      65,
+      12
+    );
     expect(pos).not.toBeNull();
-    expect(Math.abs(pos!.x - W / 2)).toBeLessThan(50);
-    expect(Math.abs(pos!.y - H / 2)).toBeLessThan(100);
+    expect(Math.abs(pos!.x - W / 2)).toBeLessThan(8);
+    expect(Math.abs(pos!.y - horizonYAtX(horizon, pos!.x, W))).toBeLessThan(8);
   });
 
-  it("sun on mathematical horizon sits on horizon line", () => {
+  it("sun at elevation 0 sits on gravity horizon line", () => {
     const gravity = { x: 0, y: -9.8, z: 0.2 };
-    const ori = { alpha: 36, beta: 0, gamma: 0, screenAngleDeg: 0 };
-    const look = cameraLookDirectionEarth(ori.alpha, ori.beta, ori.gamma, ori.screenAngleDeg);
-    let az = (Math.atan2(look.east, look.north) * 180) / Math.PI;
-    if (az < 0) az += 360;
-    const horizon = computeHorizonLineInCanvas(W, H, INTR, gravity, 0);
-    const pos = projectSunToCanvas(W, H, INTR, az, 0, ori, 50, 65, 12);
-    expect(horizon).not.toBeNull();
+    const horizon = computeHorizonLineInCanvas(W, H, INTR, gravity, 0)!;
+    const heading = viewHeadingFromOrientation(36, 0, 0, 0);
+    const pos = projectSunOnHorizonToCanvas(
+      W,
+      H,
+      horizon,
+      heading,
+      0,
+      heading,
+      0,
+      50,
+      65,
+      12
+    );
     expect(pos).not.toBeNull();
-    const yHorizon =
-      horizon!.y1 + ((horizon!.y2 - horizon!.y1) * pos!.x) / W;
-    expect(Math.abs(pos!.y - yHorizon)).toBeLessThan(30);
+    expect(Math.abs(pos!.y - horizonYAtX(horizon, pos!.x, W))).toBeLessThan(2);
   });
 });

@@ -6,8 +6,7 @@ import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
   computeHorizonLineInCanvas,
   intrinsicsFromFov,
-  projectSunToCanvas,
-  type ArOrientationAngles,
+  projectSunOnHorizonToCanvas,
   type HorizonLineSegment,
 } from "@/lib/ar-horizon-line";
 import {
@@ -210,7 +209,6 @@ export function ApartmentSolarAr({
   const pitchRef = useRef<number | null>(null);
   const flatRef = useRef(false);
   const gravityRef = useRef<GravitySample | null>(null);
-  const orientationRef = useRef<ArOrientationAngles | null>(null);
   const smoothHeadingRef = useRef<number | null>(null);
   const smoothPitchRef = useRef<number | null>(null);
   const smoothHorizonRef = useRef<HorizonLineSegment | null>(null);
@@ -249,7 +247,6 @@ export function ApartmentSolarAr({
     geoWatchCleanupRef.current = null;
     flatRef.current = false;
     gravityRef.current = null;
-    orientationRef.current = null;
     smoothHeadingRef.current = null;
     smoothPitchRef.current = null;
     smoothHorizonRef.current = null;
@@ -364,23 +361,19 @@ export function ApartmentSolarAr({
 
     const projected: ProjectedSun[] = [];
     const activeKeys = new Set<number>();
-    const orientation = orientationRef.current;
-    const intrinsics = intrinsicsFromFov(w, h, AR_FOV_DEG, AR_VERTICAL_FOV_DEG);
     for (const sample of sunlitHourly) {
-      const pos =
-        orientation != null
-          ? projectSunToCanvas(
-              w,
-              h,
-              intrinsics,
-              sample.azimuthDeg,
-              sample.altitudeDeg,
-              orientation,
-              AR_FOV_DEG,
-              AR_VERTICAL_FOV_DEG,
-              AR_HORIZON_MARGIN_DEG
-            )
-          : null;
+      const pos = projectSunOnHorizonToCanvas(
+        w,
+        h,
+        horizon,
+        sample.azimuthDeg,
+        sample.altitudeDeg,
+        heading,
+        pitch,
+        AR_FOV_DEG,
+        AR_VERTICAL_FOV_DEG,
+        AR_HORIZON_MARGIN_DEG
+      );
       if (!pos || pos.x < 0 || pos.x > w) continue;
       const key = sample.date.getTime();
       activeKeys.add(key);
@@ -574,7 +567,6 @@ export function ApartmentSolarAr({
           smoothHeadingRef.current = null;
           smoothPitchRef.current = null;
           smoothHorizonRef.current = null;
-          orientationRef.current = null;
           markerPosRef.current.clear();
           return;
         }
@@ -582,21 +574,6 @@ export function ApartmentSolarAr({
         if (view.heading == null || view.pitch == null) return;
         headingRef.current = view.heading;
         pitchRef.current = view.pitch;
-        if (
-          e.alpha != null &&
-          e.beta != null &&
-          e.gamma != null &&
-          !Number.isNaN(e.alpha) &&
-          !Number.isNaN(e.beta) &&
-          !Number.isNaN(e.gamma)
-        ) {
-          orientationRef.current = {
-            alpha: e.alpha,
-            beta: e.beta,
-            gamma: e.gamma,
-            screenAngleDeg: getScreenAngle(),
-          };
-        }
       };
 
       if (supportsAbsoluteOrientation) {
