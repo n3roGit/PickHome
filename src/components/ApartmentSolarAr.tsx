@@ -27,6 +27,8 @@ import {
 import {
   formatSolarTime,
   getSolarArc,
+  getSolarDayTimes,
+  getSolarSample,
   type SolarSample,
 } from "@/lib/solar-position";
 
@@ -42,6 +44,15 @@ const MARKER_SMOOTH_PER_FRAME = 0.14;
 const AR_DEBUG_LOG_INTERVAL_MS = 3000;
 /** Break sun-path polyline when azimuth jumps (wrap or leaves FOV between samples). */
 const SUN_PATH_AZIMUTH_GAP_DEG = 100;
+const YAW_OFFSET_STORAGE_KEY = "ph_ar_yaw_offset";
+
+function loadStoredYawOffsetDeg(): number {
+  if (typeof sessionStorage === "undefined") return 0;
+  const raw = sessionStorage.getItem(YAW_OFFSET_STORAGE_KEY);
+  if (raw == null) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
 
 type ProjectedSun = {
   sample: SolarSample;
@@ -230,6 +241,8 @@ export function ApartmentSolarAr({
   } | null>(null);
   const lastArDebugLogMsRef = useRef(0);
   const arDebugRef = useRef(false);
+  const yawOffsetRef = useRef(loadStoredYawOffsetDeg());
+  const [yawOffsetDeg, setYawOffsetDeg] = useState(loadStoredYawOffsetDeg);
 
   const [phase, setPhase] = useState<"idle" | "requesting" | "running" | "error">("idle");
   const [error, setError] = useState<ArError | null>(null);
@@ -397,7 +410,8 @@ export function ApartmentSolarAr({
         pitchForSun,
         AR_FOV_DEG,
         AR_VERTICAL_FOV_DEG,
-        AR_HORIZON_MARGIN_DEG
+        AR_HORIZON_MARGIN_DEG,
+        yawOffsetRef.current
       );
       if (!pos || pos.x < 0 || pos.x > w) continue;
       const key = sample.date.getTime();
@@ -431,7 +445,8 @@ export function ApartmentSolarAr({
         pitchForSun,
         AR_FOV_DEG,
         AR_VERTICAL_FOV_DEG,
-        AR_HORIZON_MARGIN_DEG
+        AR_HORIZON_MARGIN_DEG,
+        yawOffsetRef.current
       );
       if (!pos || pos.x < 0 || pos.x > w) continue;
       pathOnHorizon.push({
@@ -500,8 +515,12 @@ export function ApartmentSolarAr({
     ctx.fillRect(0, h - 72, w, 72);
     ctx.fillStyle = "#fff";
     ctx.font = "12px system-ui, sans-serif";
+    const offsetLabel =
+      Math.abs(yawOffsetRef.current) >= 0.5
+        ? ` · Kompass-Offset ${yawOffsetRef.current > 0 ? "+" : ""}${yawOffsetRef.current.toFixed(0)}°`
+        : "";
     ctx.fillText(
-      `Heading ${heading.toFixed(0)}° · Neigung ${pitchForSun.toFixed(0)}° · ${sunlitHourly.length} h Sonne · ${dayLabel}`,
+      `Heading ${heading.toFixed(0)}° · Neigung ${pitchForSun.toFixed(0)}°${offsetLabel} · ${sunlitHourly.length} h Sonne · ${dayLabel}`,
       12,
       h - 44
     );
@@ -549,10 +568,31 @@ export function ApartmentSolarAr({
                 }
               : null,
             projectedCount: projected.length,
+            yawOffset: yawOffsetRef.current,
           })
       );
     }
   }, [phase, sunlitHourly, dayDate, timeZone, livePosition]);
+
+  const calibrateCompassAtSunset = useCallback(() => {
+    const heading = smoothHeadingRef.current ?? headingRef.current;
+    if (heading == null || livePosition == null) return;
+    const times = getSolarDayTimes(
+      dayDate,
+      livePosition.latitude,
+      livePosition.longitude
+    );
+    if (!times.sunset) return;
+    const atSunset = getSolarSample(
+      times.sunset,
+      livePosition.latitude,
+      livePosition.longitude
+    );
+    const offset = atSunset.azimuthDeg - heading;
+    yawOffsetRef.current = offset;
+    setYawOffsetDeg(offset);
+    sessionStorage.setItem(YAW_OFFSET_STORAGE_KEY, String(offset));
+  }, [dayDate, livePosition]);
 
   useEffect(() => {
     if (phase !== "running") return;
@@ -795,6 +835,18 @@ export function ApartmentSolarAr({
             className="text-sm underline"
           >
             Erneut versuchen
+          </button>
+        </div>
+      )}
+
+      {phase === "running" && (
+        <div className="absolute left-3 right-3 top-28 z-10 flex justify-end">
+          <button
+            type="button"
+            onClick={calibrateCompassAtSunset}
+            className="text-xs px-3 py-2 rounded-lg border border-white/35 bg-black/50 hover:bg-black/70"
+          >
+            Kompass am Untergang kalibrieren
           </button>
         </div>
       )}
