@@ -57,12 +57,28 @@ describe("device-orientation-ar", () => {
     expect(view?.pitch).toBeNull();
   });
 
-  it("upright portrait (gravity in Y): heading and pitch for AR", () => {
-    const uprightGravity = { x: 0, y: 9.7, z: 1.2 };
-    const view = viewOrientationFromEvent(254.8, 83.2, -0.3, 0, uprightGravity);
+  it("upright portrait (Android beta≈0 + gravity): heading and pitch for AR", () => {
+    const uprightGravity = { x: 0.2, y: -9.7, z: 0.8 };
+    const view = viewOrientationFromEvent(254.8, 0, -0.3, 0, uprightGravity);
     expect(view?.flat).toBe(false);
-    expect(view?.heading).toBeCloseTo(286, 0);
-    expect(view?.pitch).toBeGreaterThan(0);
-    expect(view?.pitch).toBeLessThan(15);
+    expect(view?.heading).toBeGreaterThan(280);
+    expect(view?.heading).toBeLessThan(292);
+    expect(Math.abs(view?.pitch ?? 99)).toBeLessThan(12);
+  });
+
+  it("AR tilt ~45° down: not flat (guards old gravity threshold on 1.3.39)", () => {
+    const tiltGravity = { x: 0, y: -6.9, z: -6.9 };
+    const view = viewOrientationFromEvent(36, 0, 0, 0, tiltGravity);
+    expect(view?.flat).toBe(false);
+    expect(view?.pitch).toBeLessThan(-35);
+    expect(view?.pitch).toBeGreaterThan(-55);
+  });
+
+  it("AR tilt ~45° up: not flat", () => {
+    const tiltGravity = { x: 0, y: -6.9, z: 6.9 };
+    const view = viewOrientationFromEvent(36, 0, 0, 0, tiltGravity);
+    expect(view?.flat).toBe(false);
+    expect(view?.pitch).toBeGreaterThan(35);
+    expect(view?.pitch).toBeLessThan(55);
   });
 });

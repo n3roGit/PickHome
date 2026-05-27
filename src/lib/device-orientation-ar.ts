@@ -5,7 +5,22 @@
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events/Detecting_device_orientation
  */
 
-import { isScreenHorizontalFromGravity } from "@/lib/device-pitch";
+import {
+  isScreenHorizontalFromGravity,
+  mergePitchReadings,
+  pitchFromGravity,
+  pitchFromOrientation,
+} from "@/lib/device-pitch";
+
+/** If |pitch| exceeds this, the user is holding the phone for AR (not flat on a table). */
+const AR_FLAT_MAX_TILT_DEG = 15;
+
+/** Table-flat gravity pitch is ~±90°; AR look up/down is typically within ±75°. */
+function isArTiltPitch(pitch: number | null): boolean {
+  if (pitch == null || Number.isNaN(pitch)) return false;
+  const a = Math.abs(pitch);
+  return a > AR_FLAT_MAX_TILT_DEG && a < 75;
+}
 
 const DEG2RAD = Math.PI / 180;
 
@@ -173,6 +188,27 @@ export type ArViewOrientation = {
   flat: boolean;
 };
 
+function resolveArPitch(
+  alpha: number,
+  beta: number,
+  gamma: number,
+  screenAngleDeg: number,
+  gravity: GravitySample | null
+): number {
+  const orientPitch = pitchFromOrientation(beta, gamma, screenAngleDeg);
+  const gravityPitch =
+    gravity != null
+      ? pitchFromGravity(gravity.x, gravity.y, gravity.z, screenAngleDeg)
+      : null;
+  // Android portrait upright uses beta≈0; tilt is in gravity, not beta.
+  if (Math.abs(beta) < 45 && gravityPitch != null) {
+    return gravityPitch;
+  }
+  const merged = mergePitchReadings(orientPitch, gravityPitch);
+  if (merged != null) return merged;
+  return viewPitchFromOrientation(alpha, beta, gamma, screenAngleDeg);
+}
+
 export function viewOrientationFromEvent(
   alpha: number | null,
   beta: number | null,
@@ -191,16 +227,26 @@ export function viewOrientationFromEvent(
     return null;
   }
 
+  const orientPitch = pitchFromOrientation(beta, gamma, screenAngleDeg);
+  const gravityPitch =
+    gravity != null
+      ? pitchFromGravity(gravity.x, gravity.y, gravity.z, screenAngleDeg)
+      : null;
+
   if (
     gravity != null &&
-    isScreenHorizontalFromGravity(gravity.x, gravity.y, gravity.z, screenAngleDeg)
+    isScreenHorizontalFromGravity(gravity.x, gravity.y, gravity.z, screenAngleDeg) &&
+    !isArTiltPitch(orientPitch) &&
+    !isArTiltPitch(gravityPitch)
   ) {
     return { heading: null, pitch: null, flat: true };
   }
 
+  const pitch = resolveArPitch(alpha, beta, gamma, screenAngleDeg, gravity ?? null);
+
   return {
     heading: viewHeadingFromOrientation(alpha, beta, gamma, screenAngleDeg),
-    pitch: viewPitchFromOrientation(alpha, beta, gamma, screenAngleDeg),
+    pitch,
     flat: false,
   };
 }
