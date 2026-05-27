@@ -27,6 +27,7 @@ export default async function ApartmentSolarArPage({
 
   return (
     <ApartmentSolarAr
+      apartmentId={aptId}
       backHref={backHref}
       title={apartment.title}
       timeZone={timeZone}

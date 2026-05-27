@@ -12,6 +12,7 @@
 - **AR vor Ort öffnen** (only when `DeviceOrientationEvent` is available) navigates to `/project/.../apartment/.../sonne-ar` without crashing.
 - The AR page shows controlled errors for HTTPS/camera/compass denial — no uncaught exceptions or Next.js overlay.
 - After **Kamera, Kompass & Standort starten**, hourly sun markers for the selected date appear (`data-testid="solar-date-input"` in AR header); the current hour uses a larger marker only when the date is today.
+- While AR is running, the round **camera save** button (`data-testid="solar-ar-save-photo"`) saves the live preview including AR overlay to the apartment **Bilder** gallery without a confirmation dialog.
 - AR requests **geolocation** and computes sun positions from the **device’s current GPS coordinates** (not the apartment’s stored geocode).
 - When the phone lies flat (screen up or down on a table), AR shows **„Handy hochkant halten — flach auf dem Tisch keine AR-Sonnen“** and does **not** draw sun markers (gravity disambiguates Android `beta ≈ 0`).
 - AR uses **absolute** device orientation when available (`deviceorientationabsolute`); no mixing with relative events.

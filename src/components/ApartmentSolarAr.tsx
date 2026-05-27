@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { captureArFrameToFile } from "@/lib/ar-capture-frame";
+import { usePhotoUploadQueue } from "@/hooks/use-photo-upload-queue";
 import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
   azimuthDeltaDeg,
@@ -66,6 +68,7 @@ type ArError =
   | GeolocationArError;
 
 type Props = {
+  apartmentId: string;
   backHref: string;
   title: string;
   timeZone: string;
@@ -201,7 +204,29 @@ function isSameCalendarDay(a: Date, b: Date, timeZone: string): boolean {
   return fmt(a) === fmt(b);
 }
 
+function CameraSaveIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="w-5 h-5 shrink-0"
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 9a2 2 0 0 1 2-2h2l1-2h10l1 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+    </svg>
+  );
+}
+
 export function ApartmentSolarAr({
+  apartmentId,
   backHref,
   title,
   timeZone,
@@ -236,6 +261,9 @@ export function ApartmentSolarAr({
   const [locationPreDenied, setLocationPreDenied] = useState(false);
   const [dayDate, setDayDate] = useState(() => initialDayDate ?? new Date());
   const [livePosition, setLivePosition] = useState<GeoPosition | null>(null);
+  const photoQueue = usePhotoUploadQueue(apartmentId);
+  const [, startCaptureTransition] = useTransition();
+  const captureBusyRef = useRef(false);
 
   const hourlySamples = useMemo(() => {
     if (!livePosition) return [];
@@ -636,6 +664,23 @@ export function ApartmentSolarAr({
 
   useEffect(() => () => stop(), [stop]);
 
+  const saveFrameToGallery = useCallback(() => {
+    if (captureBusyRef.current || photoQueue.queueFull) return;
+    const video = videoRef.current;
+    const overlay = canvasRef.current;
+    if (!video || !overlay || phase !== "running") return;
+
+    captureBusyRef.current = true;
+    startCaptureTransition(async () => {
+      try {
+        const file = await captureArFrameToFile(video, overlay);
+        if (file) photoQueue.enqueue([file]);
+      } finally {
+        captureBusyRef.current = false;
+      }
+    });
+  }, [phase, photoQueue.enqueue, photoQueue.queueFull]);
+
   async function start() {
     setError(null);
     setCameraPreDenied(false);
@@ -881,6 +926,19 @@ export function ApartmentSolarAr({
             className="absolute inset-0 w-full h-full pointer-events-none"
             data-testid={phase === "running" ? "solar-ar-running" : undefined}
           />
+          <div className="absolute bottom-20 right-3 z-10">
+            <button
+              type="button"
+              data-testid="solar-ar-save-photo"
+              onClick={saveFrameToGallery}
+              disabled={photoQueue.queueFull}
+              className="flex items-center justify-center w-12 h-12 rounded-full border border-white/40 bg-black/55 text-white hover:bg-black/75 disabled:opacity-40"
+              title="Aufnahme in Bildergalerie speichern"
+              aria-label="Aufnahme in Bildergalerie speichern"
+            >
+              <CameraSaveIcon />
+            </button>
+          </div>
         </>
       )}
 
