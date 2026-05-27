@@ -13,6 +13,7 @@ import {
 } from "@/lib/ar-horizon-line";
 import {
   viewOrientationFromEvent,
+  webkitCompassHeadingFromEvent,
   type GravitySample,
 } from "@/lib/device-orientation-ar";
 import {
@@ -157,8 +158,7 @@ function readOrientation(
 ): ReturnType<typeof viewOrientationFromEvent> {
   return viewOrientationFromEvent(e.alpha, e.beta, e.gamma, getScreenAngle(), gravity, {
     absolute: e.absolute === true,
-    webkitCompassHeading:
-      typeof e.webkitCompassHeading === "number" ? e.webkitCompassHeading : null,
+    webkitCompassHeading: webkitCompassHeadingFromEvent(e),
   });
 }
 

@@ -312,17 +312,23 @@ export function viewOrientationFromEvent(
   };
 }
 
+export function webkitCompassHeadingFromEvent(
+  event: DeviceOrientationEvent
+): number | null {
+  const h = event.webkitCompassHeading;
+  return typeof h === "number" && !Number.isNaN(h) ? h : null;
+}
+
 /** Heading from a live DeviceOrientationEvent (absolute flag + iOS compass). */
 export function viewHeadingFromDeviceOrientationEvent(
   alpha: number,
   beta: number,
   gamma: number,
   screenAngleDeg: number,
-  event: Pick<DeviceOrientationEvent, "absolute" | "webkitCompassHeading">
+  event: DeviceOrientationEvent
 ): number {
   return viewHeadingFromOrientation(alpha, beta, gamma, screenAngleDeg, {
     absolute: event.absolute === true,
-    webkitCompassHeading:
-      typeof event.webkitCompassHeading === "number" ? event.webkitCompassHeading : null,
+    webkitCompassHeading: webkitCompassHeadingFromEvent(event),
   });
 }
