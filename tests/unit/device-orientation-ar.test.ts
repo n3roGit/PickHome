@@ -38,10 +38,11 @@ describe("device-orientation-ar", () => {
     expect(Math.abs(h90 - h0)).toBeGreaterThan(45);
   });
 
-  it("portrait vertical: heading uses alpha as compass bearing", () => {
-    expect(viewHeadingFromOrientation(142, 90, 0, 0)).toBe(142);
-    expect(viewHeadingFromOrientation(142, 0, 0, 0)).toBe(142);
-    expect(viewHeadingFromOrientation(90, 90, 0, 0)).toBe(90);
+  it("portrait vertical: heading uses camera look vector, not raw alpha", () => {
+    const heading = viewHeadingFromOrientation(254.8, 83.2, -0.3, 0);
+    expect(heading).toBeGreaterThan(280);
+    expect(heading).toBeLessThan(290);
+    expect(heading).not.toBeCloseTo(254.8, 0);
   });
 
   it("viewOrientationFromEvent returns null for missing values", () => {
@@ -60,7 +61,7 @@ describe("device-orientation-ar", () => {
     const uprightGravity = { x: 0, y: 9.7, z: 1.2 };
     const view = viewOrientationFromEvent(254.8, 83.2, -0.3, 0, uprightGravity);
     expect(view?.flat).toBe(false);
-    expect(view?.heading).toBeCloseTo(255, 0);
+    expect(view?.heading).toBeCloseTo(286, 0);
     expect(view?.pitch).toBeGreaterThan(0);
     expect(view?.pitch).toBeLessThan(15);
   });
