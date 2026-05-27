@@ -145,7 +145,7 @@ function cameraLookVector(
   return { dx: -m[2], dy: -m[5], dz: -m[8] };
 }
 
-/** Compass heading from rear-camera look vector (always matrix-based). */
+/** Compass heading from rear-camera look vector (full-circle atan2). */
 export function viewHeadingFromCameraLook(
   alpha: number,
   beta: number,
@@ -153,12 +153,8 @@ export function viewHeadingFromCameraLook(
   screenAngleDeg: number
 ): number {
   const { dx, dy } = cameraLookVector(alpha, beta, gamma, screenAngleDeg);
-
-  let heading = Math.atan2(dx, dy);
-  if (dy < 0) heading += Math.PI;
-  else if (dx < 0) heading += 2 * Math.PI;
-
-  return (heading * 180) / Math.PI;
+  const heading = (Math.atan2(dx, dy) * 180) / Math.PI;
+  return (heading + 360) % 360;
 }
 
 export type DeviceOrientationHeadingInput = {
@@ -176,9 +172,9 @@ export function isPortraitArOrientation(beta: number): boolean {
 }
 
 /**
- * Compass heading for AR yaw (degrees from north).
- * Portrait: use alpha (camera-look with normalized beta spins 2× per physical turn).
- * iOS: prefer webkitCompassHeading when available.
+ * Compass heading the back camera points (0=N, 90=E, 180=S, 270=W).
+ * Sources (Full-Tilt-JS, W3C, MDN): iOS uses webkitCompassHeading; Android absolute uses
+ * `360 - alpha` minus the screen rotation. Holds for phone vertical in portrait.
  */
 export function viewHeadingFromOrientation(
   alpha: number,
@@ -189,13 +185,11 @@ export function viewHeadingFromOrientation(
 ): number {
   const compass = options?.webkitCompassHeading;
   if (compass != null && !Number.isNaN(compass)) {
-    return normalizeScreenAngle(compass);
+    return normalizeScreenAngle(compass + normalizeScreenAngle(screenAngleDeg));
   }
 
-  const screen = normalizeScreenAngle(screenAngleDeg);
-
   if (isPortraitArOrientation(beta)) {
-    return normalizeScreenAngle(alpha - screen);
+    return normalizeScreenAngle(360 - alpha - normalizeScreenAngle(screenAngleDeg));
   }
 
   return viewHeadingFromCameraLook(alpha, beta, gamma, screenAngleDeg);
@@ -222,11 +216,8 @@ export function compassHeadingFromOrientation(
   const vx = -cZ * sY - sZ * sX * cY;
   const vy = -sZ * sY + cZ * sX * cY;
 
-  let heading = Math.atan2(vx, vy);
-  if (vy < 0) heading += Math.PI;
-  else if (vx < 0) heading += 2 * Math.PI;
-
-  return (heading * 180) / Math.PI;
+  const heading = (Math.atan2(vx, vy) * 180) / Math.PI;
+  return (heading + 360) % 360;
 }
 
 /**

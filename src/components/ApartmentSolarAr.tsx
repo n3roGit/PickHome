@@ -546,8 +546,13 @@ export function ApartmentSolarAr({
     ctx.fillRect(0, h - 72, w, 72);
     ctx.fillStyle = "#fff";
     ctx.font = "12px system-ui, sans-serif";
+    const sensor = sensorRef.current;
+    const sensorLabel =
+      sensor != null
+        ? ` · α ${Math.round(sensor.alpha)}° β ${Math.round(sensor.beta)}°${sensor.absolute ? " abs" : " rel"}`
+        : "";
     ctx.fillText(
-      `Heading ${heading.toFixed(0)}° · Neigung ${pitchForSun.toFixed(0)}° · ${sunlitHourly.length} h Sonne · ${dayLabel}`,
+      `Heading ${heading.toFixed(0)}° · Neigung ${pitchForSun.toFixed(0)}°${sensorLabel} · ${sunlitHourly.length} h Sonne · ${dayLabel}`,
       12,
       h - 44
     );

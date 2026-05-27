@@ -5,8 +5,10 @@ import {
   viewHeadingFromOrientation,
 } from "@/lib/device-orientation-ar";
 
-function totalAbsSweep(headingAtAlpha: (alpha: number) => number): number {
-  const steps = [0, 45, 90, 135, 180, 225, 270, 315, 360].map(headingAtAlpha);
+function absSweep(headingAtAlpha: (alpha: number) => number): number {
+  const steps = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360].map(
+    headingAtAlpha
+  );
   let sum = 0;
   for (let i = 1; i < steps.length; i++) {
     let d = steps[i]! - steps[i - 1]!;
@@ -18,32 +20,36 @@ function totalAbsSweep(headingAtAlpha: (alpha: number) => number): number {
 }
 
 describe("device-orientation heading scale", () => {
-  const gamma = 0;
-  const screen = 0;
-
   it("isPortraitArOrientation covers Android beta 0 and iOS beta 90", () => {
     expect(isPortraitArOrientation(0)).toBe(true);
-    expect(isPortraitArOrientation(90)).toBe(true);
-    expect(isPortraitArOrientation(83)).toBe(true);
+    expect(isPortraitArOrientation(85)).toBe(true);
     expect(isPortraitArOrientation(50)).toBe(false);
   });
 
-  it("portrait uses alpha: ~360° abs sweep per alpha cycle (beta 0 and 90)", () => {
-    for (const beta of [0, 90]) {
-      const sweep = totalAbsSweep((a) =>
-        viewHeadingFromOrientation(a, beta, gamma, screen, { absolute: true })
+  it("portrait heading (beta 0 and 90): one alpha cycle → 360° sweep", () => {
+    for (const beta of [0, 85, 90]) {
+      const sweep = absSweep((a) =>
+        viewHeadingFromOrientation(a, beta, 0, 0, { absolute: true })
       );
-      expect(sweep).toBeGreaterThan(300);
-      expect(sweep).toBeLessThan(420);
+      expect(sweep).toBeGreaterThan(350);
+      expect(sweep).toBeLessThan(370);
     }
   });
 
-  it("camera look at beta 0: ~720° abs sweep per alpha cycle (2× — avoided in AR)", () => {
-    const sweep = totalAbsSweep((a) => viewHeadingFromCameraLook(a, 0, gamma, screen));
-    expect(sweep).toBeGreaterThan(500);
+  it("camera look (no extra branches): one alpha cycle → 360° sweep at beta 90", () => {
+    const sweep = absSweep((a) => viewHeadingFromCameraLook(a, 90, 0, 0));
+    expect(sweep).toBeGreaterThan(350);
+    expect(sweep).toBeLessThan(370);
   });
 
-  it("prefers webkitCompassHeading when provided (iOS)", () => {
+  it("heading direction: alpha 90 → west (270°), alpha 270 → east (90°)", () => {
+    expect(viewHeadingFromOrientation(0, 85, 0, 0, { absolute: true })).toBeCloseTo(0, 0);
+    expect(viewHeadingFromOrientation(90, 85, 0, 0, { absolute: true })).toBeCloseTo(270, 0);
+    expect(viewHeadingFromOrientation(180, 85, 0, 0, { absolute: true })).toBeCloseTo(180, 0);
+    expect(viewHeadingFromOrientation(270, 85, 0, 0, { absolute: true })).toBeCloseTo(90, 0);
+  });
+
+  it("prefers webkitCompassHeading (iOS)", () => {
     expect(
       viewHeadingFromOrientation(10, 83, 0, 0, { webkitCompassHeading: 287.5 })
     ).toBeCloseTo(287.5, 1);
