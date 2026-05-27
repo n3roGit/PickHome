@@ -37,6 +37,7 @@ const AR_HORIZON_MARGIN_DEG = 12;
 const HEADING_SMOOTH_PER_FRAME = 0.08;
 const PITCH_SMOOTH_PER_FRAME = 0.1;
 const MARKER_SMOOTH_PER_FRAME = 0.14;
+const AR_DEBUG_LOG_INTERVAL_MS = 3000;
 
 type ProjectedSun = {
   sample: SolarSample;
@@ -217,6 +218,14 @@ export function ApartmentSolarAr({
   const orientationCleanupRef = useRef<(() => void) | null>(null);
   const motionCleanupRef = useRef<(() => void) | null>(null);
   const geoWatchCleanupRef = useRef<(() => void) | null>(null);
+  const sensorRef = useRef<{
+    alpha: number;
+    beta: number;
+    gamma: number;
+    absolute: boolean;
+  } | null>(null);
+  const lastArDebugLogMsRef = useRef(0);
+  const arDebugRef = useRef(false);
 
   const [phase, setPhase] = useState<"idle" | "requesting" | "running" | "error">("idle");
   const [error, setError] = useState<ArError | null>(null);
@@ -233,6 +242,12 @@ export function ApartmentSolarAr({
     () => hourlySamples.filter((s) => s.isUp),
     [hourlySamples]
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    arDebugRef.current =
+      new URLSearchParams(window.location.search).get("ar_debug") === "1";
+  }, []);
 
   const stop = useCallback(() => {
     if (rafRef.current != null) {
@@ -456,7 +471,48 @@ export function ApartmentSolarAr({
       12,
       h - 24
     );
-  }, [phase, sunlitHourly, dayDate, timeZone]);
+
+    if (arDebugRef.current && Date.now() - lastArDebugLogMsRef.current >= AR_DEBUG_LOG_INTERVAL_MS) {
+      lastArDebugLogMsRef.current = Date.now();
+      const nowSample = projected.find((p) => p.isNow) ?? projected[0];
+      const horizonMidY = (horizon.y1 + horizon.y2) / 2;
+      console.log(
+        "[ph-ar] " +
+          JSON.stringify({
+            ts: new Date().toISOString(),
+            flat: flatRef.current,
+            heading: Math.round(heading * 10) / 10,
+            pitch: Math.round(pitch * 10) / 10,
+            rawHeading: rawHeading != null ? Math.round(rawHeading * 10) / 10 : null,
+            rawPitch: rawPitch != null ? Math.round(rawPitch * 10) / 10 : null,
+            sensor: sensorRef.current,
+            gravity: gravityRef.current,
+            screenAngleDeg: getScreenAngle(),
+            canvas: { w, h },
+            horizon: {
+              y1: Math.round(horizon.y1),
+              y2: Math.round(horizon.y2),
+              mid: Math.round(horizonMidY),
+            },
+            geo: livePosition
+              ? {
+                  lat: Math.round(livePosition.latitude * 1e5) / 1e5,
+                  lng: Math.round(livePosition.longitude * 1e5) / 1e5,
+                }
+              : null,
+            sunNow: nowSample
+              ? {
+                  az: Math.round(nowSample.sample.azimuthDeg * 10) / 10,
+                  alt: Math.round(nowSample.sample.altitudeDeg * 10) / 10,
+                  x: Math.round(nowSample.x),
+                  y: Math.round(nowSample.y),
+                }
+              : null,
+            projectedCount: projected.length,
+          })
+      );
+    }
+  }, [phase, sunlitHourly, dayDate, timeZone, livePosition]);
 
   useEffect(() => {
     if (phase !== "running") return;
@@ -558,6 +614,21 @@ export function ApartmentSolarAr({
 
       const onOrientation = (e: DeviceOrientationEvent) => {
         if (supportsAbsoluteOrientation && e.absolute !== true) return;
+        if (
+          e.alpha != null &&
+          e.beta != null &&
+          e.gamma != null &&
+          !Number.isNaN(e.alpha) &&
+          !Number.isNaN(e.beta) &&
+          !Number.isNaN(e.gamma)
+        ) {
+          sensorRef.current = {
+            alpha: e.alpha,
+            beta: e.beta,
+            gamma: e.gamma,
+            absolute: e.absolute === true,
+          };
+        }
         const view = readOrientation(e, gravityRef.current);
         if (!view) return;
         if (view.flat) {
