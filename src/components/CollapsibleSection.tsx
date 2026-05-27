@@ -38,11 +38,9 @@ export function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   function toggleOpen() {
-    setOpen((value) => {
-      const next = !value;
-      onOpenChange?.(next);
-      return next;
-    });
+    const next = !open;
+    setOpen(next);
+    onOpenChange?.(next);
   }
 
   return (
