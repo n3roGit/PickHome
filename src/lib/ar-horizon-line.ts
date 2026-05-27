@@ -171,6 +171,21 @@ export type ArOrientationAngles = {
   screenAngleDeg: number;
 };
 
+/** Signed azimuth difference sun − camera heading, range (−180, 180]. */
+export function azimuthDeltaDeg(
+  sunAzimuthDeg: number,
+  cameraHeadingDeg: number,
+  yawOffsetDeg = 0
+): number {
+  let delta = sunAzimuthDeg - (cameraHeadingDeg + yawOffsetDeg);
+  return ((delta + 540) % 360) - 180;
+}
+
+/** Smallest angle between two compass azimuths (0–180). */
+export function azimuthSeparationDeg(aDeg: number, bDeg: number): number {
+  return Math.abs(azimuthDeltaDeg(aDeg, bDeg, 0));
+}
+
 /**
  * Project sun into the live preview anchored to the gravity horizon line.
  * Horizontal position uses compass heading (yaw); vertical uses camera pitch vs sun altitude.
@@ -192,8 +207,7 @@ export function projectSunOnHorizonToCanvas(
   const relAlt = sunAltitudeDeg - cameraPitchDeg;
   if (relAlt < -horizonMarginDeg) return null;
 
-  let delta = sunAzimuthDeg - (cameraHeadingDeg + yawOffsetDeg);
-  delta = ((delta + 540) % 360) - 180;
+  const delta = azimuthDeltaDeg(sunAzimuthDeg, cameraHeadingDeg, yawOffsetDeg);
 
   const maxH = hFovDeg / 2 + 5;
   if (Math.abs(delta) > maxH) return null;

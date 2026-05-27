@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
+  azimuthSeparationDeg,
   computeHorizonLineInCanvas,
   intrinsicsFromFov,
   pitchDegFromHorizonMid,
@@ -39,6 +40,8 @@ const HEADING_SMOOTH_PER_FRAME = 0.08;
 const PITCH_SMOOTH_PER_FRAME = 0.1;
 const MARKER_SMOOTH_PER_FRAME = 0.14;
 const AR_DEBUG_LOG_INTERVAL_MS = 3000;
+/** Break sun-path polyline when azimuth jumps (wrap or leaves FOV between samples). */
+const SUN_PATH_AZIMUTH_GAP_DEG = 100;
 
 type ProjectedSun = {
   sample: SolarSample;
@@ -416,14 +419,43 @@ export function ApartmentSolarAr({
       if (!activeKeys.has(key)) markerPosRef.current.delete(key);
     }
 
-    if (projected.length > 0) {
+    const pathOnHorizon: { x: number; y: number; azimuthDeg: number; t: number }[] = [];
+    for (const sample of sunlitHourly) {
+      const pos = projectSunOnHorizonToCanvas(
+        w,
+        h,
+        horizon,
+        sample.azimuthDeg,
+        0,
+        heading,
+        pitchForSun,
+        AR_FOV_DEG,
+        AR_VERTICAL_FOV_DEG,
+        AR_HORIZON_MARGIN_DEG
+      );
+      if (!pos || pos.x < 0 || pos.x > w) continue;
+      pathOnHorizon.push({
+        x: pos.x,
+        y: pos.y,
+        azimuthDeg: sample.azimuthDeg,
+        t: sample.date.getTime(),
+      });
+    }
+    pathOnHorizon.sort((a, b) => a.t - b.t);
+
+    if (pathOnHorizon.length > 1) {
       ctx.strokeStyle = "rgba(245, 158, 11, 0.35)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      const sorted = [...projected].sort((a, b) => a.x - b.x);
-      ctx.moveTo(sorted[0]!.x, sorted[0]!.y);
-      for (let i = 1; i < sorted.length; i++) {
-        ctx.lineTo(sorted[i]!.x, sorted[i]!.y);
+      ctx.moveTo(pathOnHorizon[0]!.x, pathOnHorizon[0]!.y);
+      for (let i = 1; i < pathOnHorizon.length; i++) {
+        const prev = pathOnHorizon[i - 1]!;
+        const cur = pathOnHorizon[i]!;
+        if (azimuthSeparationDeg(prev.azimuthDeg, cur.azimuthDeg) > SUN_PATH_AZIMUTH_GAP_DEG) {
+          ctx.moveTo(cur.x, cur.y);
+        } else {
+          ctx.lineTo(cur.x, cur.y);
+        }
       }
       ctx.stroke();
     }

@@ -131,6 +131,30 @@ describe("ar-horizon-line", () => {
     expect(Math.abs(pos!.y - horizonYAtX(horizon, pos!.x, W))).toBeLessThan(8);
   });
 
+  it("sun path at elevation 0 stays on gravity horizon line", () => {
+    const gravity = { x: 0, y: -9.8, z: 0.2 };
+    const horizon = computeHorizonLineInCanvas(W, H, INTR, gravity, 0)!;
+    const heading = viewHeadingFromOrientation(200, 0, 0, 0);
+    const pitch = pitchDegFromHorizonMid(horizon, H, 65);
+    for (const az of [52, 120, 200, 280, 308]) {
+      const pos = projectSunOnHorizonToCanvas(
+        W,
+        H,
+        horizon,
+        az,
+        0,
+        heading,
+        pitch,
+        50,
+        65,
+        12
+      );
+      if (pos) {
+        expect(Math.abs(pos.y - horizonYAtX(horizon, pos.x, W))).toBeLessThan(3);
+      }
+    }
+  });
+
   it("sun at elevation 0 sits on gravity horizon line", () => {
     const gravity = { x: 0, y: -9.8, z: 0.2 };
     const horizon = computeHorizonLineInCanvas(W, H, INTR, gravity, 0)!;
