@@ -31,6 +31,19 @@ export function horizonYAtX(line: HorizonLineSegment, x: number, width: number):
   return line.y1 + ((line.y2 - line.y1) * x) / width;
 }
 
+/**
+ * Camera pitch (deg) implied by the horizon line mid-Y — inverse of pitch-only fallback.
+ * Matches gravity horizon geometry; stable near 0° unlike raw atan2(gravity).
+ */
+export function pitchDegFromHorizonMid(
+  horizon: HorizonLineSegment,
+  height: number,
+  vFovDeg: number
+): number {
+  const midY = (horizon.y1 + horizon.y2) / 2;
+  return ((midY - height / 2) / height) * vFovDeg;
+}
+
 /** Focal lengths in pixels from horizontal/vertical FOV (degrees). */
 export function intrinsicsFromFov(
   width: number,

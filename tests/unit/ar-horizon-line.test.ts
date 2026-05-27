@@ -4,6 +4,7 @@ import {
   deviceToCameraViewVector,
   horizonYAtX,
   intrinsicsFromFov,
+  pitchDegFromHorizonMid,
   projectSunOnHorizonToCanvas,
   sunDirectionEarth,
 } from "@/lib/ar-horizon-line";
@@ -19,6 +20,13 @@ const H = 844;
 const INTR = intrinsicsFromFov(W, H, 50, 65);
 
 describe("ar-horizon-line", () => {
+  it("pitchDegFromHorizonMid inverts pitch-only horizon placement", () => {
+    const pitchIn = 12;
+    const midY = H / 2 + (pitchIn / 65) * H;
+    const line = { x1: 0, y1: midY, x2: W, y2: midY };
+    expect(pitchDegFromHorizonMid(line, H, 65)).toBeCloseTo(pitchIn, 1);
+  });
+
   it("upright portrait: horizon near vertical center", () => {
     const line = computeHorizonLineInCanvas(
       W,

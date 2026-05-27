@@ -6,6 +6,7 @@ import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
   computeHorizonLineInCanvas,
   intrinsicsFromFov,
+  pitchDegFromHorizonMid,
   projectSunOnHorizonToCanvas,
   type HorizonLineSegment,
 } from "@/lib/ar-horizon-line";
@@ -360,6 +361,12 @@ export function ApartmentSolarAr({
     }
     smoothHorizonRef.current = horizon;
 
+    // Use pitch implied by the gravity horizon (stable near level); raw gravity atan2 jitters at ~0°.
+    const pitchForSun =
+      gravityRef.current != null
+        ? pitchDegFromHorizonMid(horizon, h, AR_VERTICAL_FOV_DEG)
+        : pitch;
+
     ctx.strokeStyle = "rgba(255,255,255,0.6)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -384,7 +391,7 @@ export function ApartmentSolarAr({
         sample.azimuthDeg,
         sample.altitudeDeg,
         heading,
-        pitch,
+        pitchForSun,
         AR_FOV_DEG,
         AR_VERTICAL_FOV_DEG,
         AR_HORIZON_MARGIN_DEG
@@ -443,9 +450,9 @@ export function ApartmentSolarAr({
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.font = "14px system-ui, sans-serif";
       const hint =
-        pitch < -10
+        pitchForSun < -10
           ? "Blick zu weit nach unten — Handy hoch neigen"
-          : pitch > 50
+          : pitchForSun > 50
             ? "Blick zu weit nach oben — Sonnen außerhalb des Sichtfelds"
             : "Handy drehen & neigen — stündliche Sonnen im Sichtfeld";
       ctx.fillText(hint, 16, 32);
@@ -462,7 +469,7 @@ export function ApartmentSolarAr({
     ctx.fillStyle = "#fff";
     ctx.font = "12px system-ui, sans-serif";
     ctx.fillText(
-      `Heading ${heading.toFixed(0)}° · Neigung ${pitch.toFixed(0)}° · ${sunlitHourly.length} h Sonne · ${dayLabel}`,
+      `Heading ${heading.toFixed(0)}° · Neigung ${pitchForSun.toFixed(0)}° · ${sunlitHourly.length} h Sonne · ${dayLabel}`,
       12,
       h - 44
     );
@@ -482,7 +489,8 @@ export function ApartmentSolarAr({
             ts: new Date().toISOString(),
             flat: flatRef.current,
             heading: Math.round(heading * 10) / 10,
-            pitch: Math.round(pitch * 10) / 10,
+            pitch: Math.round(pitchForSun * 10) / 10,
+            pitchSensor: Math.round(pitch * 10) / 10,
             rawHeading: rawHeading != null ? Math.round(rawHeading * 10) / 10 : null,
             rawPitch: rawPitch != null ? Math.round(rawPitch * 10) / 10 : null,
             sensor: sensorRef.current,
