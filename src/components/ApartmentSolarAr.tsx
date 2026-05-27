@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
+  computeHorizonLineInCanvas,
+  intrinsicsFromFov,
+  type HorizonLineSegment,
+} from "@/lib/ar-horizon-line";
+import {
   viewOrientationFromEvent,
   type GravitySample,
 } from "@/lib/device-orientation-ar";
@@ -155,12 +160,39 @@ function horizonYFromPitch(pitch: number, h: number): number {
   return h / 2 + (pitch / AR_VERTICAL_FOV_DEG) * h;
 }
 
+function horizonYAtX(line: HorizonLineSegment, x: number, w: number): number {
+  return line.y1 + ((line.y2 - line.y1) * x) / w;
+}
+
+function resolveHorizonLine(
+  w: number,
+  h: number,
+  gravity: GravitySample | null,
+  screenAngleDeg: number,
+  pitch: number
+): HorizonLineSegment {
+  if (gravity) {
+    const intrinsics = intrinsicsFromFov(w, h, AR_FOV_DEG, AR_VERTICAL_FOV_DEG);
+    const fromGravity = computeHorizonLineInCanvas(
+      w,
+      h,
+      intrinsics,
+      gravity,
+      screenAngleDeg
+    );
+    if (fromGravity) return fromGravity;
+  }
+  const y = horizonYFromPitch(pitch, h);
+  return { x1: 0, y1: y, x2: w, y2: y };
+}
+
 function projectSun(
   sample: SolarSample,
   heading: number,
   pitch: number,
   w: number,
-  h: number
+  h: number,
+  horizon: HorizonLineSegment
 ): { x: number; y: number } | null {
   if (!sample.isUp) return null;
   const relAlt = sample.altitudeDeg - pitch;
@@ -171,7 +203,8 @@ function projectSun(
   if (Math.abs(delta) > AR_FOV_DEG / 2 + 5) return null;
 
   const x = w / 2 + (delta / AR_FOV_DEG) * w;
-  const y = h / 2 - (relAlt / AR_VERTICAL_FOV_DEG) * h;
+  const yHorizon = horizonYAtX(horizon, x, w);
+  const y = yHorizon - (relAlt / AR_VERTICAL_FOV_DEG) * h;
   if (x < -20 || x > w + 20 || y < -20 || y > h + 20) return null;
   return { x, y };
 }
@@ -204,6 +237,7 @@ export function ApartmentSolarAr({
   const gravityRef = useRef<GravitySample | null>(null);
   const smoothHeadingRef = useRef<number | null>(null);
   const smoothPitchRef = useRef<number | null>(null);
+  const smoothHorizonRef = useRef<HorizonLineSegment | null>(null);
   const markerPosRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const rafRef = useRef<number | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
@@ -241,6 +275,7 @@ export function ApartmentSolarAr({
     gravityRef.current = null;
     smoothHeadingRef.current = null;
     smoothPitchRef.current = null;
+    smoothHorizonRef.current = null;
     markerPosRef.current.clear();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -316,12 +351,31 @@ export function ApartmentSolarAr({
     }
     smoothPitchRef.current = pitch;
 
-    const horizonY = horizonYFromPitch(pitch, h);
+    const rawHorizon = resolveHorizonLine(
+      w,
+      h,
+      gravityRef.current,
+      getScreenAngle(),
+      pitch
+    );
+    let horizon = smoothHorizonRef.current;
+    if (horizon == null) {
+      horizon = rawHorizon;
+    } else {
+      horizon = {
+        x1: horizon.x1,
+        y1: lerpNumber(horizon.y1, rawHorizon.y1, PITCH_SMOOTH_PER_FRAME),
+        x2: horizon.x2,
+        y2: lerpNumber(horizon.y2, rawHorizon.y2, PITCH_SMOOTH_PER_FRAME),
+      };
+    }
+    smoothHorizonRef.current = horizon;
+
     ctx.strokeStyle = "rgba(255,255,255,0.6)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, horizonY);
-    ctx.lineTo(w, horizonY);
+    ctx.moveTo(horizon.x1, horizon.y1);
+    ctx.lineTo(horizon.x2, horizon.y2);
     ctx.stroke();
 
     if (sunlitHourly.length === 0) {
@@ -334,7 +388,7 @@ export function ApartmentSolarAr({
     const projected: ProjectedSun[] = [];
     const activeKeys = new Set<number>();
     for (const sample of sunlitHourly) {
-      const pos = projectSun(sample, heading, pitch, w, h);
+      const pos = projectSun(sample, heading, pitch, w, h, horizon);
       if (!pos || pos.x < 0 || pos.x > w) continue;
       const key = sample.date.getTime();
       activeKeys.add(key);
@@ -527,6 +581,7 @@ export function ApartmentSolarAr({
           pitchRef.current = null;
           smoothHeadingRef.current = null;
           smoothPitchRef.current = null;
+          smoothHorizonRef.current = null;
           markerPosRef.current.clear();
           return;
         }
