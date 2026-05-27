@@ -46,23 +46,27 @@ function runShell(command) {
   }
 }
 
-function resolveTsxBin() {
-  const candidates = [
-    join(process.cwd(), "db-tools", "node_modules", ".bin", "tsx"),
-    join(process.cwd(), "node_modules", ".bin", "tsx"),
-    join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs"),
-  ];
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
-  }
-  throw new Error("tsx not found (expected /app/db-tools/node_modules/.bin/tsx in Docker image)");
+/** Node 22 native .ts loading breaks named ESM imports — use tsx as a loader. */
+function resolveTsxImport() {
+  const rootLoader = join(process.cwd(), "node_modules", "tsx", "dist", "esm", "index.mjs");
+  if (existsSync(rootLoader)) return "tsx";
+  const dbToolsLoader = join(
+    process.cwd(),
+    "db-tools",
+    "node_modules",
+    "tsx",
+    "dist",
+    "esm",
+    "index.mjs"
+  );
+  if (existsSync(dbToolsLoader)) return dbToolsLoader;
+  throw new Error("tsx not found (expected /app/node_modules/tsx in Docker image)");
 }
 
-/** Standalone Next output has no tsx; use /app/db-tools from the image build. */
 function runTsxScript(scriptPath) {
-  const tsxBin = resolveTsxBin();
+  const tsxImport = resolveTsxImport();
   const absScript = join(process.cwd(), scriptPath);
-  runShell(`"${tsxBin}" "${absScript}"`);
+  runShell(`node --import "${tsxImport}" "${absScript}"`);
 }
 
 function runTsxScriptOptional(label, scriptPath) {

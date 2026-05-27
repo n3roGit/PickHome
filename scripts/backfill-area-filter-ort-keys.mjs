@@ -1,6 +1,6 @@
-import { backfillAreaFilterOrtKeys } from "../src/lib/backfill-area-filter-ort-keys.ts";
+import backfill from "../src/lib/backfill-area-filter-ort-keys.ts";
 
-const updated = await backfillAreaFilterOrtKeys();
+const updated = await backfill.backfillAreaFilterOrtKeys();
 if (updated > 0) {
   console.log(`[pickhome] Backfilled area filter ortKeys for ${updated} project(s).`);
 }

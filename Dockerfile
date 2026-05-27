@@ -38,9 +38,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN chmod +x docker-entrypoint.sh \
-  && mkdir -p /app/db-tools \
-  && npm install --prefix /app/db-tools --omit=dev tsx@4.19.3 \
-  && npm install --no-save prisma@6.5.0 @prisma/client@6.5.0 \
+  && npm install --no-save prisma@6.5.0 @prisma/client@6.5.0 tsx@4.19.3 \
   && npx prisma generate \
   && npm cache clean --force \
   && chown -R node:node /app
