@@ -91,7 +91,7 @@ export function normalizeBetaForVerticalAr(beta: number): number {
   return beta;
 }
 
-function earthFrameMatrix(
+export function earthFrameMatrix(
   alpha: number,
   beta: number,
   gamma: number,
@@ -101,6 +101,37 @@ function earthFrameMatrix(
   const r = getRotationMatrix(alpha, b, gamma);
   const rs = mat3RotateZ(-normalizeScreenAngle(screenAngleDeg));
   return multiplyMat3(rs, r);
+}
+
+/** Unit direction in device frame from East-North-Up (W3C earth frame). */
+export function earthToDeviceDirection(
+  east: number,
+  north: number,
+  up: number,
+  alpha: number,
+  beta: number,
+  gamma: number,
+  screenAngleDeg: number
+): { x: number; y: number; z: number } {
+  const m = earthFrameMatrix(alpha, beta, gamma, screenAngleDeg);
+  return {
+    x: m[0] * east + m[3] * north + m[6] * up,
+    y: m[1] * east + m[4] * north + m[7] * up,
+    z: m[2] * east + m[5] * north + m[8] * up,
+  };
+}
+
+/** Unit look direction in W3C earth frame (X east, Y north, Z up). */
+export function cameraLookDirectionEarth(
+  alpha: number,
+  beta: number,
+  gamma: number,
+  screenAngleDeg: number
+): { east: number; north: number; up: number } {
+  const { dx, dy, dz } = cameraLookVector(alpha, beta, gamma, screenAngleDeg);
+  const mag = Math.hypot(dx, dy, dz);
+  if (mag < 1e-6) return { east: 0, north: 0, up: 1 };
+  return { east: dx / mag, north: dy / mag, up: dz / mag };
 }
 
 /** Rear-camera look vector in Earth frame (horizontal dx/dy, vertical dz). */

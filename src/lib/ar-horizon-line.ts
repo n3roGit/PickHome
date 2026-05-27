@@ -4,7 +4,12 @@
  */
 
 import { gravityInScreenFrame } from "@/lib/device-pitch";
-import type { GravitySample } from "@/lib/device-orientation-ar";
+import {
+  cameraLookDirectionEarth,
+  earthToDeviceDirection,
+} from "@/lib/device-orientation-ar";
+
+const DEG2RAD = Math.PI / 180;
 
 export type PinholeIntrinsics = {
   fx: number;
@@ -86,4 +91,112 @@ export function computeHorizonLineInCanvas(
     x2: width,
     y2: height - vUpRight,
   };
+}
+
+/** Sun direction in W3C earth frame (X east, Y north, Z up). */
+export function sunDirectionEarth(azimuthDeg: number, altitudeDeg: number): {
+  east: number;
+  north: number;
+  up: number;
+} {
+  const az = azimuthDeg * DEG2RAD;
+  const alt = altitudeDeg * DEG2RAD;
+  const cosAlt = Math.cos(alt);
+  return {
+    east: Math.sin(az) * cosAlt,
+    north: Math.cos(az) * cosAlt,
+    up: Math.sin(alt),
+  };
+}
+
+/** Camera view axes (x right, y up, z into scene) — matches horizon up-vector mapping. */
+export function deviceToCameraViewVector(device: { x: number; y: number; z: number }): {
+  x: number;
+  y: number;
+  z: number;
+} {
+  // Same screen/canvas mapping as gravity → up; rear camera looks along −device Z → +view Z.
+  return { x: -device.x, y: -device.y, z: -device.z };
+}
+
+function projectCameraViewToCanvas(
+  view: { x: number; y: number; z: number },
+  width: number,
+  height: number,
+  intrinsics: PinholeIntrinsics
+): { x: number; y: number } | null {
+  if (view.z <= 0.02) return null;
+
+  const { fx, fy, cx, cy } = intrinsics;
+  const cyUp = height - cy;
+  const u = cx + (fx * view.x) / view.z;
+  const vUp = cyUp + (fy * view.y) / view.z;
+  return { x: u, y: height - vUp };
+}
+
+function angleBetweenDeg(
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number }
+): number {
+  const magA = Math.hypot(a.x, a.y, a.z);
+  const magB = Math.hypot(b.x, b.y, b.z);
+  if (magA < 1e-6 || magB < 1e-6) return 180;
+  const dot = (a.x * b.x + a.y * b.y + a.z * b.z) / (magA * magB);
+  return (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
+}
+
+export type ArOrientationAngles = {
+  alpha: number;
+  beta: number;
+  gamma: number;
+  screenAngleDeg: number;
+};
+
+/**
+ * Project sun position into canvas pixels using the same frame as the horizon line.
+ */
+export function projectSunToCanvas(
+  width: number,
+  height: number,
+  intrinsics: PinholeIntrinsics,
+  azimuthDeg: number,
+  altitudeDeg: number,
+  orientation: ArOrientationAngles,
+  hFovDeg: number,
+  vFovDeg: number,
+  horizonMarginDeg = 12
+): { x: number; y: number } | null {
+  if (altitudeDeg < -horizonMarginDeg) return null;
+
+  const sunEarth = sunDirectionEarth(azimuthDeg, altitudeDeg);
+
+  const { alpha, beta, gamma, screenAngleDeg } = orientation;
+  const lookEarth = cameraLookDirectionEarth(alpha, beta, gamma, screenAngleDeg);
+  const sunDevice = earthToDeviceDirection(
+    sunEarth.east,
+    sunEarth.north,
+    sunEarth.up,
+    alpha,
+    beta,
+    gamma,
+    screenAngleDeg
+  );
+  const lookDevice = earthToDeviceDirection(
+    lookEarth.east,
+    lookEarth.north,
+    lookEarth.up,
+    alpha,
+    beta,
+    gamma,
+    screenAngleDeg
+  );
+
+  const sunView = deviceToCameraViewVector(sunDevice);
+  const lookView = deviceToCameraViewVector(lookDevice);
+
+  const sep = angleBetweenDeg(lookView, sunView);
+  const maxAngle = Math.hypot(hFovDeg / 2, vFovDeg / 2) + 4;
+  if (sep > maxAngle) return null;
+
+  return projectCameraViewToCanvas(sunView, width, height, intrinsics);
 }

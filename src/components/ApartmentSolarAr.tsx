@@ -6,6 +6,8 @@ import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
   computeHorizonLineInCanvas,
   intrinsicsFromFov,
+  projectSunToCanvas,
+  type ArOrientationAngles,
   type HorizonLineSegment,
 } from "@/lib/ar-horizon-line";
 import {
@@ -160,10 +162,6 @@ function horizonYFromPitch(pitch: number, h: number): number {
   return h / 2 + (pitch / AR_VERTICAL_FOV_DEG) * h;
 }
 
-function horizonYAtX(line: HorizonLineSegment, x: number, w: number): number {
-  return line.y1 + ((line.y2 - line.y1) * x) / w;
-}
-
 function resolveHorizonLine(
   w: number,
   h: number,
@@ -184,29 +182,6 @@ function resolveHorizonLine(
   }
   const y = horizonYFromPitch(pitch, h);
   return { x1: 0, y1: y, x2: w, y2: y };
-}
-
-function projectSun(
-  sample: SolarSample,
-  heading: number,
-  pitch: number,
-  w: number,
-  h: number,
-  horizon: HorizonLineSegment
-): { x: number; y: number } | null {
-  if (!sample.isUp) return null;
-  const relAlt = sample.altitudeDeg - pitch;
-  if (relAlt < -AR_HORIZON_MARGIN_DEG) return null;
-  if (relAlt > AR_VERTICAL_FOV_DEG / 2 + 5) return null;
-
-  const delta = ((sample.azimuthDeg - heading + 540) % 360) - 180;
-  if (Math.abs(delta) > AR_FOV_DEG / 2 + 5) return null;
-
-  const x = w / 2 + (delta / AR_FOV_DEG) * w;
-  const yHorizon = horizonYAtX(horizon, x, w);
-  const y = yHorizon - (relAlt / AR_VERTICAL_FOV_DEG) * h;
-  if (x < -20 || x > w + 20 || y < -20 || y > h + 20) return null;
-  return { x, y };
 }
 
 function isSameCalendarDay(a: Date, b: Date, timeZone: string): boolean {
@@ -235,6 +210,7 @@ export function ApartmentSolarAr({
   const pitchRef = useRef<number | null>(null);
   const flatRef = useRef(false);
   const gravityRef = useRef<GravitySample | null>(null);
+  const orientationRef = useRef<ArOrientationAngles | null>(null);
   const smoothHeadingRef = useRef<number | null>(null);
   const smoothPitchRef = useRef<number | null>(null);
   const smoothHorizonRef = useRef<HorizonLineSegment | null>(null);
@@ -273,6 +249,7 @@ export function ApartmentSolarAr({
     geoWatchCleanupRef.current = null;
     flatRef.current = false;
     gravityRef.current = null;
+    orientationRef.current = null;
     smoothHeadingRef.current = null;
     smoothPitchRef.current = null;
     smoothHorizonRef.current = null;
@@ -387,8 +364,23 @@ export function ApartmentSolarAr({
 
     const projected: ProjectedSun[] = [];
     const activeKeys = new Set<number>();
+    const orientation = orientationRef.current;
+    const intrinsics = intrinsicsFromFov(w, h, AR_FOV_DEG, AR_VERTICAL_FOV_DEG);
     for (const sample of sunlitHourly) {
-      const pos = projectSun(sample, heading, pitch, w, h, horizon);
+      const pos =
+        orientation != null
+          ? projectSunToCanvas(
+              w,
+              h,
+              intrinsics,
+              sample.azimuthDeg,
+              sample.altitudeDeg,
+              orientation,
+              AR_FOV_DEG,
+              AR_VERTICAL_FOV_DEG,
+              AR_HORIZON_MARGIN_DEG
+            )
+          : null;
       if (!pos || pos.x < 0 || pos.x > w) continue;
       const key = sample.date.getTime();
       activeKeys.add(key);
@@ -582,6 +574,7 @@ export function ApartmentSolarAr({
           smoothHeadingRef.current = null;
           smoothPitchRef.current = null;
           smoothHorizonRef.current = null;
+          orientationRef.current = null;
           markerPosRef.current.clear();
           return;
         }
@@ -589,6 +582,21 @@ export function ApartmentSolarAr({
         if (view.heading == null || view.pitch == null) return;
         headingRef.current = view.heading;
         pitchRef.current = view.pitch;
+        if (
+          e.alpha != null &&
+          e.beta != null &&
+          e.gamma != null &&
+          !Number.isNaN(e.alpha) &&
+          !Number.isNaN(e.beta) &&
+          !Number.isNaN(e.gamma)
+        ) {
+          orientationRef.current = {
+            alpha: e.alpha,
+            beta: e.beta,
+            gamma: e.gamma,
+            screenAngleDeg: getScreenAngle(),
+          };
+        }
       };
 
       if (supportsAbsoluteOrientation) {
