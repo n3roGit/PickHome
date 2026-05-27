@@ -7,6 +7,7 @@ import { gravityInScreenFrame } from "@/lib/device-pitch";
 import {
   cameraLookDirectionEarth,
   earthToDeviceDirection,
+  type GravitySample,
 } from "@/lib/device-orientation-ar";
 
 const DEG2RAD = Math.PI / 180;
