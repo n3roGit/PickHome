@@ -36,10 +36,16 @@ COPY --from=builder /app/src/data ./src/data
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/package.json ./package.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
+# Standalone trace omits tsx; copy runtime + deps from npm ci (used by backfill scripts).
+COPY --from=deps /app/node_modules/tsx ./node_modules/tsx
+COPY --from=deps /app/node_modules/esbuild ./node_modules/esbuild
+COPY --from=deps /app/node_modules/@esbuild ./node_modules/@esbuild
+COPY --from=deps /app/node_modules/get-tsconfig ./node_modules/get-tsconfig
 
 RUN chmod +x docker-entrypoint.sh \
-  && npm install --no-save prisma@6.5.0 @prisma/client@6.5.0 tsx@4.19.3 \
+  && npm install --no-save prisma@6.5.0 @prisma/client@6.5.0 \
   && npx prisma generate \
+  && test -f node_modules/tsx/dist/loader.mjs \
   && npm cache clean --force \
   && chown -R node:node /app
 

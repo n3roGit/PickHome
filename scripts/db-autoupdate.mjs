@@ -48,18 +48,18 @@ function runShell(command) {
 
 /** Node 22 native .ts loading breaks named ESM imports — use tsx as a loader. */
 function resolveTsxImport() {
-  const rootLoader = join(process.cwd(), "node_modules", "tsx", "dist", "esm", "index.mjs");
-  if (existsSync(rootLoader)) return "tsx";
-  const dbToolsLoader = join(
-    process.cwd(),
-    "db-tools",
-    "node_modules",
-    "tsx",
-    "dist",
-    "esm",
-    "index.mjs"
-  );
-  if (existsSync(dbToolsLoader)) return dbToolsLoader;
+  const cwd = process.cwd();
+  const tsxRoots = [
+    join(cwd, "node_modules", "tsx"),
+    join(cwd, "db-tools", "node_modules", "tsx"),
+  ];
+  for (const root of tsxRoots) {
+    if (existsSync(join(root, "package.json"))) return "tsx";
+    for (const rel of ["dist/loader.mjs", "dist/esm/index.mjs"]) {
+      const loader = join(root, rel);
+      if (existsSync(loader)) return loader;
+    }
+  }
   throw new Error("tsx not found (expected /app/node_modules/tsx in Docker image)");
 }
 
