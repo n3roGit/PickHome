@@ -46,8 +46,9 @@ export function upVectorInCameraFrame(
   const mag = Math.hypot(g.x, g.y, g.z);
   if (mag < 2) return null;
   // Screen/device Y points toward top of phone; canvas Y points down → flip for camera y-up.
+  // Negate X so roll (tilt left/right) matches the rear-camera preview (was inverted on Android).
   return {
-    x: g.x / mag,
+    x: -g.x / mag,
     y: -g.y / mag,
     z: g.z / mag,
   };

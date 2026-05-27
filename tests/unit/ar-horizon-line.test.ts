@@ -50,7 +50,20 @@ describe("ar-horizon-line", () => {
     expect(upMid).toBeGreaterThan(levelMid + 80);
   });
 
-  it("roll: horizon line is not horizontal", () => {
+  it("roll right (Android-style gravity -x): left side higher on screen", () => {
+    const line = computeHorizonLineInCanvas(
+      W,
+      H,
+      INTR,
+      { x: -5, y: -8.5, z: 4.9 },
+      0
+    );
+    expect(line).not.toBeNull();
+    expect(Math.abs(line!.y1 - line!.y2)).toBeGreaterThan(40);
+    expect(line!.y1).toBeLessThan(line!.y2);
+  });
+
+  it("roll left (Android-style gravity +x): right side higher on screen", () => {
     const line = computeHorizonLineInCanvas(
       W,
       H,
@@ -59,6 +72,6 @@ describe("ar-horizon-line", () => {
       0
     );
     expect(line).not.toBeNull();
-    expect(Math.abs(line!.y1 - line!.y2)).toBeGreaterThan(40);
+    expect(line!.y1).toBeGreaterThan(line!.y2);
   });
 });
