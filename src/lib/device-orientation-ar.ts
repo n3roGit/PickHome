@@ -161,20 +161,41 @@ export function viewHeadingFromCameraLook(
   return (heading * 180) / Math.PI;
 }
 
+export type DeviceOrientationHeadingInput = {
+  alpha: number;
+  beta: number;
+  gamma: number;
+  screenAngleDeg: number;
+  absolute?: boolean;
+  webkitCompassHeading?: number | null;
+};
+
 /**
- * Compass heading for AR yaw (sun azimuth vs camera).
- * Android portrait reports beta≈0; mapping beta→90 for the look vector makes heading
- * complete two 360° cycles per physical turn. Use alpha (screen-compensated) instead.
+ * Compass heading for AR yaw (direction the rear camera points, degrees from north).
+ * iOS: prefer webkitCompassHeading. Android portrait (beta≈0): normalized look vector
+ * spins twice per turn; use W3C alpha with screen compensation when absolute.
  */
 export function viewHeadingFromOrientation(
   alpha: number,
   beta: number,
   gamma: number,
-  screenAngleDeg: number
+  screenAngleDeg: number,
+  options?: { absolute?: boolean; webkitCompassHeading?: number | null }
 ): number {
-  if (Math.abs(beta) < 45) {
-    return normalizeScreenAngle(alpha - normalizeScreenAngle(screenAngleDeg));
+  const compass = options?.webkitCompassHeading;
+  if (compass != null && !Number.isNaN(compass)) {
+    return normalizeScreenAngle(compass);
   }
+
+  const screen = normalizeScreenAngle(screenAngleDeg);
+
+  if (Math.abs(beta) < 45) {
+    if (options?.absolute) {
+      return normalizeScreenAngle(360 - alpha - screen);
+    }
+    return normalizeScreenAngle(alpha - screen);
+  }
+
   return viewHeadingFromCameraLook(alpha, beta, gamma, screenAngleDeg);
 }
 
@@ -253,7 +274,8 @@ export function viewOrientationFromEvent(
   beta: number | null,
   gamma: number | null,
   screenAngleDeg: number,
-  gravity?: GravitySample | null
+  gravity?: GravitySample | null,
+  headingOptions?: Pick<DeviceOrientationHeadingInput, "absolute" | "webkitCompassHeading">
 ): ArViewOrientation | null {
   if (
     alpha == null ||
@@ -284,8 +306,23 @@ export function viewOrientationFromEvent(
   const pitch = resolveArPitch(alpha, beta, gamma, screenAngleDeg, gravity ?? null);
 
   return {
-    heading: viewHeadingFromOrientation(alpha, beta, gamma, screenAngleDeg),
+    heading: viewHeadingFromOrientation(alpha, beta, gamma, screenAngleDeg, headingOptions),
     pitch,
     flat: false,
   };
+}
+
+/** Heading from a live DeviceOrientationEvent (absolute flag + iOS compass). */
+export function viewHeadingFromDeviceOrientationEvent(
+  alpha: number,
+  beta: number,
+  gamma: number,
+  screenAngleDeg: number,
+  event: Pick<DeviceOrientationEvent, "absolute" | "webkitCompassHeading">
+): number {
+  return viewHeadingFromOrientation(alpha, beta, gamma, screenAngleDeg, {
+    absolute: event.absolute === true,
+    webkitCompassHeading:
+      typeof event.webkitCompassHeading === "number" ? event.webkitCompassHeading : null,
+  });
 }
