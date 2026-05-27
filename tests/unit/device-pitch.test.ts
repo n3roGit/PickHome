@@ -35,6 +35,21 @@ describe("device-pitch", () => {
     expect(pitch).toBeGreaterThan(-40);
   });
 
+  it("landscape 90°: level and tilt-up match portrait signs", () => {
+    expect(Math.abs(pitchFromGravity(0, -9.8, 0, 90))).toBeLessThan(5);
+    const up = pitchFromGravity(0, -6.9, 6.9, 90);
+    expect(up).toBeGreaterThan(20);
+    expect(up).toBeLessThan(50);
+    const down = pitchFromGravity(0, -6.9, -6.9, 90);
+    expect(down).toBeLessThan(-20);
+  });
+
+  it("landscape 270°: level and tilt-up match portrait signs", () => {
+    expect(Math.abs(pitchFromGravity(0, -9.8, 0, 270))).toBeLessThan(5);
+    expect(pitchFromGravity(0, -6.9, 6.9, 270)).toBeGreaterThan(20);
+    expect(pitchFromGravity(0, -6.9, -6.9, 270)).toBeLessThan(-20);
+  });
+
   it("isScreenHorizontalFromGravity detects flat on table (screen up)", () => {
     expect(isScreenHorizontalFromGravity(-0.1, -0.1, 9.8, 0)).toBe(true);
   });

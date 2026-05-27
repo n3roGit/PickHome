@@ -76,8 +76,8 @@ export function pitchFromOrientation(
 }
 
 /**
- * Pitch from gravity (m/s²). Portrait: Y up along screen, camera looks toward -Z.
- * 0° = level at horizon, positive = toward sky.
+ * Pitch from gravity (m/s²) in screen space: elevation above the screen plane.
+ * 0° = level at horizon, positive = toward sky. Works in portrait and landscape.
  */
 export function pitchFromGravity(
   x: number,
@@ -85,22 +85,9 @@ export function pitchFromGravity(
   z: number,
   screenAngleDeg: number
 ): number {
-  const norm = normalizeScreenAngle(screenAngleDeg);
-  let ay = y;
-  let az = z;
-
-  if (norm === 90) {
-    ay = -x;
-    az = y;
-  } else if (norm === 270) {
-    ay = x;
-    az = -y;
-  } else if (norm === 180) {
-    ay = -y;
-    az = -z;
-  }
-
-  return (Math.atan2(az, -ay) * 180) / Math.PI;
+  const g = gravityInScreenFrame(x, y, z, screenAngleDeg);
+  const horizontal = Math.hypot(g.x, g.y);
+  return (Math.atan2(g.z, horizontal) * 180) / Math.PI;
 }
 
 export function mergePitchReadings(orientationPitch: number | null, gravityPitch: number | null): number | null {
