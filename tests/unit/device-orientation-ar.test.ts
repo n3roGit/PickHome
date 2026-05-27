@@ -57,9 +57,7 @@ describe("device-orientation-ar", () => {
 
   it("upright portrait (Android beta≈0 + gravity): heading = 360 - alpha, pitch for AR", () => {
     const uprightGravity = { x: 0.2, y: -9.7, z: 0.8 };
-    const view = viewOrientationFromEvent(254.8, 0, -0.3, 0, uprightGravity, {
-      absolute: true,
-    });
+    const view = viewOrientationFromEvent(254.8, 0, -0.3, 0, uprightGravity);
     expect(view?.flat).toBe(false);
     expect(view?.heading).toBeCloseTo(360 - 254.8, 0);
     expect(Math.abs(view?.pitch ?? 99)).toBeLessThan(12);

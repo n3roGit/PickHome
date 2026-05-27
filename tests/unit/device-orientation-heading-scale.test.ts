@@ -28,9 +28,7 @@ describe("device-orientation heading scale", () => {
 
   it("portrait heading (beta 0 and 90): one alpha cycle → 360° sweep", () => {
     for (const beta of [0, 85, 90]) {
-      const sweep = absSweep((a) =>
-        viewHeadingFromOrientation(a, beta, 0, 0, { absolute: true })
-      );
+      const sweep = absSweep((a) => viewHeadingFromOrientation(a, beta, 0, 0));
       expect(sweep).toBeGreaterThan(350);
       expect(sweep).toBeLessThan(370);
     }
@@ -43,10 +41,20 @@ describe("device-orientation heading scale", () => {
   });
 
   it("heading direction: alpha 90 → west (270°), alpha 270 → east (90°)", () => {
-    expect(viewHeadingFromOrientation(0, 85, 0, 0, { absolute: true })).toBeCloseTo(0, 0);
-    expect(viewHeadingFromOrientation(90, 85, 0, 0, { absolute: true })).toBeCloseTo(270, 0);
-    expect(viewHeadingFromOrientation(180, 85, 0, 0, { absolute: true })).toBeCloseTo(180, 0);
-    expect(viewHeadingFromOrientation(270, 85, 0, 0, { absolute: true })).toBeCloseTo(90, 0);
+    expect(viewHeadingFromOrientation(0, 85, 0, 0)).toBeCloseTo(0, 0);
+    expect(viewHeadingFromOrientation(90, 85, 0, 0)).toBeCloseTo(270, 0);
+    expect(viewHeadingFromOrientation(180, 85, 0, 0)).toBeCloseTo(180, 0);
+    expect(viewHeadingFromOrientation(270, 85, 0, 0)).toBeCloseTo(90, 0);
+  });
+
+  it("landscape (top of phone to right, camera north): heading 0", () => {
+    expect(viewHeadingFromOrientation(90, 90, -90, 90)).toBeCloseTo(0, 0);
+  });
+
+  it("landscape: rotating around vertical axis still sweeps 360° per turn", () => {
+    const sweep = absSweep((a) => viewHeadingFromOrientation(a, 90, -90, 90));
+    expect(sweep).toBeGreaterThan(350);
+    expect(sweep).toBeLessThan(370);
   });
 
   it("prefers webkitCompassHeading (iOS)", () => {

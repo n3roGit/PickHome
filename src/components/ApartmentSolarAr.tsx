@@ -165,7 +165,6 @@ function readOrientation(
   gravity: GravitySample | null
 ): ReturnType<typeof viewOrientationFromEvent> {
   return viewOrientationFromEvent(e.alpha, e.beta, e.gamma, getScreenAngle(), gravity, {
-    absolute: e.absolute === true,
     webkitCompassHeading: webkitCompassHeadingFromEvent(e),
   });
 }

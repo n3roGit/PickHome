@@ -162,7 +162,6 @@ export type DeviceOrientationHeadingInput = {
   beta: number;
   gamma: number;
   screenAngleDeg: number;
-  absolute?: boolean;
   webkitCompassHeading?: number | null;
 };
 
@@ -173,26 +172,40 @@ export function isPortraitArOrientation(beta: number): boolean {
 
 /**
  * Compass heading the back camera points (0=N, 90=E, 180=S, 270=W).
- * Sources (Full-Tilt-JS, W3C, MDN): iOS uses webkitCompassHeading; Android absolute uses
- * `360 - alpha` minus the screen rotation. Holds for phone vertical in portrait.
+ * Works for portrait and landscape. Computes -device-Z in earth frame from W3C Euler
+ * angles (Z-X'-Y''). screen.orientation.angle is not applied — heading is an earth-frame
+ * direction and independent of how the canvas is rotated. Android portrait reports
+ * beta≈0; remap to W3C vertical (90) so the camera axis lies horizontally.
  */
 export function viewHeadingFromOrientation(
   alpha: number,
   beta: number,
   gamma: number,
   screenAngleDeg: number,
-  options?: { absolute?: boolean; webkitCompassHeading?: number | null }
+  options?: { webkitCompassHeading?: number | null }
 ): number {
+  void screenAngleDeg;
   const compass = options?.webkitCompassHeading;
   if (compass != null && !Number.isNaN(compass)) {
-    return normalizeScreenAngle(compass + normalizeScreenAngle(screenAngleDeg));
+    return normalizeScreenAngle(compass);
   }
 
-  if (isPortraitArOrientation(beta)) {
-    return normalizeScreenAngle(360 - alpha - normalizeScreenAngle(screenAngleDeg));
-  }
+  const b = normalizeBetaForVerticalAr(beta);
+  const _x = b * DEG2RAD;
+  const _y = gamma * DEG2RAD;
+  const _z = alpha * DEG2RAD;
+  const cX = Math.cos(_x);
+  const sX = Math.sin(_x);
+  const cY = Math.cos(_y);
+  const sY = Math.sin(_y);
+  const cZ = Math.cos(_z);
+  const sZ = Math.sin(_z);
 
-  return viewHeadingFromCameraLook(alpha, beta, gamma, screenAngleDeg);
+  // -device-Z in earth (X=east, Y=north): negate row 0 and row 1 of column 2 of R_z R_x R_y.
+  const east = -(cZ * sY + sZ * sX * cY);
+  const north = -(sZ * sY - cZ * cY * sX);
+
+  return ((Math.atan2(east, north) * 180) / Math.PI + 360) % 360;
 }
 
 /** @deprecated Use viewHeadingFromOrientation; kept for tests comparing W3C top-edge formula. */
@@ -268,7 +281,7 @@ export function viewOrientationFromEvent(
   gamma: number | null,
   screenAngleDeg: number,
   gravity?: GravitySample | null,
-  headingOptions?: Pick<DeviceOrientationHeadingInput, "absolute" | "webkitCompassHeading">
+  headingOptions?: Pick<DeviceOrientationHeadingInput, "webkitCompassHeading">
 ): ArViewOrientation | null {
   if (
     alpha == null ||
@@ -321,7 +334,6 @@ export function viewHeadingFromDeviceOrientationEvent(
   event: DeviceOrientationEvent
 ): number {
   return viewHeadingFromOrientation(alpha, beta, gamma, screenAngleDeg, {
-    absolute: event.absolute === true,
     webkitCompassHeading: webkitCompassHeadingFromEvent(event),
   });
 }
