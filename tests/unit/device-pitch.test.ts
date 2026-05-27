@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pitchFromGravity, pitchFromOrientation } from "@/lib/device-pitch";
+import { isScreenHorizontalFromGravity, pitchFromGravity, pitchFromOrientation } from "@/lib/device-pitch";
 
 describe("device-pitch", () => {
   it("portrait iOS upright: beta 90 → horizon pitch 0", () => {
@@ -33,5 +33,17 @@ describe("device-pitch", () => {
     const pitch = pitchFromGravity(0, -8.5, -4.9, 0);
     expect(pitch).toBeLessThan(-20);
     expect(pitch).toBeGreaterThan(-40);
+  });
+
+  it("isScreenHorizontalFromGravity detects flat on table (screen up)", () => {
+    expect(isScreenHorizontalFromGravity(-0.1, -0.1, 9.8, 0)).toBe(true);
+  });
+
+  it("isScreenHorizontalFromGravity detects face-down on table", () => {
+    expect(isScreenHorizontalFromGravity(0, 0, -9.8, 0)).toBe(true);
+  });
+
+  it("isScreenHorizontalFromGravity false when upright portrait", () => {
+    expect(isScreenHorizontalFromGravity(0, 9.7, 1.2, 0)).toBe(false);
   });
 });

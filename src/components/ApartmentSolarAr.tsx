@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
-import { viewOrientationFromEvent } from "@/lib/device-orientation-ar";
+import {
+  viewOrientationFromEvent,
+  type GravitySample,
+} from "@/lib/device-orientation-ar";
 import {
   formatSolarTime,
   getSolarArc,
@@ -133,8 +136,11 @@ function getScreenAngle(): number {
   return screen.orientation?.angle ?? (typeof window.orientation === "number" ? window.orientation : 0);
 }
 
-function readOrientation(e: DeviceOrientationEvent): { heading: number; pitch: number } | null {
-  return viewOrientationFromEvent(e.alpha, e.beta, e.gamma, getScreenAngle());
+function readOrientation(
+  e: DeviceOrientationEvent,
+  gravity: GravitySample | null
+): ReturnType<typeof viewOrientationFromEvent> {
+  return viewOrientationFromEvent(e.alpha, e.beta, e.gamma, getScreenAngle(), gravity);
 }
 
 function horizonYFromPitch(pitch: number, h: number): number {
@@ -188,11 +194,14 @@ export function ApartmentSolarAr({
   const streamRef = useRef<MediaStream | null>(null);
   const headingRef = useRef<number | null>(null);
   const pitchRef = useRef<number | null>(null);
+  const flatRef = useRef(false);
+  const gravityRef = useRef<GravitySample | null>(null);
   const smoothHeadingRef = useRef<number | null>(null);
   const smoothPitchRef = useRef<number | null>(null);
   const markerPosRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const rafRef = useRef<number | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
+  const motionCleanupRef = useRef<(() => void) | null>(null);
 
   const [phase, setPhase] = useState<"idle" | "requesting" | "running" | "error">("idle");
   const [error, setError] = useState<ArError | null>(null);
@@ -215,6 +224,10 @@ export function ApartmentSolarAr({
     }
     orientationCleanupRef.current?.();
     orientationCleanupRef.current = null;
+    motionCleanupRef.current?.();
+    motionCleanupRef.current = null;
+    flatRef.current = false;
+    gravityRef.current = null;
     smoothHeadingRef.current = null;
     smoothPitchRef.current = null;
     markerPosRef.current.clear();
@@ -244,6 +257,29 @@ export function ApartmentSolarAr({
     const rawHeading = headingRef.current;
     const rawPitch = pitchRef.current;
     const now = new Date();
+
+    if (flatRef.current) {
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.fillText("Handy hochkant halten — flach auf dem Tisch keine AR-Sonnen", 16, 32);
+      const dayLabel = dayDate.toLocaleDateString("de-DE", {
+        timeZone,
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+      });
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, h - 72, w, 72);
+      ctx.fillStyle = "#fff";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.fillText(`Flach erkannt · ${sunlitHourly.length} h Sonne · ${dayLabel}`, 12, h - 44);
+      ctx.fillText(
+        "Rückkamera waagerecht zum Horizont richten, dann erscheinen Marken im Sichtfeld",
+        12,
+        h - 24
+      );
+      return;
+    }
 
     if (rawHeading == null || rawPitch == null) {
       ctx.fillStyle = "rgba(255,255,255,0.9)";
@@ -433,18 +469,48 @@ export function ApartmentSolarAr({
         }
       }
 
+      const onDeviceMotion = (e: DeviceMotionEvent) => {
+        const g = e.accelerationIncludingGravity;
+        if (!g || g.x == null || g.y == null || g.z == null) return;
+        gravityRef.current = { x: g.x, y: g.y, z: g.z };
+      };
+      window.addEventListener("devicemotion", onDeviceMotion, true);
+      motionCleanupRef.current = () => {
+        window.removeEventListener("devicemotion", onDeviceMotion, true);
+      };
+
+      const supportsAbsoluteOrientation = "ondeviceorientationabsolute" in window;
+
       const onOrientation = (e: DeviceOrientationEvent) => {
-        const view = readOrientation(e);
+        if (supportsAbsoluteOrientation && e.absolute !== true) return;
+        const view = readOrientation(e, gravityRef.current);
         if (!view) return;
+        if (view.flat) {
+          flatRef.current = true;
+          headingRef.current = null;
+          pitchRef.current = null;
+          smoothHeadingRef.current = null;
+          smoothPitchRef.current = null;
+          markerPosRef.current.clear();
+          return;
+        }
+        flatRef.current = false;
+        if (view.heading == null || view.pitch == null) return;
         headingRef.current = view.heading;
         pitchRef.current = view.pitch;
       };
 
-      window.addEventListener("deviceorientationabsolute", onOrientation, true);
-      window.addEventListener("deviceorientation", onOrientation, true);
+      if (supportsAbsoluteOrientation) {
+        window.addEventListener("deviceorientationabsolute", onOrientation, true);
+      } else {
+        window.addEventListener("deviceorientation", onOrientation, true);
+      }
       orientationCleanupRef.current = () => {
-        window.removeEventListener("deviceorientationabsolute", onOrientation, true);
-        window.removeEventListener("deviceorientation", onOrientation, true);
+        if (supportsAbsoluteOrientation) {
+          window.removeEventListener("deviceorientationabsolute", onOrientation, true);
+        } else {
+          window.removeEventListener("deviceorientation", onOrientation, true);
+        }
       };
 
       setPhase("running");

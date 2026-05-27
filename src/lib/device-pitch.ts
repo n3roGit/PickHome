@@ -7,6 +7,43 @@ export function normalizeScreenAngle(angle: number): number {
   return ((angle % 360) + 360) % 360;
 }
 
+/** Device gravity (m/s²) in the current screen coordinate frame. */
+export function gravityInScreenFrame(
+  x: number,
+  y: number,
+  z: number,
+  screenAngleDeg: number
+): { x: number; y: number; z: number } {
+  const norm = normalizeScreenAngle(screenAngleDeg);
+
+  if (norm === 90) {
+    return { x: y, y: -x, z };
+  }
+  if (norm === 270) {
+    return { x: -y, y: x, z };
+  }
+  if (norm === 180) {
+    return { x: -x, y: -y, z: -z };
+  }
+  return { x, y, z };
+}
+
+/**
+ * Screen roughly horizontal (face up or face down). Android beta ≈ 0 means both
+ * flat-on-table and upright portrait — gravity disambiguates.
+ */
+export function isScreenHorizontalFromGravity(
+  x: number,
+  y: number,
+  z: number,
+  screenAngleDeg: number
+): boolean {
+  const g = gravityInScreenFrame(x, y, z, screenAngleDeg);
+  const mag = Math.hypot(g.x, g.y, g.z);
+  if (mag < 5) return false;
+  return Math.abs(g.z) > Math.abs(g.y) * 0.55;
+}
+
 export function pitchFromOrientation(
   beta: number | null,
   gamma: number | null,

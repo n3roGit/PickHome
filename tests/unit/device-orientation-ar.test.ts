@@ -47,4 +47,21 @@ describe("device-orientation-ar", () => {
   it("viewOrientationFromEvent returns null for missing values", () => {
     expect(viewOrientationFromEvent(null, 90, 0, 0)).toBeNull();
   });
+
+  it("flat on table (gravity in Z): no heading/pitch, flat flag", () => {
+    const flatGravity = { x: -0.1, y: -0.1, z: 9.8 };
+    const view = viewOrientationFromEvent(256.2, -0.4, 0.3, 0, flatGravity);
+    expect(view?.flat).toBe(true);
+    expect(view?.heading).toBeNull();
+    expect(view?.pitch).toBeNull();
+  });
+
+  it("upright portrait (gravity in Y): heading and pitch for AR", () => {
+    const uprightGravity = { x: 0, y: 9.7, z: 1.2 };
+    const view = viewOrientationFromEvent(254.8, 83.2, -0.3, 0, uprightGravity);
+    expect(view?.flat).toBe(false);
+    expect(view?.heading).toBeCloseTo(255, 0);
+    expect(view?.pitch).toBeGreaterThan(0);
+    expect(view?.pitch).toBeLessThan(15);
+  });
 });

@@ -5,7 +5,15 @@
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Device_orientation_events/Detecting_device_orientation
  */
 
+import { isScreenHorizontalFromGravity } from "@/lib/device-pitch";
+
 const DEG2RAD = Math.PI / 180;
+
+export type GravitySample = {
+  x: number;
+  y: number;
+  z: number;
+};
 
 export function normalizeScreenAngle(angle: number): number {
   return ((angle % 360) + 360) % 360;
@@ -172,15 +180,18 @@ export function viewPitchFromOrientation(
 }
 
 export type ArViewOrientation = {
-  heading: number;
-  pitch: number;
+  heading: number | null;
+  pitch: number | null;
+  /** Phone flat on a surface — AR sun projection is not meaningful. */
+  flat: boolean;
 };
 
 export function viewOrientationFromEvent(
   alpha: number | null,
   beta: number | null,
   gamma: number | null,
-  screenAngleDeg: number
+  screenAngleDeg: number,
+  gravity?: GravitySample | null
 ): ArViewOrientation | null {
   if (
     alpha == null ||
@@ -193,8 +204,16 @@ export function viewOrientationFromEvent(
     return null;
   }
 
+  if (
+    gravity != null &&
+    isScreenHorizontalFromGravity(gravity.x, gravity.y, gravity.z, screenAngleDeg)
+  ) {
+    return { heading: null, pitch: null, flat: true };
+  }
+
   return {
     heading: viewHeadingFromOrientation(alpha, beta, gamma, screenAngleDeg),
     pitch: viewPitchFromOrientation(alpha, beta, gamma, screenAngleDeg),
+    flat: false,
   };
 }
