@@ -582,6 +582,13 @@ export function ApartmentSolarAr({
             hFov: AR_FOV_DEG,
             vFov: AR_VERTICAL_FOV_DEG,
             sensor: sensorRef.current,
+            headingSource:
+              sensorRef.current != null
+                ? Math.abs(sensorRef.current.beta) < 45 ||
+                  Math.abs(sensorRef.current.beta - 90) < 25
+                  ? "alpha"
+                  : "camera"
+                : null,
             gravity: gravityRef.current,
             screenAngleDeg: getScreenAngle(),
             canvas: { w, h },

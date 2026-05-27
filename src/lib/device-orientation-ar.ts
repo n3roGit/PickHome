@@ -170,10 +170,15 @@ export type DeviceOrientationHeadingInput = {
   webkitCompassHeading?: number | null;
 };
 
+/** Portrait AR: Android reports beta≈0, iOS (and some Android builds) beta≈90. */
+export function isPortraitArOrientation(beta: number): boolean {
+  return Math.abs(beta) < 45 || Math.abs(beta - 90) < 25;
+}
+
 /**
- * Compass heading for AR yaw (direction the rear camera points, degrees from north).
- * iOS: prefer webkitCompassHeading. Android portrait (beta≈0): normalized look vector
- * spins twice per turn; use W3C alpha with screen compensation when absolute.
+ * Compass heading for AR yaw (degrees from north).
+ * Portrait: use alpha (camera-look with normalized beta spins 2× per physical turn).
+ * iOS: prefer webkitCompassHeading when available.
  */
 export function viewHeadingFromOrientation(
   alpha: number,
@@ -189,10 +194,7 @@ export function viewHeadingFromOrientation(
 
   const screen = normalizeScreenAngle(screenAngleDeg);
 
-  if (Math.abs(beta) < 45) {
-    if (options?.absolute) {
-      return normalizeScreenAngle(360 - alpha - screen);
-    }
+  if (isPortraitArOrientation(beta)) {
     return normalizeScreenAngle(alpha - screen);
   }
 

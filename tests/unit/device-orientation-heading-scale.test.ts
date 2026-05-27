@@ -1,41 +1,51 @@
 import { describe, expect, it } from "vitest";
-import { viewHeadingFromOrientation } from "@/lib/device-orientation-ar";
+import {
+  isPortraitArOrientation,
+  viewHeadingFromCameraLook,
+  viewHeadingFromOrientation,
+} from "@/lib/device-orientation-ar";
 
-/** Android portrait upright: one physical turn should advance heading ~360°, not ~720°. */
+function totalAbsSweep(headingAtAlpha: (alpha: number) => number): number {
+  const steps = [0, 45, 90, 135, 180, 225, 270, 315, 360].map(headingAtAlpha);
+  let sum = 0;
+  for (let i = 1; i < steps.length; i++) {
+    let d = steps[i]! - steps[i - 1]!;
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    sum += Math.abs(d);
+  }
+  return sum;
+}
+
 describe("device-orientation heading scale", () => {
-  const beta = 0;
   const gamma = 0;
   const screen = 0;
 
-  function totalSweep(absolute: boolean): number {
-    const steps = [0, 45, 90, 135, 180, 225, 270, 315, 360].map((a) =>
-      viewHeadingFromOrientation(a, beta, gamma, screen, { absolute })
-    );
-    let sum = 0;
-    for (let i = 1; i < steps.length; i++) {
-      let d = steps[i]! - steps[i - 1]!;
-      if (d > 180) d -= 360;
-      if (d < -180) d += 360;
-      sum += d;
-    }
-    return sum;
-  }
+  it("isPortraitArOrientation covers Android beta 0 and iOS beta 90", () => {
+    expect(isPortraitArOrientation(0)).toBe(true);
+    expect(isPortraitArOrientation(90)).toBe(true);
+    expect(isPortraitArOrientation(83)).toBe(true);
+    expect(isPortraitArOrientation(50)).toBe(false);
+  });
 
-  it("Android absolute: one alpha cycle sweeps ~360° heading", () => {
-    expect(Math.abs(totalSweep(true))).toBeGreaterThan(300);
-    expect(Math.abs(totalSweep(true))).toBeLessThan(420);
+  it("portrait uses alpha: ~360° abs sweep per alpha cycle (beta 0 and 90)", () => {
+    for (const beta of [0, 90]) {
+      const sweep = totalAbsSweep((a) =>
+        viewHeadingFromOrientation(a, beta, gamma, screen, { absolute: true })
+      );
+      expect(sweep).toBeGreaterThan(300);
+      expect(sweep).toBeLessThan(420);
+    }
+  });
+
+  it("camera look at beta 0: ~720° abs sweep per alpha cycle (2× — avoided in AR)", () => {
+    const sweep = totalAbsSweep((a) => viewHeadingFromCameraLook(a, 0, gamma, screen));
+    expect(sweep).toBeGreaterThan(500);
   });
 
   it("prefers webkitCompassHeading when provided (iOS)", () => {
     expect(
       viewHeadingFromOrientation(10, 83, 0, 0, { webkitCompassHeading: 287.5 })
     ).toBeCloseTo(287.5, 1);
-  });
-
-  it("iOS-style beta 90: uses camera look (not raw alpha)", () => {
-    const heading = viewHeadingFromOrientation(254.8, 83.2, -0.3, 0);
-    expect(heading).toBeGreaterThan(280);
-    expect(heading).toBeLessThan(290);
-    expect(heading).not.toBeCloseTo(254.8, 0);
   });
 });

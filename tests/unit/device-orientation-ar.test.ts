@@ -38,11 +38,9 @@ describe("device-orientation-ar", () => {
     expect(Math.abs(h90 - h0)).toBeGreaterThan(45);
   });
 
-  it("portrait vertical: heading uses camera look vector, not raw alpha", () => {
+  it("portrait vertical (beta≈83): heading tracks alpha, not 2× camera look", () => {
     const heading = viewHeadingFromOrientation(254.8, 83.2, -0.3, 0);
-    expect(heading).toBeGreaterThan(280);
-    expect(heading).toBeLessThan(290);
-    expect(heading).not.toBeCloseTo(254.8, 0);
+    expect(heading).toBeCloseTo(254.8, 0);
   });
 
   it("viewOrientationFromEvent returns null for missing values", () => {
@@ -57,13 +55,13 @@ describe("device-orientation-ar", () => {
     expect(view?.pitch).toBeNull();
   });
 
-  it("upright portrait (Android beta≈0 + gravity): absolute alpha heading, pitch for AR", () => {
+  it("upright portrait (Android beta≈0 + gravity): alpha heading, pitch for AR", () => {
     const uprightGravity = { x: 0.2, y: -9.7, z: 0.8 };
     const view = viewOrientationFromEvent(254.8, 0, -0.3, 0, uprightGravity, {
       absolute: true,
     });
     expect(view?.flat).toBe(false);
-    expect(view?.heading).toBeCloseTo(105.2, 0);
+    expect(view?.heading).toBeCloseTo(254.8, 0);
     expect(Math.abs(view?.pitch ?? 99)).toBeLessThan(12);
   });
 
