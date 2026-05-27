@@ -28,6 +28,13 @@ export const TEST_ADDRESS_MUNICH_DISTRICT = "Altstadt-Lehel";
 export const TEST_ADDRESS_MUNICH_ENRICHED =
   "Marienplatz 8, Altstadt-Lehel, 80331 München";
 
+/** Bremen — Mary-Somerville-Straße (public OSM). */
+export const TEST_ADDRESS_BREMEN_RAW_LOOSE = "Mary-Somerville-Straße 8 28359 Bremen";
+export const TEST_ADDRESS_BREMEN_RAW = "Mary-Somerville-Straße 8, 28359 Bremen";
+export const TEST_ADDRESS_BREMEN_POSTCODE = "28359";
+export const TEST_ADDRESS_BREMEN_LAT = 53.1055673;
+export const TEST_ADDRESS_BREMEN_LON = 8.8620598;
+
 /** Fictional — parser/query-variant tests only (not real OSM places). */
 export const TEST_FAKE_STREET = "Exampleweg";
 export const TEST_FAKE_CITY = "Teststadt";

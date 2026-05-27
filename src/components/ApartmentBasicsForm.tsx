@@ -7,6 +7,7 @@ import { ApartmentPriceHistoryButton } from "@/components/ApartmentPriceHistoryB
 import { ApartmentRevisionField } from "@/components/ApartmentRevisionField";
 import { apartmentBasicsFormId } from "@/lib/listing-import-form";
 import { GoogleMapsStreetViewLink } from "@/components/GoogleMapsStreetViewLink";
+import { GetGeoSubmitButton } from "@/components/GetGeoSubmitButton";
 import { formatBudgetHint, formatPrice } from "@/lib/scoring";
 
 export function ApartmentBasicsForm({
@@ -112,14 +113,9 @@ export function ApartmentBasicsForm({
               placeholder="Straße, PLZ Ort"
               className="flex-1 min-w-0 border border-pn-border rounded-lg px-3 py-2 text-sm"
             />
-            <button
-              type="submit"
+            <GetGeoSubmitButton
               formAction={geocodeApartmentAddressAction.bind(null, apartmentId)}
-              className="shrink-0 bg-pn-bg-subtle border border-pn-border text-pn-text-primary font-medium px-3 py-2 rounded-lg text-sm hover:bg-pn-border/40"
-              title="Nur diese Adresse per OpenStreetMap auflösen"
-            >
-              GetGeo
-            </button>
+            />
           </div>
           {(address?.trim() || latitude != null) && (
             <GoogleMapsStreetViewLink

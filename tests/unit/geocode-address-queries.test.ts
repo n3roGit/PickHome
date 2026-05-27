@@ -11,6 +11,8 @@ import {
   TEST_ADDRESS_KIEL_CITY,
   TEST_FAKE_CITY,
   TEST_FAKE_DISTRICT,
+  TEST_FAKE_POSTCODE,
+  TEST_FAKE_STREET,
   TEST_ADDRESS_KIEL_DECOY_CITY,
   TEST_ADDRESS_KIEL_DISTRICT,
   TEST_ADDRESS_KIEL_HOUSE,
@@ -24,6 +26,18 @@ import {
 } from "../helpers/synthetic-addresses";
 
 describe("parseLooseGermanAddress", () => {
+  it("parses street number PLZ city without commas", () => {
+    expect(
+      parseLooseGermanAddress(
+        `${TEST_FAKE_STREET} 2 ${TEST_FAKE_POSTCODE} ${TEST_FAKE_CITY}`
+      )
+    ).toEqual({
+      streetLine: TEST_FAKE_STREET,
+      houseNumber: "2",
+      city: `${TEST_FAKE_POSTCODE} ${TEST_FAKE_CITY}`,
+    });
+  });
+
   it("parses street number city without commas", () => {
     expect(parseLooseGermanAddress(`${TEST_FAKE_STREET} 2 ${TEST_FAKE_CITY}`)).toEqual({
       streetLine: TEST_FAKE_STREET,

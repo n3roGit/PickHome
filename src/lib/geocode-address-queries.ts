@@ -72,6 +72,15 @@ export function parseLooseGermanAddress(address: string): LooseGermanAddress | n
     return { streetLine: streetPart, houseNumber: null, city: capitalizeWord(city) };
   }
 
+  const plzCityLine = trimmed.match(/^(.+?)\s+(\d+[a-zA-Z]?)\s+(\d{5})\s+(.+)$/);
+  if (plzCityLine) {
+    return {
+      streetLine: plzCityLine[1]!.trim(),
+      houseNumber: plzCityLine[2]!,
+      city: `${plzCityLine[3]} ${capitalizeWord(plzCityLine[4]!.trim())}`,
+    };
+  }
+
   const loose = trimmed.match(/^(.+?)\s+(\d+[a-zA-Z]?)\s+([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß\-]*)$/);
   if (loose) {
     return {
