@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SolarSeasonDateControls } from "@/components/SolarSeasonDateControls";
 import {
+  azimuthDeltaDeg,
   azimuthSeparationDeg,
   computeHorizonLineInCanvas,
   intrinsicsFromFov,
@@ -25,7 +26,12 @@ import {
   type GeoPosition,
   type GeolocationArError,
 } from "@/lib/geolocation-ar";
-import { formatSolarTime, getSolarArc, type SolarSample } from "@/lib/solar-position";
+import {
+  formatSolarTime,
+  getSolarArc,
+  getSolarSample,
+  type SolarSample,
+} from "@/lib/solar-position";
 
 /** Approximate phone camera FOV in portrait — short side (horizontal) is narrower than long side (vertical). */
 const AR_FOV_DEG = 50;
@@ -39,6 +45,8 @@ const MARKER_SMOOTH_PER_FRAME = 0.14;
 const AR_DEBUG_LOG_INTERVAL_MS = 3000;
 /** Break sun-path polyline when azimuth jumps (wrap or leaves FOV between samples). */
 const SUN_PATH_AZIMUTH_GAP_DEG = 100;
+/** Marker position cache key for the exact-now sun (not an hourly sample). */
+const EXACT_NOW_MARKER_KEY = -1;
 
 type ProjectedSun = {
   sample: SolarSample;
@@ -192,13 +200,6 @@ function isSameCalendarDay(a: Date, b: Date, timeZone: string): boolean {
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
   return fmt(a) === fmt(b);
-}
-
-function isCurrentHour(sample: Date, now: Date, timeZone: string): boolean {
-  if (!isSameCalendarDay(sample, now, timeZone)) return false;
-  const hourFmt = (d: Date) =>
-    d.toLocaleTimeString("en-GB", { timeZone, hour: "2-digit", hour12: false });
-  return hourFmt(sample) === hourFmt(now);
 }
 
 export function ApartmentSolarAr({
@@ -411,11 +412,57 @@ export function ApartmentSolarAr({
         sample,
         x: smoothed.x,
         y: smoothed.y,
-        isNow: isCurrentHour(sample.date, now, timeZone),
+        isNow: false,
       });
     }
+
+    let exactNowProjected: ProjectedSun | null = null;
+    if (
+      livePosition &&
+      isSameCalendarDay(dayDate, now, timeZone)
+    ) {
+      const exactNow = getSolarSample(
+        now,
+        livePosition.latitude,
+        livePosition.longitude
+      );
+      if (exactNow.isUp) {
+        const pos = projectSunOnHorizonToCanvas(
+          w,
+          h,
+          horizon,
+          exactNow.azimuthDeg,
+          exactNow.altitudeDeg,
+          heading,
+          pitchForSun,
+          AR_FOV_DEG,
+          AR_VERTICAL_FOV_DEG,
+          AR_HORIZON_MARGIN_DEG
+        );
+        if (pos && pos.x >= 0 && pos.x <= w) {
+          activeKeys.add(EXACT_NOW_MARKER_KEY);
+          const smoothed = smoothPoint(
+            markerPosRef.current.get(EXACT_NOW_MARKER_KEY),
+            pos,
+            MARKER_SMOOTH_PER_FRAME
+          );
+          markerPosRef.current.set(EXACT_NOW_MARKER_KEY, smoothed);
+          exactNowProjected = {
+            sample: exactNow,
+            x: smoothed.x,
+            y: smoothed.y,
+            isNow: true,
+          };
+        }
+      }
+    }
+
     for (const key of markerPosRef.current.keys()) {
       if (!activeKeys.has(key)) markerPosRef.current.delete(key);
+    }
+
+    if (exactNowProjected) {
+      projected.push(exactNowProjected);
     }
 
     const pathOnHorizon: { x: number; y: number; azimuthDeg: number; t: number }[] = [];
@@ -469,7 +516,7 @@ export function ApartmentSolarAr({
       ctx.lineWidth = isNow ? 2 : 1;
       ctx.stroke();
 
-      const label = formatSolarTime(sample.date, timeZone);
+      const label = isNow ? "Jetzt" : formatSolarTime(sample.date, timeZone);
       ctx.font = isNow ? "bold 11px system-ui, sans-serif" : "10px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillStyle = "#fff";
@@ -505,15 +552,23 @@ export function ApartmentSolarAr({
       h - 44
     );
     ctx.fillText(
-      "Marken nur im Sichtfeld · große Marke = aktuelle Stunde (nur am heutigen Tag)",
+      "Marken nur im Sichtfeld · große Marke = aktuelle Sonnenposition (nur heute)",
       12,
       h - 24
     );
 
     if (arDebugRef.current && Date.now() - lastArDebugLogMsRef.current >= AR_DEBUG_LOG_INTERVAL_MS) {
       lastArDebugLogMsRef.current = Date.now();
-      const nowSample = projected.find((p) => p.isNow) ?? projected[0];
+      const exactNowMarker = projected.find((p) => p.isNow) ?? null;
       const horizonMidY = (horizon.y1 + horizon.y2) / 2;
+      const exactNowSample =
+        livePosition && isSameCalendarDay(dayDate, now, timeZone)
+          ? getSolarSample(now, livePosition.latitude, livePosition.longitude)
+          : null;
+      const deltaAz =
+        exactNowSample?.isUp && exactNowMarker
+          ? azimuthDeltaDeg(exactNowSample.azimuthDeg, heading, 0)
+          : null;
       console.log(
         "[ph-ar] " +
           JSON.stringify({
@@ -524,6 +579,8 @@ export function ApartmentSolarAr({
             pitchSensor: Math.round(pitch * 10) / 10,
             rawHeading: rawHeading != null ? Math.round(rawHeading * 10) / 10 : null,
             rawPitch: rawPitch != null ? Math.round(rawPitch * 10) / 10 : null,
+            hFov: AR_FOV_DEG,
+            vFov: AR_VERTICAL_FOV_DEG,
             sensor: sensorRef.current,
             gravity: gravityRef.current,
             screenAngleDeg: getScreenAngle(),
@@ -539,12 +596,13 @@ export function ApartmentSolarAr({
                   lng: Math.round(livePosition.longitude * 1e5) / 1e5,
                 }
               : null,
-            sunNow: nowSample
+            exactNow: exactNowSample?.isUp
               ? {
-                  az: Math.round(nowSample.sample.azimuthDeg * 10) / 10,
-                  alt: Math.round(nowSample.sample.altitudeDeg * 10) / 10,
-                  x: Math.round(nowSample.x),
-                  y: Math.round(nowSample.y),
+                  az: Math.round(exactNowSample.azimuthDeg * 10) / 10,
+                  alt: Math.round(exactNowSample.altitudeDeg * 10) / 10,
+                  deltaAz: deltaAz != null ? Math.round(deltaAz * 10) / 10 : null,
+                  x: exactNowMarker ? Math.round(exactNowMarker.x) : null,
+                  y: exactNowMarker ? Math.round(exactNowMarker.y) : null,
                 }
               : null,
             projectedCount: projected.length,

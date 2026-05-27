@@ -186,10 +186,25 @@ export function azimuthSeparationDeg(aDeg: number, bDeg: number): number {
   return Math.abs(azimuthDeltaDeg(aDeg, bDeg, 0));
 }
 
+/** Unit normal pointing toward the sky, perpendicular to the horizon segment (canvas y down). */
+export function skyNormalFromHorizon(horizon: HorizonLineSegment): { nx: number; ny: number } {
+  const dx = horizon.x2 - horizon.x1;
+  const dy = horizon.y2 - horizon.y1;
+  let nx = -dy;
+  let ny = dx;
+  const len = Math.hypot(nx, ny) || 1;
+  nx /= len;
+  ny /= len;
+  if (ny > 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+  return { nx, ny };
+}
+
 /**
  * Project sun into the live preview anchored to the gravity horizon line.
- * Horizontal position uses compass heading (yaw); vertical uses camera pitch vs sun altitude.
- * This matches a correct horizon (pitch/roll/intrinsics) while isolating yaw error to azimuth only.
+ * Horizontal: pinhole tan(delta); vertical: lift along sky normal from horizon.
  */
 export function projectSunOnHorizonToCanvas(
   width: number,
@@ -204,18 +219,33 @@ export function projectSunOnHorizonToCanvas(
   horizonMarginDeg = 12,
   yawOffsetDeg = 0
 ): { x: number; y: number } | null {
-  const relAlt = sunAltitudeDeg - cameraPitchDeg;
-  if (relAlt < -horizonMarginDeg) return null;
+  const relAltDeg = sunAltitudeDeg - cameraPitchDeg;
+  if (relAltDeg < -horizonMarginDeg) return null;
 
-  const delta = azimuthDeltaDeg(sunAzimuthDeg, cameraHeadingDeg, yawOffsetDeg);
+  const deltaDeg = azimuthDeltaDeg(sunAzimuthDeg, cameraHeadingDeg, yawOffsetDeg);
 
-  const maxH = hFovDeg / 2 + 5;
-  if (Math.abs(delta) > maxH) return null;
-  if (relAlt > vFovDeg / 2 + 5) return null;
+  const hFovRad = hFovDeg * DEG2RAD;
+  const vFovRad = vFovDeg * DEG2RAD;
+  const fx = width / (2 * Math.tan(hFovRad / 2));
+  const fy = height / (2 * Math.tan(vFovRad / 2));
+  const cx = width / 2;
 
-  const x = width / 2 + (delta / hFovDeg) * width;
-  const yHorizon = horizonYAtX(horizon, x, width);
-  const y = yHorizon - (relAlt / vFovDeg) * height;
+  const deltaRad = deltaDeg * DEG2RAD;
+  const relAltRad = relAltDeg * DEG2RAD;
+
+  const maxDeltaRad = hFovRad / 2 + 5 * DEG2RAD;
+  const maxAltRad = vFovRad / 2 + 5 * DEG2RAD;
+  if (Math.abs(deltaRad) > maxDeltaRad) return null;
+  if (relAltRad > maxAltRad) return null;
+
+  const xOnHorizon = cx + fx * Math.tan(deltaRad);
+  const yOnHorizon = horizonYAtX(horizon, xOnHorizon, width);
+
+  const { nx, ny } = skyNormalFromHorizon(horizon);
+  const lift = fy * Math.tan(relAltRad);
+
+  const x = xOnHorizon + nx * lift;
+  const y = yOnHorizon + ny * lift;
 
   if (x < -20 || x > width + 20 || y < -20 || y > height + 20) return null;
   return { x, y };

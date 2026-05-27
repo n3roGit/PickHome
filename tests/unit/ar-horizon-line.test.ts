@@ -189,6 +189,27 @@ describe("ar-horizon-line", () => {
     }
   });
 
+  it("pinhole: sun at half horizontal FOV lies near right canvas edge", () => {
+    const midY = H / 2;
+    const horizon = { x1: 0, y1: midY, x2: W, y2: midY };
+    const hFov = 50;
+    const pos = projectSunOnHorizonToCanvas(
+      W,
+      H,
+      horizon,
+      hFov / 2,
+      10,
+      0,
+      0,
+      hFov,
+      65,
+      12
+    );
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeGreaterThan(W * 0.85);
+    expect(pos!.x).toBeLessThanOrEqual(W + 20);
+  });
+
   it("sun at elevation 0 sits on gravity horizon line", () => {
     const gravity = { x: 0, y: -9.8, z: 0.2 };
     const horizon = computeHorizonLineInCanvas(W, H, INTR, gravity, 0)!;
