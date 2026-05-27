@@ -88,14 +88,33 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json
-          git commit -m "chore: bump version to ${VERSION}"
+          if git diff --cached --quiet; then
+            echo "package.json already at ${VERSION}"
+          else
+            git commit -m "chore: bump version to ${VERSION}"
+          fi
           git pull --rebase origin main
-          git tag "${TAG}"
-          git push origin main --tags
+          HEAD_SHA=$(git rev-parse HEAD)
+          git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" 2>/dev/null || true
+          if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+            TAG_SHA=$(git rev-parse "refs/tags/${TAG}^{}")
+            if [ "${TAG_SHA}" != "${HEAD_SHA}" ]; then
+              echo "::error::Tag ${TAG} already exists at ${TAG_SHA}, HEAD is ${HEAD_SHA}"
+              exit 1
+            fi
+            echo "Tag ${TAG} already at HEAD"
+          else
+            git tag "${TAG}"
+          fi
+          git push origin main
+          git push origin "refs/tags/${TAG}"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
-          generate_release_notes: true
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "GitHub Release ${TAG} already exists — skipping"
+            exit 0
+          fi
+          gh release create "${TAG}" --generate-notes --title "${TAG}"
