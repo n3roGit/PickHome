@@ -335,7 +335,7 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] KI chat: finance/commute/checklist estimate questions answered as **Schätzung** (if LLM context changed)
 [ ] Auto-Fill tested on ≥2 portal categories (one readable, one blocked or PDF-only)
 [ ] Photo gallery: grid loads WebP thumbs; lightbox loads original; upload/delete/reload if photo code changed
-[ ] Solar: Sonnenstand panel (geocoded apartment), slider changes values, map shows sun path (if solar code changed)
+[ ] Solar: Sonnenstand panel (geocoded apartment), slider changes values, map shows sun path; AR flat-on-table shows upright hint without sun markers (if solar/AR code changed)
 [ ] Photo gallery mobile (Android Chrome 412x915 + iPhone 390x844): swipe between images, double-tap or pinch zoom, no pull-down close, lightbox uses 100dvh (no jump when address bar collapses), bottom toolbar above gesture bar
 [ ] PDF dialog opens with two variants; both downloads succeed with correct filenames if apartment-pdf code changed
 [ ] Auto-Fill save + reload verified on disposable apartment
