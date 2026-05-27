@@ -46,27 +46,23 @@ function runShell(command) {
   }
 }
 
-/** Node 22 native .ts loading breaks named ESM imports — use tsx as a loader. */
-function resolveTsxImport() {
+function resolveTsxBin() {
   const cwd = process.cwd();
-  const tsxRoots = [
-    join(cwd, "node_modules", "tsx"),
-    join(cwd, "db-tools", "node_modules", "tsx"),
+  const candidates = [
+    join(cwd, "db-tools", "node_modules", ".bin", "tsx"),
+    join(cwd, "node_modules", ".bin", "tsx"),
+    join(cwd, "node_modules", "tsx", "dist", "cli.mjs"),
   ];
-  for (const root of tsxRoots) {
-    if (existsSync(join(root, "package.json"))) return "tsx";
-    for (const rel of ["dist/loader.mjs", "dist/esm/index.mjs"]) {
-      const loader = join(root, rel);
-      if (existsSync(loader)) return loader;
-    }
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
   }
-  throw new Error("tsx not found (expected /app/node_modules/tsx in Docker image)");
+  throw new Error("tsx not found (expected /app/db-tools/node_modules/.bin/tsx in Docker image)");
 }
 
 function runTsxScript(scriptPath) {
-  const tsxImport = resolveTsxImport();
+  const tsxBin = resolveTsxBin();
   const absScript = join(process.cwd(), scriptPath);
-  runShell(`node --import "${tsxImport}" "${absScript}"`);
+  runShell(`"${tsxBin}" "${absScript}"`);
 }
 
 function runTsxScriptOptional(label, scriptPath) {

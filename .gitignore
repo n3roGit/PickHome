@@ -1,4 +1,5 @@
 node_modules/
+db-tools/
 .next/
 *.tsbuildinfo
 .env

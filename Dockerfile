@@ -37,10 +37,13 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/package.json ./package.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
+# Standalone trace omits tsx; install in an isolated prefix (reliable on Alpine + npm ci layout).
 RUN chmod +x docker-entrypoint.sh \
-  && npm install --no-save prisma@6.5.0 @prisma/client@6.5.0 tsx@4.19.3 \
+  && mkdir -p /app/db-tools \
+  && npm install --prefix /app/db-tools --omit=dev --no-save tsx@4.19.3 \
+  && npm install --no-save prisma@6.5.0 @prisma/client@6.5.0 \
   && npx prisma generate \
-  && test -f node_modules/tsx/dist/loader.mjs \
+  && test -x /app/db-tools/node_modules/.bin/tsx \
   && npm cache clean --force \
   && chown -R node:node /app
 
