@@ -31,6 +31,10 @@ export function gravityInScreenFrame(
 /**
  * Screen roughly horizontal (face up or face down). Android beta ≈ 0 means both
  * flat-on-table and upright portrait — gravity disambiguates.
+ *
+ * Flat means the screen normal (Z) is within ~25° of vertical, i.e. the phone
+ * is lying close to a tabletop. Users tilting up/down ≥ 30° for AR must NOT
+ * trigger this — they are still holding the phone vertical-ish.
  */
 export function isScreenHorizontalFromGravity(
   x: number,
@@ -41,7 +45,8 @@ export function isScreenHorizontalFromGravity(
   const g = gravityInScreenFrame(x, y, z, screenAngleDeg);
   const mag = Math.hypot(g.x, g.y, g.z);
   if (mag < 5) return false;
-  return Math.abs(g.z) > Math.abs(g.y) * 0.55;
+  // cos(25°) ≈ 0.91: screen normal within 25° of vertical → on a table.
+  return Math.abs(g.z) / mag > 0.91;
 }
 
 export function pitchFromOrientation(

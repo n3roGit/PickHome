@@ -46,4 +46,18 @@ describe("device-pitch", () => {
   it("isScreenHorizontalFromGravity false when upright portrait", () => {
     expect(isScreenHorizontalFromGravity(0, 9.7, 1.2, 0)).toBe(false);
   });
+
+  it("isScreenHorizontalFromGravity false when tilted 45° up for AR (look at sky)", () => {
+    // Phone tilted ~45° back: gravity splits roughly evenly across Y and Z
+    expect(isScreenHorizontalFromGravity(0, -6.9, 6.9, 0)).toBe(false);
+  });
+
+  it("isScreenHorizontalFromGravity false when tilted 45° down for AR (look down)", () => {
+    expect(isScreenHorizontalFromGravity(0, -6.9, -6.9, 0)).toBe(false);
+  });
+
+  it("isScreenHorizontalFromGravity false when tilted 30° from vertical", () => {
+    // 30° tilt: Z component ≈ 4.9, Y ≈ -8.5
+    expect(isScreenHorizontalFromGravity(0, -8.5, 4.9, 0)).toBe(false);
+  });
 });
