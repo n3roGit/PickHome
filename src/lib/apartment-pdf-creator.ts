@@ -872,6 +872,7 @@ function createApartmentPdfBody(
 
     const environment = data.locationInsights?.environment ?? [];
     const noise = data.locationInsights?.noise ?? [];
+    const air = data.locationInsights?.air ?? [];
     const flood = data.locationInsights?.flood ?? [];
     if (environment.length > 0) {
       children.push(
@@ -894,6 +895,18 @@ function createApartmentPdfBody(
           styles,
           "Standort & Umfeld · Lärm (UBA)",
           locationInsightPdfRows(React, Text, View, styles, noise, "loc-noise")
+        )
+      );
+    }
+    if (air.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Standort & Umfeld · Luftqualität (UBA)",
+          locationInsightPdfRows(React, Text, View, styles, air, "loc-air")
         )
       );
     }

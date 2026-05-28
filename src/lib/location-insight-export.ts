@@ -1,4 +1,5 @@
 import type { ApartmentLocationInsightsBundle } from "@/lib/location-insights";
+import { formatAirQualityCompact } from "@/lib/air-quality-uba";
 import {
   FLOOD_SCENARIO_LABELS,
   formatFloodCompact,
@@ -69,6 +70,19 @@ export function buildLocationInsightLlmBlocks(
     );
   }
 
+  if (bundle.air.status === "ok" && bundle.air.data) {
+    const d = bundle.air.data;
+    blocks.push(
+      "",
+      "--- Luftqualität (UBA Messstationen) ---",
+      `Hinweis: nächste Station „${d.stationName}“ (${d.distanceM} m), keine Messung an der Adresse.`,
+      `- ${d.headline}`,
+      ...d.measurements.map(
+        (m) => `- ${m.label}: Index ${m.valueDisplay} (${m.assessment})`
+      )
+    );
+  }
+
   if (bundle.flood.status === "ok" && bundle.flood.data) {
     const s = bundle.flood.data.scenarios;
     blocks.push(
@@ -92,6 +106,7 @@ export function buildLocationInsightPdfRows(
   environment: ApartmentPdfLocationRow[];
   noise: ApartmentPdfLocationRow[];
   flood: ApartmentPdfLocationRow[];
+  air: ApartmentPdfLocationRow[];
 } {
   const environment: ApartmentPdfLocationRow[] = [];
   if (bundle.overpass.status === "ok" && bundle.overpass.data) {
@@ -131,6 +146,21 @@ export function buildLocationInsightPdfRows(
     }
   }
 
+  const air: ApartmentPdfLocationRow[] = [];
+  if (bundle.air.status === "ok" && bundle.air.data) {
+    const d = bundle.air.data;
+    air.push({
+      label: "Messstation",
+      value: `${d.stationName} (${d.distanceM} m)`,
+    });
+    for (const m of d.measurements) {
+      air.push({
+        label: m.label,
+        value: `Index ${m.valueDisplay} (${m.assessment})`,
+      });
+    }
+  }
+
   const flood: ApartmentPdfLocationRow[] = [];
   if (bundle.flood.status === "ok" && bundle.flood.data) {
     for (const id of ["HQhaeufig", "HQ100", "HQextrem"] as FloodScenarioId[]) {
@@ -144,13 +174,14 @@ export function buildLocationInsightPdfRows(
     }
   }
 
-  return { environment, noise, flood };
+  return { environment, noise, flood, air };
 }
 
 export function locationInsightCompareStrings(bundle: ApartmentLocationInsightsBundle): {
   environment: string;
   noise: string;
   flood: string;
+  air: string;
 } {
   return {
     environment:
@@ -164,6 +195,10 @@ export function locationInsightCompareStrings(bundle: ApartmentLocationInsightsB
     flood:
       bundle.flood.status === "ok" && bundle.flood.data
         ? formatFloodCompact(bundle.flood.data)
+        : "—",
+    air:
+      bundle.air.status === "ok" && bundle.air.data
+        ? formatAirQualityCompact(bundle.air.data)
         : "—",
   };
 }

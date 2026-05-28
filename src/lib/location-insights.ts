@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { fetchAirQualityUbaForCoords, type AirQualityUbaData } from "@/lib/air-quality-uba";
 import { fetchFloodBfgForCoords, type FloodBfgData } from "@/lib/flood-bfg";
 import {
   getOrFetchLocationInsight,
@@ -12,6 +13,7 @@ export type ApartmentLocationInsightsBundle = {
   overpass: LocationInsightSnapshot<OverpassPoiData>;
   noise: LocationInsightSnapshot<NoiseUbaData>;
   flood: LocationInsightSnapshot<FloodBfgData>;
+  air: LocationInsightSnapshot<AirQualityUbaData>;
 };
 
 export async function fetchLocationInsightForDomain(
@@ -29,6 +31,8 @@ export async function fetchLocationInsightForDomain(
       return fetchNoiseUbaForCoords(latitude, longitude);
     case "flood":
       return fetchFloodBfgForCoords(latitude, longitude);
+    case "air":
+      return fetchAirQualityUbaForCoords(latitude, longitude);
     default:
       return { ok: false, error: "unknown_domain" };
   }
@@ -38,7 +42,7 @@ export async function getOrFetchAllLocationInsights(
   prisma: PrismaClient,
   apartmentId: string
 ): Promise<ApartmentLocationInsightsBundle> {
-  const [overpass, noise, flood] = await Promise.all([
+  const [overpass, noise, flood, air] = await Promise.all([
     getOrFetchLocationInsight(prisma, apartmentId, "overpass", (lat, lng) =>
       fetchOverpassPois(lat, lng)
     ),
@@ -48,8 +52,11 @@ export async function getOrFetchAllLocationInsights(
     getOrFetchLocationInsight(prisma, apartmentId, "flood", (lat, lng) =>
       fetchFloodBfgForCoords(lat, lng)
     ),
+    getOrFetchLocationInsight(prisma, apartmentId, "air", (lat, lng) =>
+      fetchAirQualityUbaForCoords(lat, lng)
+    ),
   ]);
-  return { overpass, noise, flood };
+  return { overpass, noise, flood, air };
 }
 
 export async function refreshAllLocationInsights(
@@ -57,7 +64,7 @@ export async function refreshAllLocationInsights(
   apartmentId: string
 ): Promise<ApartmentLocationInsightsBundle> {
   const { refreshLocationInsight } = await import("@/lib/location-insight-cache");
-  const [overpass, noise, flood] = await Promise.all([
+  const [overpass, noise, flood, air] = await Promise.all([
     refreshLocationInsight(prisma, apartmentId, "overpass", (lat, lng) =>
       fetchOverpassPois(lat, lng)
     ),
@@ -67,12 +74,15 @@ export async function refreshAllLocationInsights(
     refreshLocationInsight(prisma, apartmentId, "flood", (lat, lng) =>
       fetchFloodBfgForCoords(lat, lng)
     ),
+    refreshLocationInsight(prisma, apartmentId, "air", (lat, lng) =>
+      fetchAirQualityUbaForCoords(lat, lng)
+    ),
   ]);
-  return { overpass, noise, flood };
+  return { overpass, noise, flood, air };
 }
 
 export type LocationInsightWarning = {
-  kind: "flood_hq100" | "flood_hqextrem" | "noise_65" | "noise_70";
+  kind: "flood_hq100" | "flood_hqextrem" | "noise_65" | "noise_70" | "air_poor";
   label: string;
 };
 
@@ -95,6 +105,13 @@ export function locationInsightWarnings(
       warnings.push({ kind: "noise_70", label: `Lärm ≥ ${max} dB` });
     } else if (max != null && max >= 65) {
       warnings.push({ kind: "noise_65", label: `Lärm ≥ ${max} dB` });
+    }
+  }
+
+  if (bundle.air.status === "ok" && bundle.air.data?.measurements.length) {
+    const worst = Math.max(...bundle.air.data.measurements.map((m) => m.value));
+    if (worst >= 4) {
+      warnings.push({ kind: "air_poor", label: "Luftqualität belastet" });
     }
   }
 

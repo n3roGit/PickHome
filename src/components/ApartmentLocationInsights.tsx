@@ -10,6 +10,10 @@ import {
 import type { LocationInsightSnapshot } from "@/lib/location-insight-cache";
 import type { ApartmentLocationInsightsBundle } from "@/lib/location-insights";
 import {
+  UBA_AIR_DATA_SOURCE_URL,
+  type AirQualityUbaData,
+} from "@/lib/air-quality-uba";
+import {
   buildNoiseHumanSummary,
   type NoiseUbaData,
 } from "@/lib/noise-uba";
@@ -44,7 +48,8 @@ function latestFetchedAt(bundle: ApartmentLocationInsightsBundle): Date {
     Math.max(
       bundle.overpass.fetchedAt.getTime(),
       bundle.noise.fetchedAt.getTime(),
-      bundle.flood.fetchedAt.getTime()
+      bundle.flood.fetchedAt.getTime(),
+      bundle.air.fetchedAt.getTime()
     )
   );
 }
@@ -86,7 +91,7 @@ function OverpassBlock({
     <CollapsibleSection
       title="Umgebung"
       subtitle="Infrastruktur und Einrichtungen im Umkreis 500 m und 1 km"
-      defaultOpen={snapshot.status === "ok"}
+      defaultOpen
       className="mb-3"
     >
       <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
@@ -119,7 +124,7 @@ function NoiseBlock({ snapshot }: { snapshot: LocationInsightSnapshot<NoiseUbaDa
     <CollapsibleSection
       title="Lärm (UBA)"
       subtitle="EU-Umgebungslärmkartierung — nur Hauptverkehr und Ballungsräume"
-      defaultOpen={hits.length > 0}
+      defaultOpen
       className="mb-3"
     >
       <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
@@ -186,6 +191,68 @@ function floodBadgeClass(status: "betroffen" | "nicht_betroffen"): string {
     : "bg-pn-score-high-bg text-pn-score-high";
 }
 
+function AirBlock({ snapshot }: { snapshot: LocationInsightSnapshot<AirQualityUbaData> }) {
+  const data = snapshot.data;
+
+  return (
+    <CollapsibleSection
+      title="Luftqualität (UBA)"
+      subtitle="Stündliche Messwerte der nächsten UBA-Station"
+      defaultOpen
+      className="mb-3"
+    >
+      <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
+      {snapshot.status === "ok" && data && data.measurements.length > 0 ? (
+        <div className="space-y-3">
+          <p className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm text-pn-text-primary">
+            {data.headline}
+          </p>
+          <p className="text-sm text-pn-text-secondary">
+            Messstation:{" "}
+            <span className="text-pn-text-primary">
+              {data.stationName}
+              {data.stationCity ? ` (${data.stationCity})` : ""}
+            </span>
+            {" · "}
+            {data.distanceM} m entfernt
+            {data.measuredAt ? ` · Stand ${data.measuredAt}` : ""}
+          </p>
+          <ul className="space-y-2">
+            {data.measurements.map((m) => (
+              <li
+                key={`${m.componentId}-${m.code}`}
+                className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm"
+              >
+                <span className="font-medium text-pn-text-primary">{m.label}</span>
+                {": "}
+                <span className="text-pn-text-primary">Index {m.valueDisplay}</span>
+                {" · "}
+                <span className="text-pn-text-tertiary">{m.assessment}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : snapshot.status === "ok" || snapshot.status === "no_data" ? (
+        <p className="text-sm text-pn-text-secondary">
+          Keine aktuellen Stundenwerte an der nächsten Station.
+        </p>
+      ) : null}
+      <p className="mt-3 text-xs text-pn-text-tertiary">
+        Quelle:{" "}
+        <a
+          href={UBA_AIR_DATA_SOURCE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-pn-accent hover:underline"
+        >
+          UBA Luftdaten
+        </a>{" "}
+        — Messwerte gelten am Standort der Station, nicht an der Wohnungsadresse.
+      </p>
+    </CollapsibleSection>
+  );
+}
+
 function FloodBlock({ snapshot }: { snapshot: LocationInsightSnapshot<FloodBfgData> }) {
   const data = snapshot.data;
 
@@ -193,10 +260,7 @@ function FloodBlock({ snapshot }: { snapshot: LocationInsightSnapshot<FloodBfgDa
     <CollapsibleSection
       title="Hochwasser (BfG)"
       subtitle="Überflutungsrisikozonen nach HWRM-RL (3. Zyklus)"
-      defaultOpen={
-        data != null &&
-        (data.scenarios.HQ100 === "betroffen" || data.scenarios.HQextrem === "betroffen")
-      }
+      defaultOpen
       className="mb-0"
     >
       <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
@@ -241,7 +305,7 @@ export function ApartmentLocationInsights({
   return (
     <CollapsibleSection
       title="Standort & Umfeld"
-      subtitle="Umgebung, Lärm und Hochwasser — bundesweit, unverbindlich."
+      subtitle="Umgebung, Lärm, Luftqualität und Hochwasser — bundesweit, unverbindlich."
       defaultOpen={false}
     >
       <div id="location-insights" className="space-y-3">
@@ -251,6 +315,7 @@ export function ApartmentLocationInsights({
           longitude={longitude}
         />
         <NoiseBlock snapshot={bundle.noise} />
+        <AirBlock snapshot={bundle.air} />
         <FloodBlock snapshot={bundle.flood} />
       </div>
       <LocationInsightsRefreshFooter apartmentId={apartmentId} fetchedAt={fetchedAt} />

@@ -1,4 +1,4 @@
-export const LOCATION_INSIGHT_DOMAINS = ["overpass", "noise", "flood"] as const;
+export const LOCATION_INSIGHT_DOMAINS = ["overpass", "noise", "flood", "air"] as const;
 
 export type LocationInsightDomain = (typeof LOCATION_INSIGHT_DOMAINS)[number];
 

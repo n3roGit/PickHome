@@ -110,6 +110,7 @@ export type ApartmentPdfData = {
     environment: ApartmentPdfLocationRow[];
     noise: ApartmentPdfLocationRow[];
     flood: ApartmentPdfLocationRow[];
+    air: ApartmentPdfLocationRow[];
   };
 };
 

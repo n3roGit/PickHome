@@ -5,6 +5,7 @@ const WARNING_STYLES: Record<LocationInsightWarning["kind"], string> = {
   flood_hqextrem: "bg-pn-score-mid-bg text-pn-score-mid border-pn-border",
   noise_65: "bg-pn-score-mid-bg text-pn-score-mid border-pn-border",
   noise_70: "bg-pn-score-low-bg text-pn-score-low border-pn-score-low/30",
+  air_poor: "bg-amber-100 text-amber-900 border-amber-300/50 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-800/50",
 };
 
 export function LocationInsightWarnings({ warnings }: { warnings: LocationInsightWarning[] }) {
