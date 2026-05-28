@@ -79,6 +79,7 @@ Existing backfills: `sizeSqm` ← description/notes (`src/lib/backfill-size-sqm.
 - Dev: `npm run dev` (runs `predev` → ensures data dirs)
 - DB: `npm run db:push`, `npm run db:seed`
 - Tests: `npm test`
+- Before push: `npm run ci` (tests + production build; pre-push hook runs this automatically)
 - Backup: `npm run data:export` / `data:import`
 - Docker image: `n3ro88/pickhome` (see `docker-compose.yml`)
 

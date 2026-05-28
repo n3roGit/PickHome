@@ -8,6 +8,8 @@ import {
   TEST_ADDRESS_BREMEN_RAW_LOOSE,
 } from "../helpers/synthetic-addresses";
 
+const runLiveNetworkTests = process.env.PICKHOME_LIVE_TESTS === "1";
+
 describe("live geocode Bremen (network)", () => {
   it("parses street number PLZ city correctly", () => {
     expect(parseLooseGermanAddress(TEST_ADDRESS_BREMEN_RAW_LOOSE)).toEqual({
@@ -17,13 +19,17 @@ describe("live geocode Bremen (network)", () => {
     });
   });
 
-  it("resolves coordinates via Nominatim", async () => {
-    const result = await geocodeAddress(TEST_ADDRESS_BREMEN_RAW_LOOSE);
-    expect(result).not.toBeNull();
-    expect(result!.latitude).toBeCloseTo(TEST_ADDRESS_BREMEN_LAT, 3);
-    expect(result!.longitude).toBeCloseTo(TEST_ADDRESS_BREMEN_LON, 2);
-    expect(result!.postcode).toBe(TEST_ADDRESS_BREMEN_POSTCODE);
-  }, 30_000);
+  it.skipIf(!runLiveNetworkTests)(
+    "resolves coordinates via Nominatim",
+    async () => {
+      const result = await geocodeAddress(TEST_ADDRESS_BREMEN_RAW_LOOSE);
+      expect(result).not.toBeNull();
+      expect(result!.latitude).toBeCloseTo(TEST_ADDRESS_BREMEN_LAT, 3);
+      expect(result!.longitude).toBeCloseTo(TEST_ADDRESS_BREMEN_LON, 2);
+      expect(result!.postcode).toBe(TEST_ADDRESS_BREMEN_POSTCODE);
+    },
+    30_000,
+  );
 });
 
 describe("buildGeocodeQueryVariants Bremen", () => {

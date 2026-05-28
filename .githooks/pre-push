@@ -1,0 +1,7 @@
+#!/bin/sh
+if [ -n "$PICKHOME_SKIP_CI" ] || [ -n "$SKIP_CI" ]; then
+  echo "[pickhome] Skipping pre-push CI (PICKHOME_SKIP_CI or SKIP_CI is set)."
+  exit 0
+fi
+
+npm run ci

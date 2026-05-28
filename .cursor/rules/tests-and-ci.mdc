@@ -10,6 +10,7 @@ globs: src/**/*,tests/**/*,vitest.config.ts,.github/**/*
 - Config: `vitest.config.ts` — Node environment, `tests/**/*.test.ts`, `setupFiles: ["tests/setup.ts"]`.
 - `fileParallelism: true`, `pool: "forks"`, `hookTimeout: 60_000` — test files run in parallel; each worker gets its own DB.
 - Run: `npm test` / `npm run test:unit` / `npm run test:integration` / `npm run test:watch`.
+- Optional live Nominatim check: `npm run test:live` (skipped in default `npm test` / `npm run ci`).
 
 ## Database in tests
 
@@ -30,8 +31,10 @@ Use `resetTestDatabase()` before integration tests that need a clean DB.
 
 ## CI
 
-- Workflow runs `npm test` on push/PR.
+- GitHub **Test** workflow: `npm test`, then `npm run build` (production typecheck).
+- Local mirror: `npm run ci` (`scripts/ci-local.mjs`). Stop `npm run dev` before running it.
+- Git **pre-push** hook (`.githooks/pre-push`) runs `npm run ci` automatically; skip with `PICKHOME_SKIP_CI=1`.
 - Docker image: `release.yml` builds/pushes `n3ro88/pickhome` on push to `main` (or manual **Release** run).
 - Docker build needs `DATABASE_URL` at build time; data dir via `PICKHOME_DATA_DIR`.
 
-After schema or action changes, run `npm test` locally before push.
+After schema or action changes, run `npm run ci` locally before push.

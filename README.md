@@ -312,6 +312,8 @@ docker compose restart
 
 Optional: `npm run data:import -- backup.zip --keep` keeps `*.pre-import-*` copies of the previous data.
 
+Before pushing, run `npm run ci` (also runs automatically via the git pre-push hook). Stop `npm run dev` first — a running dev server can block the production build on Windows. Skip the hook in an emergency with `PICKHOME_SKIP_CI=1 git push`.
+
 ## Scripts
 
 | Command | Description |
@@ -319,6 +321,7 @@ Optional: `npm run data:import -- backup.zip --keep` keeps `*.pre-import-*` copi
 | `npm run data:export` | Write full backup ZIP under `data/backups/` |
 | `npm run data:import` | Restore from backup ZIP (pass path as argument) |
 | `npm test` | Run unit + integration tests |
+| `npm run ci` | Local CI mirror: tests + production build (same as GitHub Test workflow) |
 | `npm run test:watch` | Tests in watch mode |
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
