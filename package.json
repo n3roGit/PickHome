@@ -18,7 +18,7 @@
     "data:export": "tsx scripts/backup-export.ts",
     "data:import": "tsx scripts/backup-import.ts",
     "ci": "node scripts/ci-local.mjs",
-    "prepare": "node scripts/install-git-hooks.mjs",
+    "prepare": "node -e \"const fs=require('node:fs'); const cp=require('node:child_process'); if (fs.existsSync('scripts/install-git-hooks.mjs')) { cp.execSync('node scripts/install-git-hooks.mjs', { stdio: 'inherit' }); } else { console.log('[pickhome] Skipping git hook install (scripts/install-git-hooks.mjs not present).'); }\"",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
