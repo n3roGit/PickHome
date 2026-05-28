@@ -1,4 +1,10 @@
 import { readFile } from "fs/promises";
+import { getAppTimeZone } from "@/lib/app-settings";
+import { getApartmentPriceHistory } from "@/lib/apartment-price-history";
+import { priceHistorySourceLabelDe } from "@/lib/apartment-price-history-labels";
+import { getOrFetchBorisForApartment } from "@/lib/boris-cache";
+import { sortBorisResults } from "@/lib/boris";
+import { formatDateDe, formatDateTimeDe } from "@/lib/dates";
 import { assertApartmentAccess } from "@/lib/project-data";
 import type { ProjectAccessUser } from "@/lib/project-access";
 import { prisma } from "@/lib/prisma";
@@ -11,11 +17,18 @@ import { buildApartmentCommuteLlmSection } from "@/lib/apartment-llm-commute-con
 import { computeCommuteForMembers } from "@/lib/commute";
 import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
 import { resolveTransitSettings } from "@/lib/transit-settings";
+import { matchApartmentSubsidies, type SubsidyMatchStatus } from "@/lib/subsidy-matching";
 import { parseTravelMode } from "@/lib/travel-mode";
 import { publicPhotoPath } from "@/lib/pickhome-data";
 import { parseChecklistStatus } from "@/lib/checklist-display";
 import { extractPdfText } from "@/lib/pdf-text";
 import { isPdfDocument } from "@/lib/pdf-reindex";
+
+const SUBSIDY_STATUS_LABEL: Record<SubsidyMatchStatus, string> = {
+  relevant: "Relevant",
+  possible: "Möglich",
+  "needs-data": "Daten fehlen",
+};
 
 export async function getApartmentLlmBundle(
   apartmentId: string,
@@ -69,6 +82,13 @@ export async function getApartmentLlmBundle(
           url: true,
           mimeType: true,
           extractedText: true,
+        },
+      },
+      viewings: {
+        orderBy: { scheduledAt: "asc" },
+        select: {
+          scheduledAt: true,
+          note: true,
         },
       },
     },
@@ -180,6 +200,40 @@ export async function getApartmentLlmBundle(
   });
   const commuteSection = buildApartmentCommuteLlmSection(commutePeople);
   const checklistLines = await buildApartmentChecklistExtractLines(apartmentId);
+  const [timeZone, priceHistoryRows, borisSnapshot] = await Promise.all([
+    getAppTimeZone(),
+    getApartmentPriceHistory(apartmentId),
+    getOrFetchBorisForApartment(prisma, apartmentId),
+  ]);
+  const viewingDates = row.viewings.map((viewing) => ({
+    scheduledAt: formatDateTimeDe(viewing.scheduledAt, timeZone),
+    note: viewing.note,
+  }));
+  const priceHistory = priceHistoryRows.map((entry) => ({
+    price: entry.price,
+    previousPrice: entry.previousPrice,
+    recordedAt: formatDateDe(entry.recordedAt, timeZone),
+    sourceLabel: priceHistorySourceLabelDe(entry.source),
+  }));
+  const borisResults =
+    borisSnapshot.status === "ok"
+      ? sortBorisResults(borisSnapshot.results).map((result) => ({
+          kategorieLabel: result.kategorieLabel,
+          brwEurPerSqm: result.brwEurPerSqm,
+          nutzungsartLabel: result.nutzungsartLabel,
+          stichtag: result.stichtag,
+        }))
+      : [];
+  const subsidyHints = matchApartmentSubsidies({
+    energyClass: row.energyClass,
+    yearBuilt: row.yearBuilt,
+    renovationCost: row.renovationCost,
+    address: row.address,
+  }).map((match) => ({
+    name: match.program.name,
+    status: SUBSIDY_STATUS_LABEL[match.status],
+    reason: match.reason,
+  }));
 
   return {
     projectName: row.project.name,
@@ -200,11 +254,16 @@ export async function getApartmentLlmBundle(
       heatingCostMonthly: row.heatingCostMonthly,
       propertyTaxAnnual: row.propertyTaxAnnual,
       renovationCost: row.renovationCost,
+      coldRentMonthly: row.coldRentMonthly,
       description: row.description,
       notes: row.notes,
       documents,
       financeSection,
       commuteSection,
+      viewingDates,
+      priceHistory,
+      borisResults,
+      subsidyHints,
       checklistLines,
     },
     pdfDocuments: row.documents,

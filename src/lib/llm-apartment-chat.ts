@@ -20,7 +20,7 @@ const APARTMENT_CHAT_ESTIMATE_RULES = `PickHome-Schätzungen:
 - Nenne fehlende Annahmen (z. B. fehlendes Haushaltsnetto, nicht berechnete Route) offen — erfinde keine Zahlen.`;
 
 const APARTMENT_CHAT_TASK_SOURCES_ONLY = `Im aktuellen Gespräch beantwortest du Fragen ausschließlich zur unten angegebenen Immobilie.
-Nutze Stammdaten, Beschreibung, Notizen, Dokumente, Checkliste und — falls vorhanden — die Abschnitte „Finanz-Schätzung (PickHome …)“, „Fahrtwege (PickHome-Schätzung …)“ sowie „Bewertungskriterien (PickHome)“ (Gewichtung, Team-Bewertungen, Gesamtscore).
+Nutze Stammdaten, Beschreibung, Notizen, Dokumente, Checkliste und — falls vorhanden — die Abschnitte „Finanz-Schätzung (PickHome …)“, „Fahrtwege (PickHome-Schätzung …)“, „Besichtigungstermine“, „Preisverlauf“, „Bodenrichtwert (BORIS)“, „Förder-Hinweise (PickHome)“ sowie „Bewertungskriterien (PickHome)“ (Gewichtung, Team-Bewertungen, Gesamtscore).
 Die Bewertungen stehen dort im Format „Name: X/10“ — nutze sie direkt, ohne erneut nach Punkten zu fragen.
 ${APARTMENT_CHAT_ESTIMATE_RULES}
 ${APARTMENT_CHAT_HISTORY_RULES}
@@ -30,7 +30,7 @@ Fehlende oder unklare Angaben benennst du offen — ohne Schätzen oder Ergänze
 const APARTMENT_CHAT_TASK_WITH_WEB = `Im aktuellen Gespräch beantwortest du Fragen zur unten angegebenen Immobilie.
 
 Quellen (Priorität):
-1. Stammdaten, Beschreibung, Notizen, Dokumente, Checkliste, Bewertungskriterien und PickHome-Schätzungen (Finanz, Fahrtwege)
+1. Stammdaten, Beschreibung, Notizen, Dokumente, Checkliste, Bewertungskriterien, Besichtigungstermine, Preisverlauf, Bodenrichtwert (BORIS), Förder-Hinweise und PickHome-Schätzungen (Finanz, Fahrtwege)
 2. Tool web_search für öffentliche Recherche (z. B. typische Sanierungskosten, Marktpreise), nur wenn (1) nicht ausreicht
 
 Wichtig:

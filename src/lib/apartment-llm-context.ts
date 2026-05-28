@@ -37,6 +37,31 @@ export type ApartmentLlmScoringInput = {
   focusUserId: string;
 };
 
+export type ApartmentLlmViewingDate = {
+  scheduledAt: string;
+  note?: string | null;
+};
+
+export type ApartmentLlmPriceHistoryEntry = {
+  price: number;
+  previousPrice?: number | null;
+  recordedAt: string;
+  sourceLabel: string;
+};
+
+export type ApartmentLlmBorisResult = {
+  kategorieLabel: string;
+  brwEurPerSqm: number;
+  nutzungsartLabel?: string | null;
+  stichtag?: string | null;
+};
+
+export type ApartmentLlmSubsidyHint = {
+  name: string;
+  status: string;
+  reason: string;
+};
+
 export type ApartmentLlmContextInput = {
   projectName: string;
   title: string;
@@ -54,11 +79,16 @@ export type ApartmentLlmContextInput = {
   heatingCostMonthly?: number | null;
   propertyTaxAnnual?: number | null;
   renovationCost?: number | null;
+  coldRentMonthly?: number | null;
   description?: string | null;
   notes?: string | null;
   documents?: { fileName: string; extractedText?: string | null }[];
   financeSection?: string | null;
   commuteSection?: string | null;
+  viewingDates?: ApartmentLlmViewingDate[];
+  priceHistory?: ApartmentLlmPriceHistoryEntry[];
+  borisResults?: ApartmentLlmBorisResult[];
+  subsidyHints?: ApartmentLlmSubsidyHint[];
   checklistLines?: string[];
 };
 
@@ -174,12 +204,66 @@ export function buildApartmentLlmContext(apartment: ApartmentLlmContextInput): s
   if (apartment.renovationCost != null) {
     push("Renovierung (eingetragen)", formatPrice(apartment.renovationCost));
   }
+  if (apartment.coldRentMonthly != null) {
+    push("Kaltmiete monatlich", formatPrice(apartment.coldRentMonthly));
+  }
 
   if (apartment.financeSection?.trim()) {
     lines.push("", apartment.financeSection.trim());
   }
   if (apartment.commuteSection?.trim()) {
     lines.push("", apartment.commuteSection.trim());
+  }
+
+  const viewingLines = (apartment.viewingDates ?? [])
+    .filter((v) => v.scheduledAt.trim())
+    .map((v) => {
+      const note = v.note?.trim();
+      return note ? `- ${v.scheduledAt} — Notiz: ${note}` : `- ${v.scheduledAt}`;
+    });
+  if (viewingLines.length > 0) {
+    lines.push("", "--- Besichtigungstermine ---", ...viewingLines);
+  }
+
+  const priceHistoryLines = (apartment.priceHistory ?? []).map((entry) => {
+    const priceLabel = formatPrice(entry.price);
+    const previous =
+      entry.previousPrice != null ? ` (vorher ${formatPrice(entry.previousPrice)})` : "";
+    return `- ${entry.recordedAt}: ${priceLabel}${previous} — ${entry.sourceLabel}`;
+  });
+  if (priceHistoryLines.length > 0) {
+    lines.push("", "--- Preisverlauf ---", ...priceHistoryLines);
+  }
+
+  const borisLines = (apartment.borisResults ?? []).map((result) => {
+    const parts = [`${result.kategorieLabel}: ${result.brwEurPerSqm} EUR/m²`];
+    if (result.nutzungsartLabel?.trim()) {
+      parts.push(result.nutzungsartLabel.trim());
+    }
+    if (result.stichtag?.trim()) {
+      parts.push(`Stichtag ${result.stichtag.trim()}`);
+    }
+    return `- ${parts.join(" · ")}`;
+  });
+  if (borisLines.length > 0) {
+    lines.push(
+      "",
+      "--- Bodenrichtwert (BORIS) ---",
+      "Hinweis: Orientierungswerte aus BORIS-D, keine Kaufpreisempfehlung.",
+      ...borisLines
+    );
+  }
+
+  const subsidyLines = (apartment.subsidyHints ?? []).map(
+    (hint) => `- ${hint.name} | Status: ${hint.status} | ${hint.reason}`
+  );
+  if (subsidyLines.length > 0) {
+    lines.push(
+      "",
+      "--- Förder-Hinweise (PickHome) ---",
+      "Hinweis: Unverbindliche Orientierung, keine Förderzusage.",
+      ...subsidyLines
+    );
   }
 
   if (apartment.description?.trim()) {
