@@ -1,8 +1,18 @@
-import { attrString, fetchArcGisIdentify } from "@/lib/arcgis-identify";
+import { attrString, fetchArcGisIdentify, type ArcGisIdentifyHit } from "@/lib/arcgis-identify";
 
 export const UBA_NOISE_MAP_SERVER_URL =
   process.env.NOISE_MAP_URL?.trim() ||
   "https://datahub.uba.de/server/rest/services/VeLa/LK/MapServer";
+
+/** Fast UBA identify layers — avoid `layers=all` (times out) and Den road HLQ/BLR layers 4110/4120/4210. */
+export const UBA_NOISE_IDENTIFY_LAYER_IDS = [
+  1000, // LK_BLR_Abfrage — agglomeration summary (road/rail/air den+night fields)
+  4220, // LK_BLR_road_Night
+  5120, // LK_HLQ_rail_Night — main rail outside agglomeration
+  5220, // LK_BLR_rail_Night
+  6120, // LK_HLQ_air_Night
+  6220, // LK_BLR_air_Night
+] as const;
 
 export const UBA_NOISE_SOURCE_URL =
   "https://www.umweltbundesamt.de/themen/laerm/laermkartierung";
@@ -347,6 +357,46 @@ export function formatNoiseMaxCompact(hits: NoiseHit[] | null): string {
   return `${top.sourceLabel}: ${line.bandHuman}`;
 }
 
+export async function fetchNoiseIdentifyHits(
+  latitude: number,
+  longitude: number,
+  options?: { background?: boolean }
+): Promise<
+  | { ok: true; results: ArcGisIdentifyHit[] }
+  | { ok: false; error: string }
+> {
+  const merged: ArcGisIdentifyHit[] = [];
+  let anyOk = false;
+  let lastError = "fetch_failed";
+  const fetchOptions = options?.background ? { background: true } : undefined;
+
+  for (const layerId of UBA_NOISE_IDENTIFY_LAYER_IDS) {
+    const identified = await fetchArcGisIdentify({
+      mapServerUrl: UBA_NOISE_MAP_SERVER_URL,
+      latitude,
+      longitude,
+      service: "noise",
+      sr: "4326",
+      tolerance: 8,
+      layers: `visible:${layerId}`,
+      fetchOptions,
+    });
+
+    if (identified.ok) {
+      anyOk = true;
+      merged.push(...identified.results);
+      continue;
+    }
+    lastError = identified.error;
+  }
+
+  if (!anyOk) {
+    return { ok: false, error: lastError };
+  }
+
+  return { ok: true, results: merged };
+}
+
 export async function fetchNoiseUbaForCoords(
   latitude: number,
   longitude: number,
@@ -355,14 +405,7 @@ export async function fetchNoiseUbaForCoords(
   | { ok: true; data: NoiseUbaData; noData?: boolean }
   | { ok: false; error: string }
 > {
-  const identified = await fetchArcGisIdentify({
-    mapServerUrl: UBA_NOISE_MAP_SERVER_URL,
-    latitude,
-    longitude,
-    service: "noise",
-    sr: "4326",
-    fetchOptions: options?.background ? { background: true } : undefined,
-  });
+  const identified = await fetchNoiseIdentifyHits(latitude, longitude, options);
 
   if (!identified.ok) {
     return { ok: false, error: identified.error };
