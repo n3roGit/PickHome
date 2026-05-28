@@ -21,7 +21,11 @@ export async function fetchLocationInsightForDomain(
   latitude: number,
   longitude: number
 ): Promise<
-  | { ok: true; data: OverpassPoiData | NoiseUbaData | FloodBfgData; noData?: boolean }
+  | {
+      ok: true;
+      data: OverpassPoiData | NoiseUbaData | FloodBfgData | AirQualityUbaData;
+      noData?: boolean;
+    }
   | { ok: false; error: string }
 > {
   switch (domain) {
