@@ -1,6 +1,6 @@
 # PickHome
 
-Self-hosted apartment scoring for house hunting: weighted criteria, dealbreakers, team ratings, comparison, map, calendar, purchase-cost estimates, commute times, and viewing appointments. German UI, no payment integration.
+Self-hosted apartment scoring for house hunting: weighted criteria, dealbreakers, team ratings, viewing checklists, comparison, map, calendar, purchase-cost estimates, commute times, subsidies, price history, optional LLM assist, and on-site sun AR. German UI, no payment integration.
 
 Repository: [github.com/n3roGit/PickHome](https://github.com/n3roGit/PickHome)
 
@@ -21,18 +21,34 @@ I would greatly appreciate support for my project. Every $ contributes to enhanc
 - **Archive** with reasons, notes, and rejection-pattern stats on the archived tab
 - **Duplicate detection** for similar titles/addresses within a project
 
+### Viewing checklist
+
+- **Project checklist** tab: enable criteria for on-site notes, custom extra points, team assignee
+- **Per-apartment checklist** (`/apartment/.../checklist`): three-state slider (not ok / unset / ok), notes, camera shortcut for photos
+- Filled checklist hints appear on **rating sliders** on the apartment page
+- **Broker questions** per criterion group (Makler-Fragen), independent of enabled checklist points
+
 ### Per apartment
 
-- **Basics**: price, size (m²), floor, year built, energy class, broker involvement, listing URL
+- **Toolbar** with live score summary; criteria section collapsed by default
+- **Basics**: price, size (m²), **plot size** (m²), floor, year built, energy class, broker involvement, listing URL
+- **Running costs**: HOA, heating, property tax, renovation, cold rent (monthly/annual fields)
 - **Listing import**: paste an expose URL to pre-fill empty fields when creating an apartment
-- **Photos** (up to 10 MB) and **PDF documents** / exposé (up to 30 MB); full-text search includes document text
+- **Auto-fill** from uploaded exposé PDF (optional LLM extraction when configured)
+- **Photos** (up to 10 MB) and **PDF documents** / exposé (up to 30 MB); full-text search includes document text; camera capture shortcut
 - **Ratings** with optional notes; live score summary while editing
-- **Viewing appointments** (past/upcoming) on the apartment page and project calendar
+- **Viewing appointments** (past/upcoming) on the apartment page and project calendar; **60-minute slots**, driving-time buffer between addresses, overlap warnings
 - **Purchase costs** (rough estimate): land transfer tax by Bundesland — from apartment address when detectable, else project default — plus notary/registry and buyer broker
 - **Financing** (rough estimate): equity, loan term, interest rate, monthly payment and lifetime cost from project settings
+- **Price history** when listing price changes (import or manual)
 - **Commute** times and distances to each team member’s saved addresses (driving / cycling / walking via OSRM; **public transit** via [transport.rest](https://v6.db.transport.rest) with fallbacks to [v5.db.api.bahn.guru](https://v5.db.api.bahn.guru) and GTFS/MOTIS ([GTFS Deutschland](https://gtfs.de) via `TRANSIT_GTFS_API_BASE`); optional `TRANSIT_API_BASES` and self-hosted `OSRM_BASE_URL`)
 - **Company car** benefit estimates on commute legs when configured in account settings
+- **Subsidy hints** (rough match against common programs from apartment/project data)
+- **BORIS** land-value lookup when coordinates are available
 - **Desired area** badge when the address matches the project’s Wunschgebiet filter
+- **PDF export** of apartment summary (scores, basics, commute, checklist, …)
+- **Sun path & AR on site** (`/apartment/.../sonne-ar`): camera + compass + GPS for sun markers (HTTPS or localhost)
+- **LLM chat** on the apartment (optional; admin API key): context from listing, notes, documents; optional web search (Tavily/Brave)
 
 ### Project tabs
 
@@ -42,7 +58,8 @@ I would greatly appreciate support for my project. Every $ contributes to enhanc
 | **Archiv** | Archived apartments, archive-reason breakdown |
 | **Team** | Invite/remove project members |
 | **Einstellungen** | Name, budget, Bundesland, broker rate, financing defaults, dealbreaker threshold, **Wunschgebiet** (Ort + PLZ/districts), **background reindex** for PDF full-text search and commute routes (status polling while you keep using the app) |
-| **Kriterien** | Edit criterion groups, weights, dealbreakers |
+| **Kriterien** | Edit criterion groups, weights, dealbreakers, broker questions |
+| **Checkliste** | Enable/disable checklist points, assignees, custom points |
 | **Vergleich** | Compare up to 5 apartments: scores, criteria, purchase/finance metrics, partner divergence |
 | **Karte** | Pins colored by score; **Wunschgebiet** PLZ circles (toggle); dealbreaker styling |
 | **Kalender** | All viewings; **iCal feed** URL for Google Calendar, Outlook, Apple Calendar |
@@ -59,24 +76,68 @@ I would greatly appreciate support for my project. Every $ contributes to enhanc
 - Create users, reset passwords, delete users (cannot delete last admin)
 - **Backup**: download/upload full ZIP (database + uploads)
 - **Scheduled backups**: daily job, retention, restore from stored ZIPs in `data/`
+- **LLM**: base URL, API key, model, system prompt; optional web-search keys (Tavily/Brave)
+- App timezone and related settings
 
 ## Screenshots
 
-| Dashboard | Project leaderboard |
-|-----------|---------------------|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Apartments](docs/screenshots/apartments.png) |
+Screenshots use **demo data only** — no production or personal house-hunt data. **Addresses** are public OSM places (Berlin, Hamburg, München, Bremen) from `tests/helpers/synthetic-addresses.ts`, so map, geocoding, commute, and Wunschgebiet work. Names (*Alex Demo*, *Sam Demo*) and listing URLs (`example.com`) are fictional. To reproduce locally:
 
-| Apartment overview | Criteria rating |
-|--------------------|-----------------|
-| ![Apartment overview](docs/screenshots/apartment-overview.png) | ![Apartment detail](docs/screenshots/apartment-detail.png) |
+```bash
+npm run db:push && npm run db:seed
+npx tsx scripts/seed-readme-demo.ts
+npm run dev
+```
+
+Log in as `demo` / `demo`, open project *Demo-Suchprojekt*.
+
+### Project & overview
+
+| Dashboard | Apartment list |
+|-----------|----------------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Apartments](docs/screenshots/apartments.png) |
 
 | Compare | Map |
 |---------|-----|
 | ![Compare](docs/screenshots/compare.png) | ![Map](docs/screenshots/map.png) |
 
-| Calendar |
-|----------|
-| ![Calendar](docs/screenshots/calendar.png) |
+| Calendar | Project checklist setup |
+|----------|-------------------------|
+| ![Calendar](docs/screenshots/calendar.png) | ![Project checklist](docs/screenshots/project-checklist.png) |
+
+| Project settings (purchase costs & financing defaults) |
+|--------------------------------------------------------|
+| ![Project settings](docs/screenshots/project-settings.png) |
+
+### Apartment detail
+
+| Overview (toolbar, basics, costs) | Criteria rating |
+|-----------------------------------|-----------------|
+| ![Apartment overview](docs/screenshots/apartment-overview.png) | ![Criteria rating](docs/screenshots/apartment-detail.png) |
+
+| On-site checklist | Commute |
+|-------------------|---------|
+| ![Checklist fill](docs/screenshots/checklist.png) | ![Commute](docs/screenshots/commute.png) |
+
+### Costs & land value
+
+| Purchase & financing estimate | BORIS land value (BRW) |
+|-------------------------------|-------------------------|
+| ![Finances](docs/screenshots/finances.png) | ![BORIS](docs/screenshots/boris.png) |
+
+| Subsidy hints |
+|---------------|
+| ![Subsidies](docs/screenshots/subsidies.png) |
+
+### Sun & AI
+
+| Sun path & map on apartment page (Sonnenstand) | Sun AR on site (camera + compass; README uses `?demo=1` black preview) |
+|-----------------------------------------------|------------------------------------------------------------------------|
+| ![Sun path and map](docs/screenshots/solar.png) | ![Sun AR](docs/screenshots/sonne-ar.png) |
+
+| AI assistant (apartment chat) |
+|-------------------------------|
+| ![AI assistant](docs/screenshots/llm-chat.png) |
 
 ## Quick start (Docker)
 
@@ -221,9 +282,17 @@ npm run dev
 
 → http://localhost:3000
 
+Optional demo project for screenshots or UI previews (public addresses + fictional names/URLs):
+
+```bash
+npx tsx scripts/seed-readme-demo.ts
+```
+
 ### Sun AR on mobile (HTTPS)
 
 The apartment **AR vor Ort** view (`/project/.../apartment/.../sonne-ar`) uses the device camera, compass, and **current GPS position** for sun markers. Browsers allow this only on **HTTPS** or **localhost**. For LAN access from a phone (e.g. `http://192.168.x.x:3000`), put PickHome behind a TLS reverse proxy (Caddy, nginx, Traefik) or use `npm run dev` on the phone via USB port forwarding.
+
+For docs/screenshots without a device camera, open the same URL with `?demo=1` (black background, fixed heading — sun arc only).
 
 ## Backup (export / import)
 
@@ -257,6 +326,7 @@ Optional: `npm run data:import -- backup.zip --keep` keeps `*.pre-import-*` copi
 | `npm run db:reset` | Reset DB + seed admin |
 | `npm run db:push` | Apply Prisma schema |
 | `npm run db:seed` | Seed admin user only |
+| `npx tsx scripts/seed-readme-demo.ts` | Demo project for README screenshots (public OSM addresses) |
 
 ## Stack
 
