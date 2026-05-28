@@ -12,6 +12,8 @@ import { markerColorForScore } from "@/lib/scoring";
 import type { MappedApartment, PlzMapOverlay } from "@/components/ProjectMap";
 import type { AreaFilterMode } from "@/lib/area-filter";
 import { DEFAULT_PLZ_OVERLAY_RADIUS_M } from "@/lib/plz-map-overlays";
+import { POI_CATEGORY_COLORS } from "@/lib/overpass-poi";
+import { projectMapPoiPopupHtml, type ProjectMapPoi } from "@/lib/project-map-pois";
 
 const DESIRED_AREA_FILL = "#22c55e";
 const DESIRED_AREA_STROKE = "#15803d";
@@ -42,6 +44,15 @@ function markerIcon(color: string) {
     html: `<span style="display:block;width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></span>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7],
+  });
+}
+
+function poiIcon(color: string) {
+  return L.divIcon({
+    className: "",
+    html: `<span style="display:block;width:8px;height:8px;border-radius:50%;background:${color};border:1px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.35)"></span>`,
+    iconSize: [8, 8],
+    iconAnchor: [4, 4],
   });
 }
 
@@ -106,15 +117,18 @@ export default function ProjectMapInner({
   apartments,
   areaFilterPlzOverlays,
   areaFilterMode = "allow",
+  poiMarkers = [],
 }: {
   projectId: string;
   apartments: MappedApartment[];
   areaFilterPlzOverlays: PlzMapOverlay[];
   areaFilterMode?: AreaFilterMode;
+  poiMarkers?: ProjectMapPoi[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const poiLayerRef = useRef<L.LayerGroup | null>(null);
   const overlaysLayerRef = useRef<L.LayerGroup | null>(null);
   const popupRootsRef = useRef<Root[]>([]);
   const didInitialFitRef = useRef(false);
@@ -144,6 +158,8 @@ export default function ProjectMapInner({
       )
       .addTo(map);
 
+    const poiLayer = L.layerGroup().addTo(map);
+    poiLayerRef.current = poiLayer;
     const markersLayer = L.layerGroup().addTo(map);
     markersLayerRef.current = markersLayer;
     overlaysLayerRef.current = L.layerGroup().addTo(map);
@@ -152,6 +168,7 @@ export default function ProjectMapInner({
       map.remove();
       mapRef.current = null;
       markersLayerRef.current = null;
+      poiLayerRef.current = null;
       overlaysLayerRef.current = null;
       didInitialFitRef.current = false;
       initialFitHadOverlaysRef.current = false;
@@ -199,6 +216,19 @@ export default function ProjectMapInner({
       marker.bindPopup(popupEl);
     }
   }, [apartments, areaFilterMode, projectId]);
+
+  useEffect(() => {
+    const poiLayer = poiLayerRef.current;
+    if (!poiLayer) return;
+
+    poiLayer.clearLayers();
+    for (const poi of poiMarkers) {
+      const color = POI_CATEGORY_COLORS[poi.categoryId];
+      L.marker([poi.lat, poi.lng], { icon: poiIcon(color) })
+        .bindPopup(projectMapPoiPopupHtml(poi), { maxWidth: 260 })
+        .addTo(poiLayer);
+    }
+  }, [poiMarkers]);
 
   useEffect(() => {
     const overlaysLayer = overlaysLayerRef.current;

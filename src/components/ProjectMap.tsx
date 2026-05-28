@@ -6,6 +6,13 @@ import { ScoreLegend } from "@/components/ScoreLegend";
 import type { AreaFilterMode } from "@/lib/area-filter";
 import type { AreaMatchStatus } from "@/lib/area-filter";
 import type { PlzMapOverlay } from "@/lib/plz-map-overlays";
+import { PoiCategoryLegend } from "@/components/PoiCategoryLegend";
+import type { ProjectMapPoi } from "@/lib/project-map-pois";
+import {
+  countPoisByCategory,
+  OVERPASS_RADIUS_WIDE_M,
+  type PoiCategoryId,
+} from "@/lib/overpass-poi";
 
 export type { PlzMapOverlay };
 
@@ -42,6 +49,13 @@ export function ProjectMap({
   const [loading, setLoading] = useState(false);
   const [plzOverlays, setPlzOverlays] = useState<PlzMapOverlay[]>([]);
   const [showDesiredAreas, setShowDesiredAreas] = useState(true);
+  const [showPois, setShowPois] = useState(false);
+  const [poiMarkers, setPoiMarkers] = useState<ProjectMapPoi[]>([]);
+  const [poisLoading, setPoisLoading] = useState(false);
+  const [poisLoaded, setPoisLoaded] = useState(false);
+  const [hiddenPoiCategories, setHiddenPoiCategories] = useState<Set<PoiCategoryId>>(
+    () => new Set()
+  );
   const [mapReady, setMapReady] = useState(false);
   const [mapMountKey] = useState(() => crypto.randomUUID());
 
@@ -61,6 +75,10 @@ export function ProjectMap({
 
   useEffect(() => {
     setPoints(apartments);
+    setPoisLoaded(false);
+    setPoiMarkers([]);
+    setShowPois(false);
+    setHiddenPoiCategories(new Set());
   }, [apartments]);
 
   useEffect(() => {
@@ -142,6 +160,40 @@ export function ProjectMap({
   const visiblePlzOverlays =
     areaFilterEnabled && showDesiredAreas ? plzOverlays : [];
 
+  async function togglePois() {
+    const next = !showPois;
+    setShowPois(next);
+    if (!next) return;
+
+    if (poisLoaded) return;
+
+    setPoisLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/map-pois`);
+      if (res.ok) {
+        const data = (await res.json()) as { markers: ProjectMapPoi[] };
+        setPoiMarkers(data.markers);
+        setPoisLoaded(true);
+      }
+    } finally {
+      setPoisLoading(false);
+    }
+  }
+
+  const visiblePois = useMemo(() => {
+    if (!showPois) return [];
+    return poiMarkers.filter((p) => !hiddenPoiCategories.has(p.categoryId));
+  }, [showPois, poiMarkers, hiddenPoiCategories]);
+
+  function togglePoiCategory(id: PoiCategoryId) {
+    setHiddenPoiCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -169,6 +221,24 @@ export function ProjectMap({
             {showDesiredAreas ? `${areaOverlayLabel} ausblenden` : `${areaOverlayLabel} anzeigen`}
           </button>
         )}
+        {mapped.length > 0 && (
+          <button
+            type="button"
+            onClick={() => void togglePois()}
+            disabled={poisLoading}
+            className={`text-sm px-3 py-1.5 rounded-lg border disabled:opacity-50 ${
+              showPois
+                ? "border-pn-accent bg-pn-accent/10 text-pn-text-primary"
+                : "border-pn-border text-pn-text-secondary"
+            }`}
+          >
+            {poisLoading
+              ? "POIs werden geladen…"
+              : showPois
+                ? "POIs ausblenden"
+                : "POIs anzeigen"}
+          </button>
+        )}
       </div>
       {areaFilterEnabled && showDesiredAreas && mapped.length > 0 && plzOverlays.length > 0 && (
         <p className="text-xs text-pn-text-secondary">{areaOverlayHint}</p>
@@ -188,8 +258,24 @@ export function ProjectMap({
             apartments={mapped}
             areaFilterPlzOverlays={visiblePlzOverlays}
             areaFilterMode={areaFilterMode}
+            poiMarkers={visiblePois}
           />
           <ScoreLegend />
+          {showPois && poisLoaded ? (
+            poiMarkers.length > 0 ? (
+              <PoiCategoryLegend
+                counts={countPoisByCategory(poiMarkers)}
+                hiddenCategories={hiddenPoiCategories}
+                onToggleCategory={togglePoiCategory}
+                footer={`Umkreis ${OVERPASS_RADIUS_WIDE_M} m je Immobilie · ${visiblePois.length} von ${poiMarkers.length} POIs sichtbar`}
+              />
+            ) : (
+              <p className="text-xs text-pn-text-secondary">
+                Noch keine POI-Daten — bei einer Immobilie unter „Standort & Umfeld“ auf
+                Aktualisieren klicken.
+              </p>
+            )
+          ) : null}
         </>
       )}
     </div>
