@@ -28,8 +28,17 @@ function runStep(label, command, args, env) {
   }
 }
 
+function isWindowsPrismaEngineLock(output) {
+  return (
+    process.platform === "win32" &&
+    output.includes("EPERM: operation not permitted, rename") &&
+    output.includes("query_engine-windows.dll.node")
+  );
+}
+
 function runPrismaGenerate(env) {
   const maxAttempts = process.platform === "win32" ? 3 : 1;
+  let lastOutput = "";
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     console.log(
       attempt === 1
@@ -37,16 +46,28 @@ function runPrismaGenerate(env) {
         : `[pickhome] Retrying Prisma generate (${attempt}/${maxAttempts})`,
     );
     const result = spawnSync("npx", ["prisma", "generate"], {
-      stdio: "inherit",
+      stdio: "pipe",
       shell: true,
       env: { ...process.env, ...env },
+      encoding: "utf8",
     });
+    const stdout = result.stdout ?? "";
+    const stderr = result.stderr ?? "";
+    if (stdout) process.stdout.write(stdout);
+    if (stderr) process.stderr.write(stderr);
+    lastOutput = `${stdout}\n${stderr}`;
     if (result.status === 0) {
       return;
     }
     if (attempt < maxAttempts) {
       spawnSync("ping", ["127.0.0.1", "-n", "3"], { shell: true, stdio: "ignore" });
     }
+  }
+  if (isWindowsPrismaEngineLock(lastOutput)) {
+    console.warn(
+      "[pickhome] Prisma generate hit a Windows file lock. Continuing with existing client; CI on GitHub will still run full generate+build.",
+    );
+    return;
   }
   process.exit(1);
 }
