@@ -34,7 +34,6 @@ export function ApartmentSolarPanel({
 }: Props) {
   const [dayDate, setDayDate] = useState(() => new Date());
   const [minutes, setMinutes] = useState(() => minutesFromDate(new Date()));
-  const [showMap, setShowMap] = useState(false);
   const [hasOrientationApi, setHasOrientationApi] = useState(false);
 
   const syncTimeToNow = useCallback(() => {
@@ -165,16 +164,8 @@ export function ApartmentSolarPanel({
           </p>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            data-testid="solar-show-map"
-            onClick={() => setShowMap((v) => !v)}
-            className="text-sm font-medium px-4 py-2 rounded-lg border border-pn-border bg-pn-bg-subtle hover:bg-pn-bg-surface"
-          >
-            {showMap ? "Karte ausblenden" : "Auf Karte zeigen"}
-          </button>
-          {hasOrientationApi && (
+        {hasOrientationApi && (
+          <div className="flex flex-wrap gap-2">
             <Link
               href={arHref}
               data-testid="solar-open-ar"
@@ -182,16 +173,14 @@ export function ApartmentSolarPanel({
             >
               AR vor Ort öffnen
             </Link>
-          )}
-        </div>
-
-        {showMap && (
-          <ApartmentSunMap
-            latitude={latitude}
-            longitude={longitude}
-            selectedDate={selectedDate}
-          />
+          </div>
         )}
+
+        <ApartmentSunMap
+          latitude={latitude}
+          longitude={longitude}
+          selectedDate={selectedDate}
+        />
       </div>
     </CollapsibleSection>
   );
