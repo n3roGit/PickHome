@@ -312,8 +312,6 @@ export function ApartmentSolarAr({
     setLivePosition({
       latitude: previewLatitude,
       longitude: previewLongitude,
-      accuracyM: null,
-      timestamp: Date.now(),
     });
     setPhase("running");
   }, [previewDemo, previewLatitude, previewLongitude, dayDate]);
