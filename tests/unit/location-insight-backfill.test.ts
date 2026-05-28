@@ -5,6 +5,7 @@ import {
 } from "@/lib/location-insights";
 import type { LocationInsightSnapshot } from "@/lib/location-insight-cache";
 import { LOCATION_INSIGHT_CACHE_TTL_MS } from "@/lib/location-insight-cache";
+import { LOCATION_INSIGHT_ERROR_RETRY_AFTER_MS } from "@/lib/location-insight-retry";
 
 function snapshot(
   domain: "overpass",
@@ -80,6 +81,42 @@ describe("needsLocationInsightBackfill", () => {
       noise: { ...snapshot("overpass", "ok", new Date()), domain: "noise" },
       flood: { ...snapshot("overpass", "ok", new Date()), domain: "flood" },
       air: { ...snapshot("overpass", "ok", new Date()), domain: "air" },
+    });
+    expect(needsLocationInsightBackfill(bundle)).toBe(false);
+  });
+
+  it("returns true when a retryable error is due for retry", () => {
+    const fetchedAt = new Date(
+      Date.now() - LOCATION_INSIGHT_ERROR_RETRY_AFTER_MS - 60_000
+    );
+    const bundle = emptyBundle({
+      noise: {
+        ...snapshot("overpass", "error", fetchedAt),
+        domain: "noise",
+        errorMessage: "fetch_failed",
+      },
+    });
+    expect(needsLocationInsightBackfill(bundle)).toBe(true);
+  });
+
+  it("returns false for fresh retryable errors before backoff", () => {
+    const bundle = emptyBundle({
+      noise: {
+        ...snapshot("overpass", "error", new Date()),
+        domain: "noise",
+        errorMessage: "fetch_failed",
+      },
+    });
+    expect(needsLocationInsightBackfill(bundle)).toBe(false);
+  });
+
+  it("returns false for non-retryable errors", () => {
+    const bundle = emptyBundle({
+      noise: {
+        ...snapshot("overpass", "error", new Date()),
+        domain: "noise",
+        errorMessage: "invalid_coords",
+      },
     });
     expect(needsLocationInsightBackfill(bundle)).toBe(false);
   });

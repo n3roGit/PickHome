@@ -15,6 +15,7 @@ import {
   LOCATION_INSIGHT_DOMAINS,
   type LocationInsightDomain,
 } from "@/lib/location-insight-types";
+import { isLocationInsightErrorDueForRetry } from "@/lib/location-insight-retry";
 import { fetchNoiseUbaForCoords, highestNoiseBandDb, type NoiseUbaData } from "@/lib/noise-uba";
 import type { OverpassMicroData } from "@/lib/overpass-micro";
 import { fetchOverpassPois, type OverpassPoiData } from "@/lib/overpass-poi";
@@ -116,11 +117,25 @@ function errorSnapshot<T>(
 export function needsLocationInsightBackfill(bundle: ApartmentLocationInsightsBundle): boolean {
   for (const domain of LOCATION_INSIGHT_DOMAINS) {
     if (domain === "micro") continue;
+    if (bundle[domain].status === "pending") return true;
+  }
+
+  for (const domain of LOCATION_INSIGHT_DOMAINS) {
+    if (domain === "micro") continue;
     const snapshot = bundle[domain];
-    if (snapshot.status === "pending") return true;
     if (snapshot.status === "no_coords") continue;
     if (!isLocationInsightCacheFresh(snapshot.fetchedAt)) return true;
+    if (
+      isLocationInsightErrorDueForRetry(
+        snapshot.status,
+        snapshot.errorMessage,
+        snapshot.fetchedAt
+      )
+    ) {
+      return true;
+    }
   }
+
   if (bundle.overpass.status === "ok" && !bundle.overpass.data?.micro) return true;
   return false;
 }

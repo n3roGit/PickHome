@@ -11,6 +11,7 @@ import {
   isLocationInsightCacheFresh,
   refreshLocationInsight,
 } from "@/lib/location-insight-cache";
+import { isLocationInsightErrorDueForRetry } from "@/lib/location-insight-retry";
 import {
   LOCATION_INSIGHT_DOMAINS,
   type LocationInsightDomain,
@@ -66,14 +67,27 @@ async function findStaleDomainForApartment(
 
   const caches = await prisma.apartmentLocationInsightCache.findMany({
     where: { apartmentId },
-    select: { domain: true, fetchedAt: true },
+    select: { domain: true, status: true, errorMessage: true, fetchedAt: true },
   });
-  const byDomain = new Map(caches.map((row) => [row.domain, row.fetchedAt]));
+  const byDomain = new Map(caches.map((row) => [row.domain, row]));
 
   for (const domain of LOCATION_INSIGHT_DOMAINS) {
     if (domain === "micro") continue;
-    const fetchedAt = byDomain.get(domain);
-    if (!fetchedAt || !isLocationInsightCacheFresh(fetchedAt)) {
+    if (!byDomain.has(domain)) {
+      return { apartmentId, domain };
+    }
+  }
+
+  for (const domain of LOCATION_INSIGHT_DOMAINS) {
+    if (domain === "micro") continue;
+    const row = byDomain.get(domain);
+    if (!row) continue;
+    if (!isLocationInsightCacheFresh(row.fetchedAt)) {
+      return { apartmentId, domain };
+    }
+    if (
+      isLocationInsightErrorDueForRetry(row.status, row.errorMessage, row.fetchedAt)
+    ) {
       return { apartmentId, domain };
     }
   }
