@@ -10,4 +10,5 @@ Sub-documents for [MCP_BROWSER_TEST_CHECKLIST.md](../MCP_BROWSER_TEST_CHECKLIST.
 | [04-listing-llm.md](04-listing-llm.md) | §12.17–12.18 |
 | [05-backup-mobile.md](05-backup-mobile.md) | §12.19–12.20 |
 | [06-photo-gallery.md](06-photo-gallery.md) | §12.21 |
+| [08-location-insights.md](08-location-insights.md) | Standort & Umfeld (apartment) |
 | [regression-library.md](regression-library.md) | §15 |

@@ -45,6 +45,7 @@ I would greatly appreciate support for my project. Every $ contributes to enhanc
 - **Company car** benefit estimates on commute legs when configured in account settings
 - **Subsidy hints** (rough match against common programs from apartment/project data)
 - **BORIS** land-value lookup when coordinates are available
+- **Standort & Umfeld** (with coordinates): OSM POIs nearby (Overpass), EU noise maps (UBA), river flood risk zones (BfG/LAWA) — orientation only, cached 90 days
 - **Desired area** badge when the address matches the project’s Wunschgebiet filter
 - **PDF export** of apartment summary (scores, basics, commute, checklist, …)
 - **Sun path & AR on site** (`/apartment/.../sonne-ar`): camera + compass + GPS for sun markers (HTTPS or localhost)
@@ -339,6 +340,18 @@ Before pushing, run `npm run ci` (also runs automatically via the git pre-push h
 - Tailwind CSS
 - Leaflet (map)
 - bcrypt session cookies, TOTP (`otpauth`)
+
+## External location data (optional)
+
+When an apartment has coordinates, PickHome can load (cached 90 days, refresh per section):
+
+| Source | Data | Limits |
+|--------|------|--------|
+| [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) | Nearby POIs (shops, ÖPNV, schools, …) | Public rate limits; optional `OVERPASS_URL` |
+| [UBA VeLa/LK](https://datahub.uba.de/server/rest/services/VeLa/LK/MapServer) | Road/rail/airport/agglomeration noise classes | Not full urban street coverage; optional `NOISE_MAP_URL` |
+| [BfG INSPIRE NZ](https://geoportal.bafg.de/arcgis1/rest/services/INSPIRE/NZ/MapServer) | River flood risk zones (HWRM-RL) | No stormwater; optional `FLOOD_MAP_URL` |
+
+All values are **orientation only**, not legal or insurance advice.
 
 ## Security notes
 

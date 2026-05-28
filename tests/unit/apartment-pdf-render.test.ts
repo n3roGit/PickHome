@@ -85,6 +85,11 @@ function syntheticPdfData(overrides?: Partial<ApartmentPdfData>): ApartmentPdfDa
         },
       ],
     },
+    locationInsights: {
+      environment: [],
+      noise: [],
+      flood: [],
+    },
     ...overrides,
   };
 }
