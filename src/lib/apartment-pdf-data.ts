@@ -1,5 +1,6 @@
 import { getAppTimeZone } from "@/lib/app-settings";
 import { getApartmentPriceHistory } from "@/lib/apartment-price-history";
+import { getOrFetchBorisForApartment } from "@/lib/boris-cache";
 import { computeCommuteForMembers, type CommutePersonEstimate } from "@/lib/commute";
 import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
 import {
@@ -40,6 +41,13 @@ export type ApartmentPdfPriceHistoryRow = {
 export type ApartmentPdfViewingRow = {
   scheduledAt: Date;
   note: string | null;
+};
+
+export type ApartmentPdfBorisRow = {
+  kategorieLabel: string;
+  brwEurPerSqm: number;
+  nutzungsartLabel: string | null;
+  stichtag: string | null;
 };
 
 export type ApartmentPdfData = {
@@ -87,6 +95,12 @@ export type ApartmentPdfData = {
   commutePeople: CommutePersonEstimate[];
   viewings: ApartmentPdfViewingRow[];
   priceHistory: ApartmentPdfPriceHistoryRow[];
+  boris: {
+    status: "ok" | "no_coords" | "no_data" | "error";
+    fetchedAt: Date;
+    errorMessage: string | null;
+    results: ApartmentPdfBorisRow[];
+  };
 };
 
 export function apartmentPdfFilename(
@@ -109,7 +123,7 @@ export async function loadApartmentPdfData(
   const access = await assertApartmentAccess(apartmentId, user);
   if (!access) return null;
 
-  const [row, timeZone, priceHistoryRows] = await Promise.all([
+  const [row, timeZone, priceHistoryRows, borisSnapshot] = await Promise.all([
     prisma.apartment.findUnique({
       where: { id: apartmentId },
       include: {
@@ -153,6 +167,7 @@ export async function loadApartmentPdfData(
     }),
     getAppTimeZone(),
     getApartmentPriceHistory(apartmentId),
+    getOrFetchBorisForApartment(prisma, apartmentId),
   ]);
 
   if (!row) return null;
@@ -330,5 +345,16 @@ export async function loadApartmentPdfData(
       previousPrice: entry.previousPrice,
       sourceLabel: priceHistorySourceLabelDe(entry.source),
     })),
+    boris: {
+      status: borisSnapshot.status,
+      fetchedAt: borisSnapshot.fetchedAt,
+      errorMessage: borisSnapshot.errorMessage,
+      results: borisSnapshot.results.map((result) => ({
+        kategorieLabel: result.kategorieLabel,
+        brwEurPerSqm: result.brwEurPerSqm,
+        nutzungsartLabel: result.nutzungsartLabel,
+        stichtag: result.stichtag,
+      })),
+    },
   };
 }

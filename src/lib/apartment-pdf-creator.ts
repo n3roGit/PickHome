@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import type { ApartmentPdfData, ApartmentPdfVariant } from "@/lib/apartment-pdf-data";
 import { formatDateDe, formatDateTimeDe } from "@/lib/dates";
+import { computeBorisLandValueEur } from "@/lib/boris";
 import {
   estimateFinancing,
   formatBurdenShare,
@@ -223,6 +224,13 @@ function optionalSection(
 
 function hasFilledText(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
+}
+
+function formatStichtag(value: string | null): string | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return value;
+  return `${match[3]}.${match[2]}.${match[1]}`;
 }
 
 function renderBankFinancingSection(
@@ -588,6 +596,46 @@ function createApartmentPdfBody(
         )
       );
     }
+
+    if (data.boris.status === "ok" && data.boris.results.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Bodenrichtwert (BORIS-D, Orientierung)",
+          data.boris.results.map((result, index) => {
+            const details = [
+              result.nutzungsartLabel,
+              formatStichtag(result.stichtag) ? `Stichtag ${formatStichtag(result.stichtag)}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            const landValue =
+              apartment.plotSizeSqm != null
+                ? computeBorisLandValueEur(result.brwEurPerSqm, apartment.plotSizeSqm)
+                : null;
+            return React.createElement(
+              View,
+              { key: `boris-bank-${index}`, style: styles.row },
+              React.createElement(
+                Text,
+                { style: styles.rowLabel },
+                `${result.kategorieLabel}${details ? ` · ${details}` : ""}`
+              ),
+              React.createElement(
+                Text,
+                { style: styles.rowValue },
+                `${result.brwEurPerSqm.toLocaleString("de-DE")} €/m²${
+                  landValue != null ? ` · grob ${formatPrice(landValue)}` : ""
+                }`
+              )
+            );
+          })
+        )
+      );
+    }
   } else {
     if (apartment.description?.trim()) {
       children.push(
@@ -746,6 +794,46 @@ function createApartmentPdfBody(
               )
             )
           )
+        )
+      );
+    }
+
+    if (data.boris.status === "ok" && data.boris.results.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Bodenrichtwert (BORIS-D, Orientierung)",
+          data.boris.results.map((result, index) => {
+            const details = [
+              result.nutzungsartLabel,
+              formatStichtag(result.stichtag) ? `Stichtag ${formatStichtag(result.stichtag)}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            const landValue =
+              apartment.plotSizeSqm != null
+                ? computeBorisLandValueEur(result.brwEurPerSqm, apartment.plotSizeSqm)
+                : null;
+            return React.createElement(
+              View,
+              { key: `boris-full-${index}`, style: styles.row },
+              React.createElement(
+                Text,
+                { style: styles.rowLabel },
+                `${result.kategorieLabel}${details ? ` · ${details}` : ""}`
+              ),
+              React.createElement(
+                Text,
+                { style: styles.rowValue },
+                `${result.brwEurPerSqm.toLocaleString("de-DE")} €/m²${
+                  landValue != null ? ` · grob ${formatPrice(landValue)}` : ""
+                }`
+              )
+            );
+          })
         )
       );
     }

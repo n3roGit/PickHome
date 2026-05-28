@@ -25,6 +25,7 @@ Use `resetTestDatabase()` before integration tests that need a clean DB.
 - New or changed behavior needs focused unit tests for pure logic and integration tests when Prisma relations, auth/access checks, server actions, or cross-module flows are affected.
 - Bug fixes should add or update a regression test that would fail before the fix.
 - If tests are intentionally not added, state the reason explicitly in the final response.
+- When a feature adds new apartment/project facts, verify both PDF export and AI context coverage in tests (`apartment-pdf-*`, `apartment-llm-*`).
 - Unit: pure logic in `src/lib/` (`scoring`, `totp`, `backup`, `project-data`, `viewings`, `dates`).
 - Integration: Prisma flows in `tests/integration/database.test.ts`.
 - Add tests only when they cover real behavior; avoid trivial assertions.

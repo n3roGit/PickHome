@@ -35,6 +35,7 @@ function syntheticPdfData(overrides?: Partial<ApartmentPdfData>): ApartmentPdfDa
       heatingCostMonthly: null,
       propertyTaxAnnual: null,
       renovationCost: null,
+      coldRentMonthly: null,
       description: "Long description line. ".repeat(8).trim(),
       notes: "Long notes line. ".repeat(6).trim(),
       viewedAt: null,
@@ -71,6 +72,19 @@ function syntheticPdfData(overrides?: Partial<ApartmentPdfData>): ApartmentPdfDa
       { scheduledAt: new Date("2026-05-22T15:30:00.000Z"), note: "Besichtigung" },
     ],
     priceHistory: [],
+    boris: {
+      status: "ok",
+      fetchedAt: new Date("2026-05-20T12:00:00.000Z"),
+      errorMessage: null,
+      results: [
+        {
+          kategorieLabel: "Wohnbaufläche",
+          brwEurPerSqm: 620,
+          nutzungsartLabel: "Wohnbaufläche (W)",
+          stichtag: "2025-01-01",
+        },
+      ],
+    },
     ...overrides,
   };
 }
@@ -92,6 +106,20 @@ describe("renderApartmentPdfBuffer (bank)", () => {
         interestRate: null,
         netHouseholdIncome: null,
         monthlyFixedCosts: null,
+      },
+    });
+    const buffer = await renderApartmentPdfBuffer(data, { variant: "bank" });
+    expect(buffer.length).toBeGreaterThan(1000);
+    expect(buffer.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+  }, 30_000);
+
+  it("renders when BORIS data is unavailable", async () => {
+    const data = syntheticPdfData({
+      boris: {
+        status: "no_data",
+        fetchedAt: new Date("2026-05-20T12:00:00.000Z"),
+        errorMessage: null,
+        results: [],
       },
     });
     const buffer = await renderApartmentPdfBuffer(data, { variant: "bank" });

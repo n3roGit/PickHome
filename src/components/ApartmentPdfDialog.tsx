@@ -68,8 +68,8 @@ export function ApartmentPdfDialog({
               <div className="border border-pn-border rounded-lg p-4">
                 <h3 className="font-medium text-pn-text-primary mb-1">Bankberater-Variante</h3>
                 <p className="text-sm text-pn-text-secondary mb-3">
-                  Objekt- und Finanzierungsdaten für die Baufinanzierungs-Anfrage — ohne Score,
-                  Notizen oder Bewertungen.
+                  Objekt-, Kosten-, BORIS- und Finanzierungsdaten für die Baufinanzierungs-Anfrage
+                  — ohne Score, Notizen oder Bewertungen.
                 </p>
                 <a
                   href={`/api/apartments/${apartmentId}/pdf?variant=bank`}

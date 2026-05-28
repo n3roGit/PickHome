@@ -83,6 +83,14 @@ Existing backfills: `sizeSqm` ← description/notes (`src/lib/backfill-size-sqm.
 - Backup: `npm run data:export` / `data:import`
 - Docker image: `n3ro88/pickhome` (see `docker-compose.yml`)
 
+## Cross-feature completeness
+
+When adding or changing apartment/project data, always check cross-feature outputs in the same change:
+
+- PDF export (`src/lib/apartment-pdf-data.ts`, `src/lib/apartment-pdf-creator.ts`) — include new relevant fields in `full` and/or `bank` variants.
+- AI assistant context (`src/lib/apartment-llm-data.ts`, `src/lib/apartment-llm-context.ts`) — include the same user-relevant facts for chat/extract flows.
+- Add or update focused tests for changed export/context behavior (`tests/unit/apartment-pdf-*.test.ts`, `tests/unit/apartment-llm-*.test.ts`).
+
 ## Feature map (routes)
 
 | Area | Route / tab |
