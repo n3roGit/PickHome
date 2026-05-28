@@ -271,8 +271,8 @@ export function ProjectMap({
               />
             ) : (
               <p className="text-xs text-pn-text-secondary">
-                Noch keine POI-Daten — bei einer Immobilie unter „Standort & Umfeld“ auf
-                Aktualisieren klicken.
+                Keine POI-Daten geladen — erneut „POIs anzeigen“ wählen oder bei einer
+                Immobilie unter „Standort & Umfeld“ aktualisieren.
               </p>
             )
           ) : null}

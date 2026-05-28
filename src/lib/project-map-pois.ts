@@ -1,5 +1,12 @@
+import {
+  getCachedLocationInsight,
+  getOrFetchLocationInsight,
+  isLocationInsightCacheFresh,
+  type LocationInsightSnapshot,
+} from "@/lib/location-insight-cache";
 import { prisma } from "@/lib/prisma";
 import {
+  fetchOverpassPois,
   markersForMap,
   POI_CATEGORY_LABELS,
   type OverpassPoiData,
@@ -18,39 +25,58 @@ export type ProjectMapPoi = {
 
 const MAX_POIS_PER_APARTMENT = 120;
 
+export function projectMapPoisFromOverpassData(
+  apartmentId: string,
+  apartmentTitle: string,
+  data: OverpassPoiData
+): ProjectMapPoi[] {
+  const markers = markersForMap(data).slice(0, MAX_POIS_PER_APARTMENT);
+  return markers.map((m) => ({
+    lat: m.lat,
+    lng: m.lng,
+    categoryId: m.categoryId,
+    name: m.name,
+    distanceM: m.distanceM,
+    apartmentId,
+    apartmentTitle,
+  }));
+}
+
+function overpassSnapshotHasMarkers(snapshot: LocationInsightSnapshot<OverpassPoiData>): boolean {
+  if (snapshot.status !== "ok" || !snapshot.data) return false;
+  return markersForMap(snapshot.data).length > 0;
+}
+
+async function loadOverpassSnapshotForMap(
+  apartmentId: string
+): Promise<LocationInsightSnapshot<OverpassPoiData>> {
+  const cached = await getCachedLocationInsight<OverpassPoiData>(prisma, apartmentId, "overpass");
+  if (cached && overpassSnapshotHasMarkers(cached)) {
+    return cached;
+  }
+  if (
+    cached &&
+    isLocationInsightCacheFresh(cached.fetchedAt) &&
+    cached.status !== "pending"
+  ) {
+    return cached;
+  }
+  return getOrFetchLocationInsight(prisma, apartmentId, "overpass", fetchOverpassPois);
+}
+
 export async function getProjectMapPoisForApartments(
   apartments: { id: string; title: string }[]
 ): Promise<ProjectMapPoi[]> {
   if (apartments.length === 0) return [];
 
-  const caches = await prisma.apartmentLocationInsightCache.findMany({
-    where: {
-      apartmentId: { in: apartments.map((a) => a.id) },
-      domain: "overpass",
-      status: "ok",
-      payloadJson: { not: null },
-    },
-    select: { apartmentId: true, payloadJson: true },
-  });
-
   const titleById = new Map(apartments.map((a) => [a.id, a.title]));
   const out: ProjectMapPoi[] = [];
 
-  for (const row of caches) {
-    const title = titleById.get(row.apartmentId) ?? "Immobilie";
-    const data = JSON.parse(row.payloadJson!) as OverpassPoiData;
-    const markers = markersForMap(data).slice(0, MAX_POIS_PER_APARTMENT);
-    for (const m of markers) {
-      out.push({
-        lat: m.lat,
-        lng: m.lng,
-        categoryId: m.categoryId,
-        name: m.name,
-        distanceM: m.distanceM,
-        apartmentId: row.apartmentId,
-        apartmentTitle: title,
-      });
-    }
+  for (const apt of apartments) {
+    const snapshot = await loadOverpassSnapshotForMap(apt.id);
+    if (snapshot.status !== "ok" || !snapshot.data) continue;
+    const title = titleById.get(apt.id) ?? "Immobilie";
+    out.push(...projectMapPoisFromOverpassData(apt.id, title, snapshot.data));
   }
 
   return out;
