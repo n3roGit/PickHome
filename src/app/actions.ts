@@ -26,6 +26,12 @@ import {
 } from "@/lib/commute-cache";
 import { refreshBorisForApartment } from "@/lib/boris-cache";
 import {
+  invalidateLocationDataForApartment,
+  parseDomainParam,
+  refreshLocationInsight,
+} from "@/lib/location-insight-cache";
+import { refreshAllLocationInsights } from "@/lib/location-insights";
+import {
   resolveApartmentGeocode,
   scheduleApartmentAddressEnrichment,
 } from "@/lib/apartment-address-enrichment";
@@ -640,7 +646,7 @@ export async function geocodeApartmentAddressAction(apartmentId: string, formDat
     longitude: geocoded.longitude,
   });
   if (!ok) redirectApartmentRevisionConflict(apt.projectId, apartmentId);
-  await invalidateCommuteCacheForApartment(apartmentId);
+  await invalidateLocationDataForApartment(apartmentId);
   revalidateApartment(apt.projectId, apartmentId);
   revalidatePath(`/project/${apt.projectId}`);
 
@@ -659,6 +665,26 @@ export async function refreshApartmentBorisAction(apartmentId: string) {
   if (!apt) redirect("/dashboard");
 
   await refreshBorisForApartment(prisma, apartmentId);
+  revalidateApartment(apt.projectId, apartmentId);
+}
+
+export async function refreshApartmentLocationInsightsAction(
+  apartmentId: string,
+  formData: FormData
+) {
+  const user = await requireUser();
+  const apt = await assertApartmentAccess(apartmentId, user);
+  if (!apt) redirect("/dashboard");
+
+  const domain = parseDomainParam(String(formData.get("domain") ?? ""));
+  if (domain) {
+    const { fetchLocationInsightForDomain } = await import("@/lib/location-insights");
+    await refreshLocationInsight(prisma, apartmentId, domain, (lat, lng) =>
+      fetchLocationInsightForDomain(domain, lat, lng)
+    );
+  } else {
+    await refreshAllLocationInsights(prisma, apartmentId);
+  }
   revalidateApartment(apt.projectId, apartmentId);
 }
 
@@ -738,7 +764,7 @@ export async function updateApartmentBasicsAction(apartmentId: string, formData:
     );
   }
   if (addressChanged) {
-    await invalidateCommuteCacheForApartment(apartmentId);
+    await invalidateLocationDataForApartment(apartmentId);
     if (storedAddress) {
       scheduleApartmentAddressEnrichment(apartmentId);
     }

@@ -90,6 +90,7 @@ export type ApartmentLlmContextInput = {
   borisResults?: ApartmentLlmBorisResult[];
   subsidyHints?: ApartmentLlmSubsidyHint[];
   checklistLines?: string[];
+  locationInsightLines?: string[];
 };
 
 function memberName(members: ApartmentLlmScoringMember[], userId: string): string {
@@ -264,6 +265,10 @@ export function buildApartmentLlmContext(apartment: ApartmentLlmContextInput): s
       "Hinweis: Unverbindliche Orientierung, keine Förderzusage.",
       ...subsidyLines
     );
+  }
+
+  if (apartment.locationInsightLines?.length) {
+    lines.push(...apartment.locationInsightLines);
   }
 
   if (apartment.description?.trim()) {

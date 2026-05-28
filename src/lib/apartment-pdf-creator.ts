@@ -233,6 +233,24 @@ function formatStichtag(value: string | null): string | null {
   return `${match[3]}.${match[2]}.${match[1]}`;
 }
 
+function locationInsightPdfRows(
+  React: ReactModule,
+  Text: PdfModule["Text"],
+  View: PdfModule["View"],
+  styles: PdfStyles,
+  rows: { label: string; value: string }[],
+  keyPrefix: string
+): ReactElement[] {
+  return rows.map((row, index) =>
+    React.createElement(
+      View,
+      { key: `${keyPrefix}-${index}`, style: styles.row },
+      React.createElement(Text, { style: styles.rowLabel }, row.label),
+      React.createElement(Text, { style: styles.rowValue }, row.value)
+    )
+  );
+}
+
 function renderBankFinancingSection(
   React: ReactModule,
   Text: PdfModule["Text"],
@@ -636,6 +654,20 @@ function createApartmentPdfBody(
         )
       );
     }
+
+    const floodRows = data.locationInsights?.flood ?? [];
+    if (floodRows.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Hochwasser (BfG, Orientierung)",
+          locationInsightPdfRows(React, Text, View, styles, floodRows, "flood-bank")
+        )
+      );
+    }
   } else {
     if (apartment.description?.trim()) {
       children.push(
@@ -834,6 +866,46 @@ function createApartmentPdfBody(
               )
             );
           })
+        )
+      );
+    }
+
+    const environment = data.locationInsights?.environment ?? [];
+    const noise = data.locationInsights?.noise ?? [];
+    const flood = data.locationInsights?.flood ?? [];
+    if (environment.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Standort & Umfeld · OSM",
+          locationInsightPdfRows(React, Text, View, styles, environment, "loc-env")
+        )
+      );
+    }
+    if (noise.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Standort & Umfeld · Lärm (UBA)",
+          locationInsightPdfRows(React, Text, View, styles, noise, "loc-noise")
+        )
+      );
+    }
+    if (flood.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Standort & Umfeld · Hochwasser (BfG)",
+          locationInsightPdfRows(React, Text, View, styles, flood, "loc-flood")
         )
       );
     }

@@ -3,6 +3,8 @@ import { getAppTimeZone } from "@/lib/app-settings";
 import { getApartmentPriceHistory } from "@/lib/apartment-price-history";
 import { priceHistorySourceLabelDe } from "@/lib/apartment-price-history-labels";
 import { getOrFetchBorisForApartment } from "@/lib/boris-cache";
+import { getOrFetchAllLocationInsights } from "@/lib/location-insights";
+import { buildLocationInsightLlmBlocks } from "@/lib/location-insight-export";
 import { sortBorisResults } from "@/lib/boris";
 import { formatDateDe, formatDateTimeDe } from "@/lib/dates";
 import { assertApartmentAccess } from "@/lib/project-data";
@@ -200,11 +202,13 @@ export async function getApartmentLlmBundle(
   });
   const commuteSection = buildApartmentCommuteLlmSection(commutePeople);
   const checklistLines = await buildApartmentChecklistExtractLines(apartmentId);
-  const [timeZone, priceHistoryRows, borisSnapshot] = await Promise.all([
+  const [timeZone, priceHistoryRows, borisSnapshot, locationInsights] = await Promise.all([
     getAppTimeZone(),
     getApartmentPriceHistory(apartmentId),
     getOrFetchBorisForApartment(prisma, apartmentId),
+    getOrFetchAllLocationInsights(prisma, apartmentId),
   ]);
+  const locationInsightLines = buildLocationInsightLlmBlocks(locationInsights);
   const viewingDates = row.viewings.map((viewing) => ({
     scheduledAt: formatDateTimeDe(viewing.scheduledAt, timeZone),
     note: viewing.note,
@@ -265,6 +269,7 @@ export async function getApartmentLlmBundle(
       borisResults,
       subsidyHints,
       checklistLines,
+      locationInsightLines,
     },
     pdfDocuments: row.documents,
   };

@@ -1,6 +1,11 @@
 import { getAppTimeZone } from "@/lib/app-settings";
 import { getApartmentPriceHistory } from "@/lib/apartment-price-history";
 import { getOrFetchBorisForApartment } from "@/lib/boris-cache";
+import { getOrFetchAllLocationInsights } from "@/lib/location-insights";
+import {
+  buildLocationInsightPdfRows,
+  type ApartmentPdfLocationRow,
+} from "@/lib/location-insight-export";
 import { computeCommuteForMembers, type CommutePersonEstimate } from "@/lib/commute";
 import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
 import {
@@ -101,6 +106,11 @@ export type ApartmentPdfData = {
     errorMessage: string | null;
     results: ApartmentPdfBorisRow[];
   };
+  locationInsights: {
+    environment: ApartmentPdfLocationRow[];
+    noise: ApartmentPdfLocationRow[];
+    flood: ApartmentPdfLocationRow[];
+  };
 };
 
 export function apartmentPdfFilename(
@@ -123,7 +133,8 @@ export async function loadApartmentPdfData(
   const access = await assertApartmentAccess(apartmentId, user);
   if (!access) return null;
 
-  const [row, timeZone, priceHistoryRows, borisSnapshot] = await Promise.all([
+  const [row, timeZone, priceHistoryRows, borisSnapshot, locationInsightsBundle] =
+    await Promise.all([
     prisma.apartment.findUnique({
       where: { id: apartmentId },
       include: {
@@ -168,6 +179,7 @@ export async function loadApartmentPdfData(
     getAppTimeZone(),
     getApartmentPriceHistory(apartmentId),
     getOrFetchBorisForApartment(prisma, apartmentId),
+    getOrFetchAllLocationInsights(prisma, apartmentId),
   ]);
 
   if (!row) return null;
@@ -356,5 +368,6 @@ export async function loadApartmentPdfData(
         stichtag: result.stichtag,
       })),
     },
+    locationInsights: buildLocationInsightPdfRows(locationInsightsBundle),
   };
 }

@@ -76,6 +76,10 @@ import {
   matchApartmentSubsidies,
 } from "@/lib/subsidy-matching";
 import { getOrFetchBorisForApartment } from "@/lib/boris-cache";
+import { getOrFetchAllLocationInsights, locationInsightWarnings } from "@/lib/location-insights";
+import { buildNoiseHintsByCriterionId } from "@/lib/location-insight-rating-hints";
+import { ApartmentLocationInsights } from "@/components/ApartmentLocationInsights";
+import { LocationInsightWarnings } from "@/components/LocationInsightWarnings";
 import { nextViewing } from "@/lib/viewings";
 import { ApartmentSolarPanel } from "@/components/ApartmentSolarPanel";
 
@@ -342,6 +346,11 @@ export default async function ApartmentPage({
   });
   const subsidyHintCount = countSubsidyHints(subsidyMatches);
   const borisSnapshot = await getOrFetchBorisForApartment(prisma, apartment.id);
+  const locationInsights = await getOrFetchAllLocationInsights(prisma, apartment.id);
+  const locationWarnings = locationInsightWarnings(locationInsights);
+  const noiseHits =
+    locationInsights.noise.status === "ok" ? locationInsights.noise.data?.hits ?? [] : [];
+  const noiseHintByCriterionId = buildNoiseHintsByCriterionId(criteriaWithName, noiseHits);
 
   return (
     <>
@@ -396,6 +405,7 @@ export default async function ApartmentPage({
           )}
         </div>
         <ApartmentLiveScoreSummary userName={user.name} viewedAt={apartment.viewedAt} />
+        <LocationInsightWarnings warnings={locationWarnings} />
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-6">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <Link href={checklistEditHref} className={APARTMENT_TOOLBAR_BTN_NEUTRAL}>
@@ -470,6 +480,7 @@ export default async function ApartmentPage({
           settingsHref="/account/settings"
           viewerIsAdmin={admin}
         />
+        <ApartmentLocationInsights apartmentId={apartment.id} bundle={locationInsights} />
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
           revision={apartment.revision}
@@ -567,6 +578,7 @@ export default async function ApartmentPage({
             myUserId={user.id}
             dealbreakerThreshold={dealbreakerThreshold}
             checklistByCriterionId={checklistByCriterionId}
+            noiseHintByCriterionId={noiseHintByCriterionId}
             checklistEditHref={checklistEditHref}
           />
         </CollapsibleSection>

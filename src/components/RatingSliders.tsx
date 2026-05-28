@@ -49,6 +49,7 @@ export function RatingSliders({
   myUserId,
   dealbreakerThreshold,
   checklistByCriterionId = {},
+  noiseHintByCriterionId = {},
   checklistEditHref,
 }: {
   apartmentId: string;
@@ -58,6 +59,7 @@ export function RatingSliders({
   myUserId: string;
   dealbreakerThreshold: number;
   checklistByCriterionId?: Record<string, ChecklistCriterionHint>;
+  noiseHintByCriterionId?: Record<string, string>;
   checklistEditHref?: string;
 }) {
   const [scores, setScores] = useState<Record<string, number | null>>(() => {
@@ -228,6 +230,11 @@ export function RatingSliders({
                         canEdit={checklistByCriterionId[c.id].canEdit}
                       />
                     )}
+                    {noiseHintByCriterionId[c.id] ? (
+                      <p className="mt-2 text-xs text-pn-text-secondary">
+                        {noiseHintByCriterionId[c.id]}
+                      </p>
+                    ) : null}
                   </div>
 
                   {partners.map((p) => {
