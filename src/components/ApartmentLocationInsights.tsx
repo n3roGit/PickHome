@@ -1,4 +1,9 @@
 import { refreshApartmentLocationInsightsAction } from "@/app/actions";
+import {
+  ApartmentCommuteContent,
+  apartmentCommuteSubtitle,
+  type ApartmentCommuteContentProps,
+} from "@/components/ApartmentCommutePanel";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { OverpassPoiMap } from "@/components/OverpassPoiMap";
 import { formatDateTimeDe } from "@/lib/dates";
@@ -17,7 +22,16 @@ import {
   buildNoiseHumanSummary,
   type NoiseUbaData,
 } from "@/lib/noise-uba";
+import {
+  CLIMATE_OPEN_METEO_SOURCE_URL,
+  type ClimateNormalsData,
+} from "@/lib/climate-open-meteo";
+import type { OverpassMicroData } from "@/lib/overpass-micro";
 import type { OverpassPoiData } from "@/lib/overpass-poi";
+import {
+  BFS_RADON_SOURCE_URL,
+  type RadonBfsData,
+} from "@/lib/radon-bfs";
 
 function StatusMessage({
   status,
@@ -51,7 +65,15 @@ function StatusMessage({
 }
 
 function latestFetchedAt(bundle: ApartmentLocationInsightsBundle): Date {
-  const times = [bundle.overpass, bundle.noise, bundle.flood, bundle.air]
+  const times = [
+    bundle.overpass,
+    bundle.noise,
+    bundle.flood,
+    bundle.air,
+    bundle.radon,
+    bundle.micro,
+    bundle.climate,
+  ]
     .filter((s) => s.status !== "pending")
     .map((s) => s.fetchedAt.getTime());
   return new Date(times.length > 0 ? Math.max(...times) : Date.now());
@@ -264,7 +286,7 @@ function FloodBlock({ snapshot }: { snapshot: LocationInsightSnapshot<FloodBfgDa
       title="Hochwasser (BfG)"
       subtitle="Überflutungsrisikozonen nach HWRM-RL (3. Zyklus)"
       defaultOpen
-      className="mb-0"
+      className="mb-3"
     >
       <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
       {snapshot.status === "ok" && data ? (
@@ -292,26 +314,225 @@ function FloodBlock({ snapshot }: { snapshot: LocationInsightSnapshot<FloodBfgDa
   );
 }
 
+function radonBadgeClass(data: RadonBfsData): string {
+  if (data.precautionAreas.length > 0) {
+    return "bg-pn-score-low-bg text-pn-score-low";
+  }
+  if (data.indoorRadonBqPerM3 != null && data.indoorRadonBqPerM3 >= 100) {
+    return "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200";
+  }
+  return "bg-pn-bg-subtle text-pn-text-primary";
+}
+
+function RadonBlock({ snapshot }: { snapshot: LocationInsightSnapshot<RadonBfsData> }) {
+  const data = snapshot.data;
+
+  return (
+    <CollapsibleSection
+      title="Radon (BfS)"
+      subtitle="Gemeinde-Prognose für Radon in Wohnungen"
+      defaultOpen={false}
+      className="mb-3"
+    >
+      <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
+      {snapshot.status === "ok" && data ? (
+        <div className="space-y-3">
+          <p className={`rounded-lg px-3 py-2 text-sm font-medium ${radonBadgeClass(data)}`}>
+            {data.headline}
+          </p>
+          <ul className="space-y-2 text-sm text-pn-text-secondary">
+            <li>
+              Gemeinde:{" "}
+              <span className="text-pn-text-primary">
+                {data.municipalityName}
+                {data.municipalityType ? ` (${data.municipalityType})` : ""}
+              </span>
+            </li>
+            {data.indoorRadonBqPerM3 != null ? (
+              <li>
+                Durchschnitt Wohnungen (Prognose):{" "}
+                <span className="text-pn-text-primary">{data.indoorRadonBqPerM3} Bq/m³</span>
+              </li>
+            ) : null}
+            {data.soilPotentialPercent != null ? (
+              <li>
+                Boden-Radonpotenzial:{" "}
+                <span className="text-pn-text-primary">
+                  {data.soilPotentialPercent.toLocaleString("de-DE")} %
+                </span>
+              </li>
+            ) : null}
+            {data.precautionAreas.map((area) => (
+              <li key={area.name}>
+                Vorsorgegebiet:{" "}
+                <span className="text-pn-text-primary">{area.name}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-pn-text-secondary">{data.assessment}</p>
+        </div>
+      ) : snapshot.status === "no_data" ? (
+        <p className="text-sm text-pn-text-secondary">
+          Keine Radon-Prognose an diesem Punkt.
+        </p>
+      ) : null}
+      <p className="mt-3 text-xs text-pn-text-tertiary">
+        Quelle:{" "}
+        <a
+          href={BFS_RADON_SOURCE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-pn-accent hover:underline"
+        >
+          BfS Radon in Wohnungen
+        </a>{" "}
+        — Gemeinde-Durchschnitt, keine Aussage für einzelne Wohnungen.
+      </p>
+    </CollapsibleSection>
+  );
+}
+
+function MicroBlock({ snapshot }: { snapshot: LocationInsightSnapshot<OverpassMicroData> }) {
+  const data = snapshot.data;
+
+  return (
+    <CollapsibleSection
+      title="Mikrolage (OSM)"
+      subtitle="Gebäude, Gewerbe, Verkehr und Nachtleben in der Nähe"
+      defaultOpen={false}
+      className="mb-3"
+    >
+      <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
+      {snapshot.status === "ok" && data ? (
+        <ul className="space-y-2">
+          {[
+            { label: "Gebäude & Denkmal", value: data.buildingHeadline },
+            { label: "Gewerbe & Industrie", value: data.industrialHeadline },
+            { label: "Straße & Schiene", value: data.transportHeadline },
+            { label: "Bars & Clubs", value: data.nightlifeHeadline },
+          ].map((row) => (
+            <li
+              key={row.label}
+              className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm"
+            >
+              <span className="font-medium text-pn-text-primary">{row.label}</span>
+              {": "}
+              <span className="text-pn-text-secondary">{row.value}</span>
+            </li>
+          ))}
+        </ul>
+      ) : snapshot.status === "no_data" ? (
+        <p className="text-sm text-pn-text-secondary">
+          Keine Mikrolage-Daten im Suchradius gefunden.
+        </p>
+      ) : null}
+      <p className="mt-3 text-xs text-pn-text-tertiary">
+        OpenStreetMap — unvollständig; ergänzt UBA-Lärm um lokale Straßen, Schienen und
+        Nachbarschaftslärm.
+      </p>
+    </CollapsibleSection>
+  );
+}
+
+function ClimateBlock({ snapshot }: { snapshot: LocationInsightSnapshot<ClimateNormalsData> }) {
+  const data = snapshot.data;
+
+  return (
+    <CollapsibleSection
+      title="Klima"
+      subtitle="30-Jahres-Klimawerte (1991–2020) am Standort"
+      defaultOpen={false}
+      className="mb-0"
+    >
+      <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
+      {snapshot.status === "ok" && data ? (
+        <div className="space-y-3">
+          <p className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm text-pn-text-primary">
+            {data.headline}
+          </p>
+          <ul className="space-y-2 text-sm text-pn-text-secondary">
+            {data.meanAnnualMaxTempC != null ? (
+              <li>
+                Ø Tageshöchstwert/Jahr:{" "}
+                <span className="text-pn-text-primary">{data.meanAnnualMaxTempC} °C</span>
+              </li>
+            ) : null}
+            {data.meanSummerMaxTempC != null ? (
+              <li>
+                Sommer (Jun–Aug) Ø max.:{" "}
+                <span className="text-pn-text-primary">{data.meanSummerMaxTempC} °C</span>
+              </li>
+            ) : null}
+            {data.meanWinterMaxTempC != null ? (
+              <li>
+                Winter (Dez–Feb) Ø max.:{" "}
+                <span className="text-pn-text-primary">{data.meanWinterMaxTempC} °C</span>
+              </li>
+            ) : null}
+            {data.meanAnnualPrecipitationMm != null ? (
+              <li>
+                Niederschlag/Jahr:{" "}
+                <span className="text-pn-text-primary">{data.meanAnnualPrecipitationMm} mm</span>
+              </li>
+            ) : null}
+            {data.meanRainyDaysPerYear != null ? (
+              <li>
+                Regentage/Jahr:{" "}
+                <span className="text-pn-text-primary">{data.meanRainyDaysPerYear}</span>
+              </li>
+            ) : null}
+          </ul>
+          <p className="text-sm text-pn-text-secondary">{data.assessment}</p>
+        </div>
+      ) : snapshot.status === "no_data" ? (
+        <p className="text-sm text-pn-text-secondary">Keine Klimadaten verfügbar.</p>
+      ) : null}
+      <p className="mt-3 text-xs text-pn-text-tertiary">
+        Quelle:{" "}
+        <a
+          href={CLIMATE_OPEN_METEO_SOURCE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-pn-accent hover:underline"
+        >
+          Open-Meteo Climate API
+        </a>{" "}
+        — Modellwerte, Orientierung für Heizung und Feuchte.
+      </p>
+    </CollapsibleSection>
+  );
+}
+
 export function ApartmentLocationInsights({
   apartmentId,
   bundle,
   latitude,
   longitude,
+  commute,
 }: {
   apartmentId: string;
   bundle: ApartmentLocationInsightsBundle;
   latitude: number | null;
   longitude: number | null;
+  commute: ApartmentCommuteContentProps;
 }) {
   const fetchedAt = latestFetchedAt(bundle);
 
   return (
     <CollapsibleSection
       title="Standort & Umfeld"
-      subtitle="Umgebung, Lärm, Luftqualität und Hochwasser — bundesweit, unverbindlich."
+      subtitle="Anfahrt, Umgebung, Mikrolage, Radon, Klima, Lärm, Luft und Hochwasser — bundesweit, unverbindlich."
       defaultOpen={false}
     >
       <div id="location-insights" className="space-y-3">
+        <CollapsibleSection
+          title="Anfahrt"
+          subtitle={apartmentCommuteSubtitle(!!commute.viewerIsAdmin)}
+          defaultOpen
+          className="mb-3"
+        >
+          <ApartmentCommuteContent {...commute} />
+        </CollapsibleSection>
         <OverpassBlock
           snapshot={bundle.overpass}
           latitude={latitude}
@@ -320,6 +541,9 @@ export function ApartmentLocationInsights({
         <NoiseBlock snapshot={bundle.noise} />
         <AirBlock snapshot={bundle.air} />
         <FloodBlock snapshot={bundle.flood} />
+        <RadonBlock snapshot={bundle.radon} />
+        <MicroBlock snapshot={bundle.micro} />
+        <ClimateBlock snapshot={bundle.climate} />
       </div>
       <LocationInsightsRefreshFooter apartmentId={apartmentId} fetchedAt={fetchedAt} />
     </CollapsibleSection>

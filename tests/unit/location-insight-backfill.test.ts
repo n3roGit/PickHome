@@ -29,6 +29,9 @@ function emptyBundle(
     noise: { ...snapshot("overpass", "ok", fresh), domain: "noise" },
     flood: { ...snapshot("overpass", "ok", fresh), domain: "flood" },
     air: { ...snapshot("overpass", "ok", fresh), domain: "air" },
+    radon: { ...snapshot("overpass", "ok", fresh), domain: "radon" },
+    micro: { ...snapshot("overpass", "ok", fresh), domain: "micro" },
+    climate: { ...snapshot("overpass", "ok", fresh), domain: "climate" },
     ...overrides,
   };
 }

@@ -874,6 +874,9 @@ function createApartmentPdfBody(
     const noise = data.locationInsights?.noise ?? [];
     const air = data.locationInsights?.air ?? [];
     const flood = data.locationInsights?.flood ?? [];
+    const radon = data.locationInsights?.radon ?? [];
+    const micro = data.locationInsights?.micro ?? [];
+    const climate = data.locationInsights?.climate ?? [];
     if (environment.length > 0) {
       children.push(
         section(
@@ -919,6 +922,42 @@ function createApartmentPdfBody(
           styles,
           "Standort & Umfeld · Hochwasser (BfG)",
           locationInsightPdfRows(React, Text, View, styles, flood, "loc-flood")
+        )
+      );
+    }
+    if (radon.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Standort & Umfeld · Radon (BfS)",
+          locationInsightPdfRows(React, Text, View, styles, radon, "loc-radon")
+        )
+      );
+    }
+    if (micro.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Standort & Umfeld · Mikrolage (OSM)",
+          locationInsightPdfRows(React, Text, View, styles, micro, "loc-micro")
+        )
+      );
+    }
+    if (climate.length > 0) {
+      children.push(
+        section(
+          React,
+          Text,
+          View,
+          styles,
+          "Standort & Umfeld · Klima",
+          locationInsightPdfRows(React, Text, View, styles, climate, "loc-climate")
         )
       );
     }

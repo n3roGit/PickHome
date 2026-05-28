@@ -22,7 +22,6 @@ import { ApartmentNotesForm } from "@/components/ApartmentNotesForm";
 import { ApartmentTitleForm } from "@/components/ApartmentTitleForm";
 import { ApartmentPurchaseCosts } from "@/components/ApartmentPurchaseCosts";
 import { ApartmentSubsidyPanel } from "@/components/ApartmentSubsidyPanel";
-import { ApartmentCommutePanel } from "@/components/ApartmentCommutePanel";
 import { computeCommuteForMembers } from "@/lib/commute";
 import { prisma } from "@/lib/prisma";
 import { parseCompanyCarCommuteMethod, parseCompanyCarRate } from "@/lib/company-car";
@@ -485,17 +484,36 @@ export default async function ApartmentPage({
           saved={resolvedSearchParams.listing_saved === "1"}
           invalid={resolvedSearchParams.listing_error === "invalid"}
         />
-        <ApartmentCommutePanel
-          people={commutePeople}
-          settingsHref="/account/settings"
-          viewerIsAdmin={admin}
+        <ViewingAppointments
+          apartmentId={apartment.id}
+          scheduleWarnings={scheduleWarnings}
+          viewings={apartment.viewings.map((v) => ({
+            id: v.id,
+            scheduledAt: v.scheduledAt.toISOString(),
+            note: v.note,
+          }))}
         />
         <ApartmentLocationInsights
           apartmentId={apartment.id}
           bundle={locationInsights}
           latitude={apartment.latitude}
           longitude={apartment.longitude}
+          commute={{
+            people: commutePeople,
+            settingsHref: "/account/settings",
+            viewerIsAdmin: admin,
+          }}
         />
+        {apartment.latitude != null && apartment.longitude != null && (
+          <ApartmentSolarPanel
+            projectId={project.id}
+            apartmentId={apartment.id}
+            latitude={apartment.latitude}
+            longitude={apartment.longitude}
+            timeZone={appTimeZone}
+            nextViewingIso={nextViewing(apartment.viewings)?.toISOString() ?? null}
+          />
+        )}
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
           revision={apartment.revision}
@@ -527,16 +545,6 @@ export default async function ApartmentPage({
         >
           <ApartmentSubsidyPanel matches={subsidyMatches} />
         </CollapsibleSection>
-        {apartment.latitude != null && apartment.longitude != null && (
-          <ApartmentSolarPanel
-            projectId={project.id}
-            apartmentId={apartment.id}
-            latitude={apartment.latitude}
-            longitude={apartment.longitude}
-            timeZone={appTimeZone}
-            nextViewingIso={nextViewing(apartment.viewings)?.toISOString() ?? null}
-          />
-        )}
         <ApartmentPhotos
           apartmentId={apartment.id}
           photos={apartment.photos.map((p) => ({
@@ -564,15 +572,6 @@ export default async function ApartmentPage({
             id: d.id,
             fileName: d.fileName,
             url: d.url,
-          }))}
-        />
-        <ViewingAppointments
-          apartmentId={apartment.id}
-          scheduleWarnings={scheduleWarnings}
-          viewings={apartment.viewings.map((v) => ({
-            id: v.id,
-            scheduledAt: v.scheduledAt.toISOString(),
-            note: v.note,
           }))}
         />
         <PartnerDivergencePanel comparisons={divergenceComparisons} />

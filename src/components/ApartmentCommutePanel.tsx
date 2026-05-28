@@ -1,4 +1,3 @@
-import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { CommuteTransitConnection } from "@/components/CommuteTransitConnection";
 import {
   COMMUTE_PENDING_NOTE,
@@ -173,67 +172,65 @@ function CommuteLegList({
   );
 }
 
-export function ApartmentCommutePanel({
-  people,
-  settingsHref,
-  viewerIsAdmin = false,
-}: {
+export type ApartmentCommuteContentProps = {
   people: CommutePersonEstimate[];
   settingsHref: string;
   viewerIsAdmin?: boolean;
-}) {
+};
+
+export function apartmentCommuteSubtitle(viewerIsAdmin: boolean): string {
+  return viewerIsAdmin
+    ? "Geschätzte Anfahrt aller Projektmitglieder inkl. Verbindungsdetails (Admin-Ansicht)."
+    : "Geschätzte Anfahrt pro Person — Verkehrsmittel und Ziele aus den jeweiligen Kontoeinstellungen.";
+}
+
+export function ApartmentCommuteContent({
+  people,
+  settingsHref,
+  viewerIsAdmin = false,
+}: ApartmentCommuteContentProps) {
   if (people.length === 1 && people[0].legs.length === 0) {
     return (
-      <CollapsibleSection title="Anfahrt">
-        <p className="text-sm text-pn-text-tertiary">
-          Noch keine Anfahrtszeiten — in den{" "}
-          <a href={settingsHref} className="text-pn-accent hover:underline">
-            Kontoeinstellungen
-          </a>{" "}
-          z. B. Arbeit oder andere Ziele anlegen.
-        </p>
-      </CollapsibleSection>
+      <p className="text-sm text-pn-text-tertiary">
+        Noch keine Anfahrtszeiten — in den{" "}
+        <a href={settingsHref} className="text-pn-accent hover:underline">
+          Kontoeinstellungen
+        </a>{" "}
+        z. B. Arbeit oder andere Ziele anlegen.
+      </p>
     );
   }
 
   return (
-    <CollapsibleSection
-      title="Anfahrt"
-      subtitle={
-        viewerIsAdmin
-          ? "Geschätzte Anfahrt aller Projektmitglieder inkl. Verbindungsdetails (Admin-Ansicht)."
-          : "Geschätzte Anfahrt pro Person — Verkehrsmittel und Ziele aus den jeweiligen Kontoeinstellungen."
-      }
-    >
-      <div className="space-y-6">
-        {people.map((person) => (
-          <div key={person.userId}>
-            <h3 className="text-sm font-semibold mb-0.5">
-              {viewerIsAdmin || !person.isCurrentUser ? person.name : "Du"}
-            </h3>
-            <p className="text-xs text-pn-text-tertiary mb-3">
-              {travelModeLabel(person.travelMode)}
+    <div className="space-y-6">
+      {people.map((person) => (
+        <div key={person.userId}>
+          <h3 className="text-sm font-semibold mb-0.5">
+            {viewerIsAdmin || !person.isCurrentUser ? person.name : "Du"}
+          </h3>
+          <p className="text-xs text-pn-text-tertiary mb-3">
+            {travelModeLabel(person.travelMode)}
+          </p>
+          {person.legs.length === 0 ? (
+            <p className="text-sm text-pn-text-tertiary">
+              {person.isCurrentUser ? (
+                <>
+                  Keine Adressen hinterlegt — in den{" "}
+                  <a href={settingsHref} className="text-pn-accent hover:underline">
+                    Kontoeinstellungen
+                  </a>{" "}
+                  anlegen.
+                </>
+              ) : (
+                <>Keine Adressen hinterlegt.</>
+              )}
             </p>
-            {person.legs.length === 0 ? (
-              <p className="text-sm text-pn-text-tertiary">
-                {person.isCurrentUser ? (
-                  <>
-                    Keine Adressen hinterlegt — in den{" "}
-                    <a href={settingsHref} className="text-pn-accent hover:underline">
-                      Kontoeinstellungen
-                    </a>{" "}
-                    anlegen.
-                  </>
-                ) : (
-                  <>Keine Adressen hinterlegt.</>
-                )}
-              </p>
-            ) : (
-              <CommuteLegList legs={person.legs} showAllDetails={viewerIsAdmin} />
-            )}
-          </div>
-        ))}
-      </div>
-    </CollapsibleSection>
+          ) : (
+            <CommuteLegList legs={person.legs} showAllDetails={viewerIsAdmin} />
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
+

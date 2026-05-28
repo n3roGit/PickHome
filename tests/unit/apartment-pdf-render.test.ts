@@ -90,6 +90,9 @@ function syntheticPdfData(overrides?: Partial<ApartmentPdfData>): ApartmentPdfDa
       noise: [],
       flood: [],
       air: [],
+      radon: [],
+      micro: [],
+      climate: [],
     },
     ...overrides,
   };

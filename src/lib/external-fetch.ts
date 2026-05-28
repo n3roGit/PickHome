@@ -13,7 +13,9 @@ export type ExternalService =
   | "overpass"
   | "noise"
   | "flood"
-  | "air";
+  | "air"
+  | "radon"
+  | "climate";
 
 export type FetchExternalOptions = {
   /** Slower rate limits and yields so interactive requests stay responsive. */
@@ -104,6 +106,20 @@ const AIR_CONFIG: ServiceConfig = {
   retryMaxDelayMs: 8000,
 };
 
+const RADON_CONFIG: ServiceConfig = {
+  minIntervalMs: 3000,
+  maxRetries: 2,
+  retryBaseDelayMs: 2000,
+  retryMaxDelayMs: 8000,
+};
+
+const CLIMATE_CONFIG: ServiceConfig = {
+  minIntervalMs: 2000,
+  maxRetries: 2,
+  retryBaseDelayMs: 2000,
+  retryMaxDelayMs: 8000,
+};
+
 const foregroundNextSlotAt = new Map<ExternalService, number>();
 const backgroundNextSlotAt = new Map<ExternalService, number>();
 const serviceCooldownUntil = new Map<ExternalService, number>();
@@ -120,6 +136,8 @@ const BACKGROUND_SERVICE_COOLDOWN_MS: Record<ExternalService, number> = {
   noise: 60_000,
   flood: 60_000,
   air: 60_000,
+  radon: 60_000,
+  climate: 60_000,
 };
 
 function serviceConfig(service: ExternalService): ServiceConfig {
@@ -130,6 +148,8 @@ function serviceConfig(service: ExternalService): ServiceConfig {
   if (service === "noise") return NOISE_CONFIG;
   if (service === "flood") return FLOOD_CONFIG;
   if (service === "air") return AIR_CONFIG;
+  if (service === "radon") return RADON_CONFIG;
+  if (service === "climate") return CLIMATE_CONFIG;
   if (service === "transit") return TRANSIT_CONFIG;
   return process.env.OSRM_BASE_URL ? OSRM_SELF_HOSTED_CONFIG : OSRM_PUBLIC_CONFIG;
 }

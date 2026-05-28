@@ -111,6 +111,9 @@ export type ApartmentPdfData = {
     noise: ApartmentPdfLocationRow[];
     flood: ApartmentPdfLocationRow[];
     air: ApartmentPdfLocationRow[];
+    radon: ApartmentPdfLocationRow[];
+    micro: ApartmentPdfLocationRow[];
+    climate: ApartmentPdfLocationRow[];
   };
 };
 

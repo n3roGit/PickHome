@@ -25,6 +25,9 @@ const DOMAIN_SERVICE: Record<LocationInsightDomain, ExternalService> = {
   noise: "noise",
   flood: "flood",
   air: "air",
+  radon: "radon",
+  micro: "overpass",
+  climate: "climate",
 };
 
 const priorityApartmentIds = new Set<string>();
