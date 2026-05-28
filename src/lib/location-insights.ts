@@ -2,10 +2,15 @@ import type { PrismaClient } from "@prisma/client";
 import { fetchAirQualityUbaForCoords, type AirQualityUbaData } from "@/lib/air-quality-uba";
 import { fetchFloodBfgForCoords, type FloodBfgData } from "@/lib/flood-bfg";
 import {
+  getCachedLocationInsight,
   getOrFetchLocationInsight,
+  isLocationInsightCacheFresh,
   type LocationInsightSnapshot,
 } from "@/lib/location-insight-cache";
-import type { LocationInsightDomain } from "@/lib/location-insight-types";
+import {
+  LOCATION_INSIGHT_DOMAINS,
+  type LocationInsightDomain,
+} from "@/lib/location-insight-types";
 import { fetchNoiseUbaForCoords, highestNoiseBandDb, type NoiseUbaData } from "@/lib/noise-uba";
 import { fetchOverpassPois, type OverpassPoiData } from "@/lib/overpass-poi";
 
@@ -16,10 +21,88 @@ export type ApartmentLocationInsightsBundle = {
   air: LocationInsightSnapshot<AirQualityUbaData>;
 };
 
+export type LocationInsightFetchOptions = {
+  background?: boolean;
+};
+
+function pendingSnapshot<T>(domain: LocationInsightDomain): LocationInsightSnapshot<T> {
+  return {
+    domain,
+    status: "pending",
+    errorMessage: null,
+    fetchedAt: new Date(0),
+    data: null,
+  };
+}
+
+function noCoordsSnapshot<T>(domain: LocationInsightDomain): LocationInsightSnapshot<T> {
+  return {
+    domain,
+    status: "no_coords",
+    errorMessage: null,
+    fetchedAt: new Date(),
+    data: null,
+  };
+}
+
+export function needsLocationInsightBackfill(bundle: ApartmentLocationInsightsBundle): boolean {
+  for (const domain of LOCATION_INSIGHT_DOMAINS) {
+    const snapshot = bundle[domain];
+    if (snapshot.status === "pending") return true;
+    if (snapshot.status === "no_coords") continue;
+    if (!isLocationInsightCacheFresh(snapshot.fetchedAt)) return true;
+  }
+  return false;
+}
+
+/** Cached snapshots only — never blocks on external APIs (use for SSR). */
+export async function getCachedAllLocationInsights(
+  prisma: PrismaClient,
+  apartmentId: string
+): Promise<ApartmentLocationInsightsBundle> {
+  const apartment = await prisma.apartment.findUnique({
+    where: { id: apartmentId },
+    select: { latitude: true, longitude: true },
+  });
+
+  if (!apartment) {
+    return {
+      overpass: { ...pendingSnapshot("overpass"), status: "error", errorMessage: "apartment_not_found" },
+      noise: { ...pendingSnapshot("noise"), status: "error", errorMessage: "apartment_not_found" },
+      flood: { ...pendingSnapshot("flood"), status: "error", errorMessage: "apartment_not_found" },
+      air: { ...pendingSnapshot("air"), status: "error", errorMessage: "apartment_not_found" },
+    };
+  }
+
+  if (apartment.latitude == null || apartment.longitude == null) {
+    return {
+      overpass: noCoordsSnapshot("overpass"),
+      noise: noCoordsSnapshot("noise"),
+      flood: noCoordsSnapshot("flood"),
+      air: noCoordsSnapshot("air"),
+    };
+  }
+
+  const [overpass, noise, flood, air] = await Promise.all([
+    getCachedLocationInsight<OverpassPoiData>(prisma, apartmentId, "overpass"),
+    getCachedLocationInsight<NoiseUbaData>(prisma, apartmentId, "noise"),
+    getCachedLocationInsight<FloodBfgData>(prisma, apartmentId, "flood"),
+    getCachedLocationInsight<AirQualityUbaData>(prisma, apartmentId, "air"),
+  ]);
+
+  return {
+    overpass: overpass ?? pendingSnapshot("overpass"),
+    noise: noise ?? pendingSnapshot("noise"),
+    flood: flood ?? pendingSnapshot("flood"),
+    air: air ?? pendingSnapshot("air"),
+  };
+}
+
 export async function fetchLocationInsightForDomain(
   domain: LocationInsightDomain,
   latitude: number,
-  longitude: number
+  longitude: number,
+  options?: LocationInsightFetchOptions
 ): Promise<
   | {
       ok: true;
@@ -30,13 +113,13 @@ export async function fetchLocationInsightForDomain(
 > {
   switch (domain) {
     case "overpass":
-      return fetchOverpassPois(latitude, longitude);
+      return fetchOverpassPois(latitude, longitude, options);
     case "noise":
-      return fetchNoiseUbaForCoords(latitude, longitude);
+      return fetchNoiseUbaForCoords(latitude, longitude, options);
     case "flood":
-      return fetchFloodBfgForCoords(latitude, longitude);
+      return fetchFloodBfgForCoords(latitude, longitude, options);
     case "air":
-      return fetchAirQualityUbaForCoords(latitude, longitude);
+      return fetchAirQualityUbaForCoords(latitude, longitude, options);
     default:
       return { ok: false, error: "unknown_domain" };
   }

@@ -1,5 +1,5 @@
 import { distanceMeters } from "@/lib/geo-coords";
-import { fetchExternal } from "@/lib/external-fetch";
+import { fetchExternal, type FetchExternalOptions } from "@/lib/external-fetch";
 
 export const UBA_AIR_DATA_SOURCE_URL =
   "https://www.umweltbundesamt.de/daten/luft/luftdaten";
@@ -214,10 +214,18 @@ export function formatAirQualityCompact(data: AirQualityUbaData | null): string 
   return `${lead.label} ${lead.assessment}`;
 }
 
-async function fetchJson<T>(path: string): Promise<T | null> {
-  const res = await fetchExternal("air", `${UBA_API_PROXY}/${path}`, {
-    headers: { Accept: "application/json" },
-  });
+async function fetchJson<T>(
+  path: string,
+  fetchOptions?: FetchExternalOptions
+): Promise<T | null> {
+  const res = await fetchExternal(
+    "air",
+    `${UBA_API_PROXY}/${path}`,
+    {
+      headers: { Accept: "application/json" },
+    },
+    fetchOptions
+  );
   if (!res?.ok) return null;
   try {
     return (await res.json()) as T;
@@ -226,21 +234,23 @@ async function fetchJson<T>(path: string): Promise<T | null> {
   }
 }
 
-async function loadStations(): Promise<UbaStation[]> {
+async function loadStations(fetchOptions?: FetchExternalOptions): Promise<UbaStation[]> {
   const now = Date.now();
   if (stationsCache && now - stationsCache.fetchedAt < STATIONS_TTL_MS) {
     return stationsCache.stations;
   }
-  const payload = await fetchJson<UbaStationsPayload>("stations/json");
+  const payload = await fetchJson<UbaStationsPayload>("stations/json", fetchOptions);
   if (!payload?.data) return stationsCache?.stations ?? [];
   const stations = parseUbaStations(payload);
   stationsCache = { fetchedAt: now, stations };
   return stations;
 }
 
-async function loadComponents(): Promise<Map<number, AirQualityComponentMeta>> {
+async function loadComponents(
+  fetchOptions?: FetchExternalOptions
+): Promise<Map<number, AirQualityComponentMeta>> {
   if (componentsCache) return componentsCache;
-  const payload = await fetchJson<UbaComponentsPayload>("components/json");
+  const payload = await fetchJson<UbaComponentsPayload>("components/json", fetchOptions);
   if (!payload) return new Map();
   componentsCache = parseUbaComponentMeta(payload);
   return componentsCache;
@@ -257,12 +267,17 @@ function berlinDateString(): string {
 
 export async function fetchAirQualityUbaForCoords(
   latitude: number,
-  longitude: number
+  longitude: number,
+  options?: { background?: boolean }
 ): Promise<
   | { ok: true; data: AirQualityUbaData; noData?: boolean }
   | { ok: false; error: string }
 > {
-  const [stations, components] = await Promise.all([loadStations(), loadComponents()]);
+  const fetchOptions = options?.background ? { background: true as const } : undefined;
+  const [stations, components] = await Promise.all([
+    loadStations(fetchOptions),
+    loadComponents(fetchOptions),
+  ]);
   if (stations.length === 0) return { ok: false, error: "stations_unavailable" };
 
   const ranked = rankAirStationsByDistance(stations, latitude, longitude, 5);
@@ -281,7 +296,8 @@ export async function fetchAirQualityUbaForCoords(
       station: candidate.station.code,
     });
     const payload = await fetchJson<UbaAirQualityPayload>(
-      `airquality/json?${params.toString()}`
+      `airquality/json?${params.toString()}`,
+      fetchOptions
     );
     if (!payload?.data) continue;
 

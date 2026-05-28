@@ -26,6 +26,13 @@ function StatusMessage({
   status: string;
   errorMessage: string | null;
 }) {
+  if (status === "pending") {
+    return (
+      <p className="text-sm text-pn-text-secondary">
+        Standortdaten werden im Hintergrund geladen…
+      </p>
+    );
+  }
   if (status === "no_coords") {
     return (
       <p className="text-sm text-pn-text-secondary">
@@ -44,14 +51,10 @@ function StatusMessage({
 }
 
 function latestFetchedAt(bundle: ApartmentLocationInsightsBundle): Date {
-  return new Date(
-    Math.max(
-      bundle.overpass.fetchedAt.getTime(),
-      bundle.noise.fetchedAt.getTime(),
-      bundle.flood.fetchedAt.getTime(),
-      bundle.air.fetchedAt.getTime()
-    )
-  );
+  const times = [bundle.overpass, bundle.noise, bundle.flood, bundle.air]
+    .filter((s) => s.status !== "pending")
+    .map((s) => s.fetchedAt.getTime());
+  return new Date(times.length > 0 ? Math.max(...times) : Date.now());
 }
 
 function LocationInsightsRefreshFooter({

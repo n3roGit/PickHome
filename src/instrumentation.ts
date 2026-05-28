@@ -12,5 +12,9 @@ export async function register() {
       "@/lib/listing-price-sync-scheduler"
     );
     startListingPriceSyncScheduler();
+    const { startLocationInsightBackfillScheduler } = await import(
+      "@/lib/location-insight-backfill-scheduler"
+    );
+    startLocationInsightBackfillScheduler();
   }
 }

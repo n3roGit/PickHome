@@ -238,22 +238,28 @@ function emptyCategories(): Record<PoiCategoryId, PoiCategorySummary> {
 
 export async function fetchOverpassPois(
   latitude: number,
-  longitude: number
+  longitude: number,
+  options?: { background?: boolean }
 ): Promise<
   | { ok: true; data: OverpassPoiData; noData?: boolean }
   | { ok: false; error: string }
 > {
   const query = buildOverpassQuery(latitude, longitude, OVERPASS_RADIUS_WIDE_M);
-  const res = await fetchExternal("overpass", OVERPASS_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-      "User-Agent": "PickHome/1.0 (overpass; self-hosted)",
+  const res = await fetchExternal(
+    "overpass",
+    OVERPASS_API_URL,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+        "User-Agent": "PickHome/1.0 (overpass; self-hosted)",
+      },
+      body: `data=${encodeURIComponent(query)}`,
+      signal: AbortSignal.timeout(30_000),
     },
-    body: `data=${encodeURIComponent(query)}`,
-    signal: AbortSignal.timeout(30_000),
-  });
+    options?.background ? { background: true } : undefined
+  );
 
   if (!res) return { ok: false, error: "fetch_failed" };
   if (!res.ok) return { ok: false, error: `http_${res.status}` };

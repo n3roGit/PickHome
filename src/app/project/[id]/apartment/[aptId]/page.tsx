@@ -76,7 +76,11 @@ import {
   matchApartmentSubsidies,
 } from "@/lib/subsidy-matching";
 import { getOrFetchBorisForApartment } from "@/lib/boris-cache";
-import { getOrFetchAllLocationInsights, locationInsightWarnings } from "@/lib/location-insights";
+import {
+  getCachedAllLocationInsights,
+  locationInsightWarnings,
+  needsLocationInsightBackfill,
+} from "@/lib/location-insights";
 import { buildNoiseHintsByCriterionId } from "@/lib/location-insight-rating-hints";
 import { ApartmentLocationInsights } from "@/components/ApartmentLocationInsights";
 import { LocationInsightWarnings } from "@/components/LocationInsightWarnings";
@@ -346,7 +350,13 @@ export default async function ApartmentPage({
   });
   const subsidyHintCount = countSubsidyHints(subsidyMatches);
   const borisSnapshot = await getOrFetchBorisForApartment(prisma, apartment.id);
-  const locationInsights = await getOrFetchAllLocationInsights(prisma, apartment.id);
+  const locationInsights = await getCachedAllLocationInsights(prisma, apartment.id);
+  if (needsLocationInsightBackfill(locationInsights)) {
+    void import("@/lib/location-insight-backfill").then(async (mod) => {
+      mod.enqueueLocationInsightBackfill(apartment.id);
+      await mod.runLocationInsightBackfillTick();
+    });
+  }
   const locationWarnings = locationInsightWarnings(locationInsights);
   const noiseHits =
     locationInsights.noise.status === "ok" ? locationInsights.noise.data?.hits ?? [] : [];

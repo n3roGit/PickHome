@@ -108,7 +108,8 @@ export function formatFloodCompact(data: FloodBfgData | null): string {
 
 export async function fetchFloodBfgForCoords(
   latitude: number,
-  longitude: number
+  longitude: number,
+  options?: { background?: boolean }
 ): Promise<
   | { ok: true; data: FloodBfgData; noData?: boolean }
   | { ok: false; error: string }
@@ -120,6 +121,7 @@ export async function fetchFloodBfgForCoords(
     service: "flood",
     sr: "4326",
     tolerance: 12,
+    fetchOptions: options?.background ? { background: true } : undefined,
   });
 
   if (!identified.ok) {

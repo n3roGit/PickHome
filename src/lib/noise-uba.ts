@@ -349,7 +349,8 @@ export function formatNoiseMaxCompact(hits: NoiseHit[] | null): string {
 
 export async function fetchNoiseUbaForCoords(
   latitude: number,
-  longitude: number
+  longitude: number,
+  options?: { background?: boolean }
 ): Promise<
   | { ok: true; data: NoiseUbaData; noData?: boolean }
   | { ok: false; error: string }
@@ -360,6 +361,7 @@ export async function fetchNoiseUbaForCoords(
     longitude,
     service: "noise",
     sr: "4326",
+    fetchOptions: options?.background ? { background: true } : undefined,
   });
 
   if (!identified.ok) {

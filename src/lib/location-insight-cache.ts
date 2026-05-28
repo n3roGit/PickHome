@@ -29,7 +29,7 @@ function parsePayloadJson<T>(raw: string | null | undefined): T | null {
   }
 }
 
-function isFresh(fetchedAt: Date): boolean {
+export function isLocationInsightCacheFresh(fetchedAt: Date): boolean {
   return Date.now() - fetchedAt.getTime() < LOCATION_INSIGHT_CACHE_TTL_MS;
 }
 
@@ -153,7 +153,7 @@ export async function getOrFetchLocationInsight<T>(
     where: { apartmentId_domain: { apartmentId, domain } },
   });
 
-  if (cached && isFresh(cached.fetchedAt)) {
+  if (cached && isLocationInsightCacheFresh(cached.fetchedAt)) {
     return snapshotFromRow<T>(domain, cached);
   }
 
