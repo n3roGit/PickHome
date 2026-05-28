@@ -10,10 +10,10 @@ export default async function ApartmentSolarArPage({
   searchParams,
 }: {
   params: Promise<{ id: string; aptId: string }>;
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; demo?: string }>;
 }) {
   const { id: projectId, aptId } = await params;
-  const { date: dateQuery } = await searchParams;
+  const { date: dateQuery, demo: demoQuery } = await searchParams;
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
@@ -25,6 +25,8 @@ export default async function ApartmentSolarArPage({
 
   const initialDayDate = parseOptionalDateQuery(dateQuery) ?? new Date();
 
+  const previewDemo = demoQuery === "1";
+
   return (
     <ApartmentSolarAr
       apartmentId={aptId}
@@ -32,6 +34,9 @@ export default async function ApartmentSolarArPage({
       title={apartment.title}
       timeZone={timeZone}
       initialDayDate={initialDayDate}
+      previewDemo={previewDemo}
+      previewLatitude={apartment.latitude ?? undefined}
+      previewLongitude={apartment.longitude ?? undefined}
     />
   );
 }

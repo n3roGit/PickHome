@@ -299,3 +299,76 @@ export function projectSunToCanvas(
 
   return projectCameraViewToCanvas(sunView, width, height, intrinsics);
 }
+
+export type SunArcAzimuthSample = {
+  azimuthDeg: number;
+  altitudeDeg: number;
+};
+
+/** Default pitch for README / ?demo=1 AR preview (level view toward horizon). */
+export const PREVIEW_DEMO_PITCH_DEG = 4;
+
+function horizonLineFromPitch(
+  width: number,
+  height: number,
+  pitchDeg: number,
+  vFovDeg: number
+): HorizonLineSegment {
+  const y = height / 2 + (pitchDeg / vFovDeg) * height;
+  return { x1: 0, y1: y, x2: width, y2: y };
+}
+
+/**
+ * Pick camera heading (and pitch) so many hourly sun markers fit in the horizontal FOV.
+ * Used by AR preview demo (?demo=1) without a live compass.
+ */
+export function previewDemoViewFromSunArc(
+  sunlitSamples: SunArcAzimuthSample[],
+  canvasWidth: number,
+  canvasHeight: number,
+  options?: {
+    hFovDeg?: number;
+    vFovDeg?: number;
+    horizonMarginDeg?: number;
+    pitchDeg?: number;
+  }
+): { headingDeg: number; pitchDeg: number; visibleCount: number } {
+  const hFovDeg = options?.hFovDeg ?? 50;
+  const vFovDeg = options?.vFovDeg ?? 65;
+  const horizonMarginDeg = options?.horizonMarginDeg ?? 12;
+  const pitchDeg = options?.pitchDeg ?? PREVIEW_DEMO_PITCH_DEG;
+
+  if (sunlitSamples.length === 0) {
+    return { headingDeg: 90, pitchDeg, visibleCount: 0 };
+  }
+
+  const horizon = horizonLineFromPitch(canvasWidth, canvasHeight, pitchDeg, vFovDeg);
+  let bestHeading = sunlitSamples[0]!.azimuthDeg;
+  let bestCount = 0;
+
+  for (const candidate of sunlitSamples) {
+    const heading = candidate.azimuthDeg;
+    let count = 0;
+    for (const sample of sunlitSamples) {
+      const pos = projectSunOnHorizonToCanvas(
+        canvasWidth,
+        canvasHeight,
+        horizon,
+        sample.azimuthDeg,
+        sample.altitudeDeg,
+        heading,
+        pitchDeg,
+        hFovDeg,
+        vFovDeg,
+        horizonMarginDeg
+      );
+      if (pos && pos.x >= 0 && pos.x <= canvasWidth) count++;
+    }
+    if (count > bestCount) {
+      bestCount = count;
+      bestHeading = heading;
+    }
+  }
+
+  return { headingDeg: bestHeading, pitchDeg, visibleCount: bestCount };
+}

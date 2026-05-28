@@ -11,6 +11,7 @@ import {
   computeHorizonLineInCanvas,
   intrinsicsFromFov,
   pitchDegFromHorizonMid,
+  previewDemoViewFromSunArc,
   projectSunOnHorizonToCanvas,
   type HorizonLineSegment,
 } from "@/lib/ar-horizon-line";
@@ -73,6 +74,10 @@ type Props = {
   title: string;
   timeZone: string;
   initialDayDate?: Date;
+  /** README/docs: black background + sun arc without camera/GPS (query ?demo=1). */
+  previewDemo?: boolean;
+  previewLatitude?: number;
+  previewLongitude?: number;
 };
 
 function isLocalHost(): boolean {
@@ -225,12 +230,18 @@ function CameraSaveIcon() {
   );
 }
 
+/** Finer arc samples in ?demo=1 so more sun markers fit in the emulated FOV. */
+const PREVIEW_DEMO_ARC_STEP_MIN = 30;
+
 export function ApartmentSolarAr({
   apartmentId,
   backHref,
   title,
   timeZone,
   initialDayDate,
+  previewDemo = false,
+  previewLatitude,
+  previewLongitude,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -267,8 +278,9 @@ export function ApartmentSolarAr({
 
   const hourlySamples = useMemo(() => {
     if (!livePosition) return [];
-    return getSolarArc(dayDate, livePosition.latitude, livePosition.longitude, 60);
-  }, [dayDate, livePosition]);
+    const stepMinutes = previewDemo ? PREVIEW_DEMO_ARC_STEP_MIN : 60;
+    return getSolarArc(dayDate, livePosition.latitude, livePosition.longitude, stepMinutes);
+  }, [dayDate, livePosition, previewDemo]);
   const sunlitHourly = useMemo(
     () => hourlySamples.filter((s) => s.isUp),
     [hourlySamples]
@@ -279,6 +291,32 @@ export function ApartmentSolarAr({
     arDebugRef.current =
       new URLSearchParams(window.location.search).get("ar_debug") === "1";
   }, []);
+
+  useEffect(() => {
+    if (!previewDemo || previewLatitude == null || previewLongitude == null) return;
+    const w = typeof window !== "undefined" ? window.innerWidth : 390;
+    const h = typeof window !== "undefined" ? window.innerHeight : 844;
+    const sunlit = getSolarArc(dayDate, previewLatitude, previewLongitude, PREVIEW_DEMO_ARC_STEP_MIN).filter(
+      (s) => s.isUp
+    );
+    const { headingDeg, pitchDeg } = previewDemoViewFromSunArc(sunlit, w, h, {
+      hFovDeg: AR_FOV_DEG,
+      vFovDeg: AR_VERTICAL_FOV_DEG,
+      horizonMarginDeg: AR_HORIZON_MARGIN_DEG,
+    });
+    headingRef.current = headingDeg;
+    smoothHeadingRef.current = headingDeg;
+    pitchRef.current = pitchDeg;
+    smoothPitchRef.current = pitchDeg;
+    markerPosRef.current.clear();
+    setLivePosition({
+      latitude: previewLatitude,
+      longitude: previewLongitude,
+      accuracyM: null,
+      timestamp: Date.now(),
+    });
+    setPhase("running");
+  }, [previewDemo, previewLatitude, previewLongitude, dayDate]);
 
   const stop = useCallback(() => {
     if (rafRef.current != null) {
@@ -308,7 +346,8 @@ export function ApartmentSolarAr({
   const drawOverlay = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    if (!canvas || !video || phase !== "running") return;
+    if (!canvas || phase !== "running") return;
+    if (!previewDemo && !video) return;
 
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -648,7 +687,7 @@ export function ApartmentSolarAr({
           })
       );
     }
-  }, [phase, sunlitHourly, dayDate, timeZone, livePosition]);
+  }, [phase, sunlitHourly, dayDate, timeZone, livePosition, previewDemo]);
 
   useEffect(() => {
     if (phase !== "running") return;
@@ -868,7 +907,7 @@ export function ApartmentSolarAr({
         </div>
       </div>
 
-      {phase === "idle" && (
+      {phase === "idle" && !previewDemo && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
           <p className="text-center text-sm text-white/80 max-w-sm">
             Live-Kamera mit stündlichen Sonnenmarken für deinen aktuellen Standort
@@ -914,31 +953,35 @@ export function ApartmentSolarAr({
 
       {(phase === "running" || phase === "requesting") && (
         <>
-          <video
-            ref={videoRef}
-            className="absolute inset-0 w-full h-full object-cover"
-            playsInline
-            muted
-            autoPlay
-          />
+          {!previewDemo && (
+            <video
+              ref={videoRef}
+              className="absolute inset-0 w-full h-full object-cover"
+              playsInline
+              muted
+              autoPlay
+            />
+          )}
           <canvas
             ref={canvasRef}
             className="absolute inset-0 w-full h-full pointer-events-none"
             data-testid={phase === "running" ? "solar-ar-running" : undefined}
           />
-          <div className="absolute bottom-20 right-3 z-10">
-            <button
-              type="button"
-              data-testid="solar-ar-save-photo"
-              onClick={saveFrameToGallery}
-              disabled={photoQueue.queueFull}
-              className="flex items-center justify-center w-12 h-12 rounded-full border border-white/40 bg-black/55 text-white hover:bg-black/75 disabled:opacity-40"
-              title="Aufnahme in Bildergalerie speichern"
-              aria-label="Aufnahme in Bildergalerie speichern"
-            >
-              <CameraSaveIcon />
-            </button>
-          </div>
+          {!previewDemo && (
+            <div className="absolute bottom-20 right-3 z-10">
+              <button
+                type="button"
+                data-testid="solar-ar-save-photo"
+                onClick={saveFrameToGallery}
+                disabled={photoQueue.queueFull}
+                className="flex items-center justify-center w-12 h-12 rounded-full border border-white/40 bg-black/55 text-white hover:bg-black/75 disabled:opacity-40"
+                title="Aufnahme in Bildergalerie speichern"
+                aria-label="Aufnahme in Bildergalerie speichern"
+              >
+                <CameraSaveIcon />
+              </button>
+            </div>
+          )}
         </>
       )}
 

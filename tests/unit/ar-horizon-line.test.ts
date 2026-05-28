@@ -5,9 +5,11 @@ import {
   horizonYAtX,
   intrinsicsFromFov,
   pitchDegFromHorizonMid,
+  previewDemoViewFromSunArc,
   projectSunOnHorizonToCanvas,
   sunDirectionEarth,
 } from "@/lib/ar-horizon-line";
+import { getSolarArc } from "@/lib/solar-position";
 import {
   cameraLookDirectionEarth,
   earthToDeviceDirection,
@@ -228,5 +230,18 @@ describe("ar-horizon-line", () => {
     );
     expect(pos).not.toBeNull();
     expect(Math.abs(pos!.y - horizonYAtX(horizon, pos!.x, W))).toBeLessThan(2);
+  });
+
+  it("previewDemoViewFromSunArc fits several sun markers in FOV (Berlin summer)", () => {
+    const lat = 52.516895;
+    const lng = 13.388856;
+    const day = new Date("2026-06-21T12:00:00Z");
+    const sunlit = getSolarArc(day, lat, lng, 30).filter((s) => s.isUp);
+    const view = previewDemoViewFromSunArc(sunlit, W, H, {
+      hFovDeg: 50,
+      vFovDeg: 65,
+      horizonMarginDeg: 12,
+    });
+    expect(view.visibleCount).toBeGreaterThanOrEqual(5);
   });
 });

@@ -84,7 +84,10 @@ export function ApartmentSolarPanel({
       subtitle="Sonnenverlauf und Licht zur gewählten Uhrzeit — Orientierung für Besichtigung und Sonneneinstrahlung."
       defaultOpen={false}
       onOpenChange={(open) => {
-        if (open) syncTimeToNow();
+        if (open) {
+          syncTimeToNow();
+          setShowMap(true);
+        }
       }}
     >
       <div data-testid="solar-panel" className="space-y-4 text-sm">
