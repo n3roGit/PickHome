@@ -218,7 +218,7 @@ async function fetchJson<T>(path: string): Promise<T | null> {
   const res = await fetchExternal("air", `${UBA_API_PROXY}/${path}`, {
     headers: { Accept: "application/json" },
   });
-  if (!res.ok) return null;
+  if (!res?.ok) return null;
   try {
     return (await res.json()) as T;
   } catch {
