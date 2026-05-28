@@ -24,8 +24,26 @@ function emptyBundle(
   overrides: Partial<ApartmentLocationInsightsBundle> = {}
 ): ApartmentLocationInsightsBundle {
   const fresh = new Date();
+  const overpassWithMicro = {
+    ...snapshot("overpass", "ok", fresh),
+    data: {
+      radii: { close: 500, wider: 1000 },
+      categories: {} as never,
+      micro: {
+        building: null,
+        industrial: { count: 0, nearest: null },
+        majorRoad: { count: 0, nearest: null },
+        railway: { count: 0, nearest: null },
+        nightlife: { count: 0, nearest: null },
+        buildingHeadline: "Kein Gebäude",
+        industrialHeadline: "Keine Gewerbe",
+        transportHeadline: "Keine Trasse",
+        nightlifeHeadline: "Keine Bars",
+      },
+    },
+  };
   return {
-    overpass: snapshot("overpass", "ok", fresh),
+    overpass: overpassWithMicro,
     noise: { ...snapshot("overpass", "ok", fresh), domain: "noise" },
     flood: { ...snapshot("overpass", "ok", fresh), domain: "flood" },
     air: { ...snapshot("overpass", "ok", fresh), domain: "air" },

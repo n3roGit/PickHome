@@ -16,9 +16,55 @@ import {
   type LocationInsightDomain,
 } from "@/lib/location-insight-types";
 import { fetchNoiseUbaForCoords, highestNoiseBandDb, type NoiseUbaData } from "@/lib/noise-uba";
-import { fetchOverpassMicro, type OverpassMicroData } from "@/lib/overpass-micro";
+import type { OverpassMicroData } from "@/lib/overpass-micro";
 import { fetchOverpassPois, type OverpassPoiData } from "@/lib/overpass-poi";
 import { fetchRadonBfsForCoords, type RadonBfsData } from "@/lib/radon-bfs";
+
+function microSnapshotFromOverpass(
+  overpass: LocationInsightSnapshot<OverpassPoiData>
+): LocationInsightSnapshot<OverpassMicroData> {
+  const base = {
+    domain: "micro" as const,
+    fetchedAt: overpass.fetchedAt,
+    errorMessage: overpass.errorMessage,
+  };
+  if (overpass.status !== "ok") {
+    return { ...base, status: overpass.status, data: null };
+  }
+  if (!overpass.data?.micro) {
+    return { ...base, status: "no_data", errorMessage: null, data: null };
+  }
+  return { ...base, status: "ok", errorMessage: null, data: overpass.data.micro };
+}
+
+function resolveMicroSnapshot(
+  overpass: LocationInsightSnapshot<OverpassPoiData>,
+  legacyMicro: LocationInsightSnapshot<OverpassMicroData> | null | undefined
+): LocationInsightSnapshot<OverpassMicroData> {
+  if (overpass.data?.micro) return microSnapshotFromOverpass(overpass);
+  if (legacyMicro) return legacyMicro;
+  return microSnapshotFromOverpass(overpass);
+}
+
+function assembleLocationInsightsBundle(input: {
+  overpass: LocationInsightSnapshot<OverpassPoiData>;
+  noise: LocationInsightSnapshot<NoiseUbaData>;
+  flood: LocationInsightSnapshot<FloodBfgData>;
+  air: LocationInsightSnapshot<AirQualityUbaData>;
+  radon: LocationInsightSnapshot<RadonBfsData>;
+  legacyMicro?: LocationInsightSnapshot<OverpassMicroData> | null;
+  climate: LocationInsightSnapshot<ClimateNormalsData>;
+}): ApartmentLocationInsightsBundle {
+  return {
+    overpass: input.overpass,
+    noise: input.noise,
+    flood: input.flood,
+    air: input.air,
+    radon: input.radon,
+    micro: resolveMicroSnapshot(input.overpass, input.legacyMicro),
+    climate: input.climate,
+  };
+}
 
 export type ApartmentLocationInsightsBundle = {
   overpass: LocationInsightSnapshot<OverpassPoiData>;
@@ -69,11 +115,13 @@ function errorSnapshot<T>(
 
 export function needsLocationInsightBackfill(bundle: ApartmentLocationInsightsBundle): boolean {
   for (const domain of LOCATION_INSIGHT_DOMAINS) {
+    if (domain === "micro") continue;
     const snapshot = bundle[domain];
     if (snapshot.status === "pending") return true;
     if (snapshot.status === "no_coords") continue;
     if (!isLocationInsightCacheFresh(snapshot.fetchedAt)) return true;
   }
+  if (bundle.overpass.status === "ok" && !bundle.overpass.data?.micro) return true;
   return false;
 }
 
@@ -121,15 +169,15 @@ export async function getCachedAllLocationInsights(
     getCachedLocationInsight<ClimateNormalsData>(prisma, apartmentId, "climate"),
   ]);
 
-  return {
+  return assembleLocationInsightsBundle({
     overpass: overpass ?? pendingSnapshot<OverpassPoiData>("overpass"),
     noise: noise ?? pendingSnapshot<NoiseUbaData>("noise"),
     flood: flood ?? pendingSnapshot<FloodBfgData>("flood"),
     air: air ?? pendingSnapshot<AirQualityUbaData>("air"),
     radon: radon ?? pendingSnapshot<RadonBfsData>("radon"),
-    micro: micro ?? pendingSnapshot<OverpassMicroData>("micro"),
+    legacyMicro: micro,
     climate: climate ?? pendingSnapshot<ClimateNormalsData>("climate"),
-  };
+  });
 }
 
 export async function fetchLocationInsightForDomain(
@@ -163,8 +211,19 @@ export async function fetchLocationInsightForDomain(
       return fetchAirQualityUbaForCoords(latitude, longitude, options);
     case "radon":
       return fetchRadonBfsForCoords(latitude, longitude, options);
-    case "micro":
-      return fetchOverpassMicro(latitude, longitude, options);
+    case "micro": {
+      const result = await fetchOverpassPois(latitude, longitude, options);
+      if (!result.ok) return result;
+      const micro = result.data.micro;
+      if (!micro) return { ok: false, error: "no_micro_data" };
+      const hasMicro =
+        micro.building != null ||
+        micro.industrial.count > 0 ||
+        micro.majorRoad.count > 0 ||
+        micro.railway.count > 0 ||
+        micro.nightlife.count > 0;
+      return { ok: true, data: micro, noData: !hasMicro };
+    }
     case "climate":
       return fetchClimateNormalsForCoords(latitude, longitude, options);
     default:
@@ -176,7 +235,7 @@ export async function getOrFetchAllLocationInsights(
   prisma: PrismaClient,
   apartmentId: string
 ): Promise<ApartmentLocationInsightsBundle> {
-  const [overpass, noise, flood, air, radon, micro, climate] = await Promise.all([
+  const [overpass, noise, flood, air, radon, climate] = await Promise.all([
     getOrFetchLocationInsight(prisma, apartmentId, "overpass", (lat, lng) =>
       fetchOverpassPois(lat, lng)
     ),
@@ -192,14 +251,11 @@ export async function getOrFetchAllLocationInsights(
     getOrFetchLocationInsight(prisma, apartmentId, "radon", (lat, lng) =>
       fetchRadonBfsForCoords(lat, lng)
     ),
-    getOrFetchLocationInsight(prisma, apartmentId, "micro", (lat, lng) =>
-      fetchOverpassMicro(lat, lng)
-    ),
     getOrFetchLocationInsight(prisma, apartmentId, "climate", (lat, lng) =>
       fetchClimateNormalsForCoords(lat, lng)
     ),
   ]);
-  return { overpass, noise, flood, air, radon, micro, climate };
+  return assembleLocationInsightsBundle({ overpass, noise, flood, air, radon, climate });
 }
 
 export async function refreshAllLocationInsights(
@@ -207,7 +263,7 @@ export async function refreshAllLocationInsights(
   apartmentId: string
 ): Promise<ApartmentLocationInsightsBundle> {
   const { refreshLocationInsight } = await import("@/lib/location-insight-cache");
-  const [overpass, noise, flood, air, radon, micro, climate] = await Promise.all([
+  const [overpass, noise, flood, air, radon, climate] = await Promise.all([
     refreshLocationInsight(prisma, apartmentId, "overpass", (lat, lng) =>
       fetchOverpassPois(lat, lng)
     ),
@@ -223,20 +279,17 @@ export async function refreshAllLocationInsights(
     refreshLocationInsight(prisma, apartmentId, "radon", (lat, lng) =>
       fetchRadonBfsForCoords(lat, lng)
     ),
-    refreshLocationInsight(prisma, apartmentId, "micro", (lat, lng) =>
-      fetchOverpassMicro(lat, lng)
-    ),
     refreshLocationInsight(prisma, apartmentId, "climate", (lat, lng) =>
       fetchClimateNormalsForCoords(lat, lng)
     ),
   ]);
-  return { overpass, noise, flood, air, radon, micro, climate };
+  return assembleLocationInsightsBundle({ overpass, noise, flood, air, radon, climate });
 }
 
 export type LocationInsightWarning = {
   kind:
+    | "flood_hqhaeufig"
     | "flood_hq100"
-    | "flood_hqextrem"
     | "noise_65"
     | "noise_70"
     | "air_poor"
@@ -251,10 +304,11 @@ export function locationInsightWarnings(
   const warnings: LocationInsightWarning[] = [];
 
   if (bundle.flood.status === "ok" && bundle.flood.data) {
-    if (bundle.flood.data.scenarios.HQ100 === "betroffen") {
+    const { HQhaeufig, HQ100 } = bundle.flood.data.scenarios;
+    if (HQhaeufig === "betroffen") {
+      warnings.push({ kind: "flood_hqhaeufig", label: "Hochwasser häufig" });
+    } else if (HQ100 === "betroffen") {
       warnings.push({ kind: "flood_hq100", label: "Hochwasser HQ100" });
-    } else if (bundle.flood.data.scenarios.HQextrem === "betroffen") {
-      warnings.push({ kind: "flood_hqextrem", label: "Hochwasser extrem" });
     }
   }
 

@@ -8,12 +8,21 @@ export const MICRO_ROAD_RADIUS_M = 300;
 export const MICRO_RAIL_RADIUS_M = 400;
 export const MICRO_NIGHTLIFE_RADIUS_M = 300;
 
+export type MicroMapCategoryId =
+  | "building"
+  | "industrial"
+  | "majorRoad"
+  | "railway"
+  | "nightlife";
+
 export type MicroLocationItem = {
   name: string | null;
   distanceM: number;
   detail: string | null;
   osmType: string;
   osmId: number;
+  lat: number;
+  lng: number;
 };
 
 export type MicroCategorySummary = {
@@ -48,16 +57,18 @@ function elementCoords(el: OverpassElement): { lat: number; lng: number } | null
   return null;
 }
 
-function buildOverpassMicroQuery(latitude: number, longitude: number): string {
+export function buildOverpassMicroQueryParts(latitude: number, longitude: number): string {
   const lat = latitude;
   const lon = longitude;
-  return `[out:json][timeout:25];(
-way["building"](around:${MICRO_BUILDING_RADIUS_M},${lat},${lon});
+  return `way["building"](around:${MICRO_BUILDING_RADIUS_M},${lat},${lon});
 nwr["landuse"~"industrial|brownfield|commercial"](around:${MICRO_INDUSTRIAL_RADIUS_M},${lat},${lon});
 way["highway"~"motorway|trunk|primary"](around:${MICRO_ROAD_RADIUS_M},${lat},${lon});
 way["railway"~"rail|tram|subway|light_rail"](around:${MICRO_RAIL_RADIUS_M},${lat},${lon});
-nwr["amenity"~"bar|pub|nightclub|biergarten"](around:${MICRO_NIGHTLIFE_RADIUS_M},${lat},${lon});
-);out center tags;`;
+nwr["amenity"~"bar|pub|nightclub|biergarten"](around:${MICRO_NIGHTLIFE_RADIUS_M},${lat},${lon});`;
+}
+
+function buildOverpassMicroQuery(latitude: number, longitude: number): string {
+  return `[out:json][timeout:25];(${buildOverpassMicroQueryParts(latitude, longitude)});out center tags;`;
 }
 
 function formatBuildingDetail(tags: Record<string, string>): string | null {
@@ -119,6 +130,8 @@ function summarizeCategory(
       detail: detailFn(tags),
       osmType: el.type,
       osmId: el.id,
+      lat: coords.lat,
+      lng: coords.lng,
     };
     if (!nearest || distanceM < nearest.distanceM) nearest = item;
   }
@@ -151,6 +164,8 @@ export function parseOverpassMicroElements(
       detail: formatBuildingDetail(tags),
       osmType: el.type,
       osmId: el.id,
+      lat: coords.lat,
+      lng: coords.lng,
     };
     if (!building || distanceM < building.distanceM) building = item;
   }
@@ -244,6 +259,165 @@ export function parseOverpassMicroElements(
     transportHeadline,
     nightlifeHeadline,
   };
+}
+
+export type MicroMapMarker = {
+  categoryId: MicroMapCategoryId;
+  name: string | null;
+  distanceM: number;
+  lat: number;
+  lng: number;
+  osmType: string;
+  osmId: number;
+  detail: string | null;
+};
+
+function pushMicroMarker(
+  markers: MicroMapMarker[],
+  seen: Set<string>,
+  categoryId: MicroMapCategoryId,
+  item: MicroLocationItem,
+  fallbackName: string
+): void {
+  const key = `${categoryId}:${item.osmType}:${item.osmId}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  markers.push({
+    categoryId,
+    name: item.name ?? fallbackName,
+    distanceM: item.distanceM,
+    lat: item.lat,
+    lng: item.lng,
+    osmType: item.osmType,
+    osmId: item.osmId,
+    detail: item.detail,
+  });
+}
+
+export function collectMicroMapMarkers(
+  elements: OverpassElement[],
+  latitude: number,
+  longitude: number
+): MicroMapMarker[] {
+  const markers: MicroMapMarker[] = [];
+  const seen = new Set<string>();
+
+  for (const el of elements) {
+    if (!el.tags?.building) continue;
+    const coords = elementCoords(el);
+    if (!coords) continue;
+    const distanceM = Math.round(distanceMeters(latitude, longitude, coords.lat, coords.lng));
+    if (distanceM > MICRO_BUILDING_RADIUS_M) continue;
+    const tags = el.tags ?? {};
+    pushMicroMarker(
+      markers,
+      seen,
+      "building",
+      {
+        name: tags.name?.trim() || null,
+        distanceM,
+        detail: formatBuildingDetail(tags),
+        osmType: el.type,
+        osmId: el.id,
+        lat: coords.lat,
+        lng: coords.lng,
+      },
+      "Gebäude"
+    );
+  }
+
+  for (const el of elements) {
+    const coords = elementCoords(el);
+    if (!coords) continue;
+    const tags = el.tags ?? {};
+    const distanceM = Math.round(distanceMeters(latitude, longitude, coords.lat, coords.lng));
+    const lu = tags.landuse;
+    if (
+      lu === "industrial" ||
+      lu === "brownfield" ||
+      lu === "commercial"
+    ) {
+      if (distanceM <= MICRO_INDUSTRIAL_RADIUS_M) {
+        pushMicroMarker(
+          markers,
+          seen,
+          "industrial",
+          {
+            name: tags.name?.trim() || null,
+            distanceM,
+            detail: lu,
+            osmType: el.type,
+            osmId: el.id,
+            lat: coords.lat,
+            lng: coords.lng,
+          },
+          "Gewerbe/Industrie"
+        );
+      }
+    }
+    const h = tags.highway;
+    if (h === "motorway" || h === "trunk" || h === "primary") {
+      if (distanceM <= MICRO_ROAD_RADIUS_M) {
+        pushMicroMarker(
+          markers,
+          seen,
+          "majorRoad",
+          {
+            name: tags.name?.trim() || null,
+            distanceM,
+            detail: formatRoadDetail(tags),
+            osmType: el.type,
+            osmId: el.id,
+            lat: coords.lat,
+            lng: coords.lng,
+          },
+          "Hauptstraße"
+        );
+      }
+    }
+    const r = tags.railway;
+    if (r === "rail" || r === "tram" || r === "subway" || r === "light_rail") {
+      if (distanceM <= MICRO_RAIL_RADIUS_M) {
+        pushMicroMarker(
+          markers,
+          seen,
+          "railway",
+          {
+            name: tags.name?.trim() || null,
+            distanceM,
+            detail: formatRailDetail(tags),
+            osmType: el.type,
+            osmId: el.id,
+            lat: coords.lat,
+            lng: coords.lng,
+          },
+          "Schiene"
+        );
+      }
+    }
+    const a = tags.amenity;
+    if (a === "bar" || a === "pub" || a === "nightclub" || a === "biergarten") {
+      if (distanceM <= MICRO_NIGHTLIFE_RADIUS_M) {
+        pushMicroMarker(
+          markers,
+          seen,
+          "nightlife",
+          {
+            name: tags.name?.trim() || null,
+            distanceM,
+            detail: formatNightlifeDetail(tags),
+            osmType: el.type,
+            osmId: el.id,
+            lat: coords.lat,
+            lng: coords.lng,
+          },
+          "Bar/Club"
+        );
+      }
+    }
+  }
+
+  return markers;
 }
 
 export function formatMicroLocationCompact(data: OverpassMicroData | null): string {

@@ -26,7 +26,6 @@ import {
   CLIMATE_OPEN_METEO_SOURCE_URL,
   type ClimateNormalsData,
 } from "@/lib/climate-open-meteo";
-import type { OverpassMicroData } from "@/lib/overpass-micro";
 import type { OverpassPoiData } from "@/lib/overpass-poi";
 import {
   BFS_RADON_SOURCE_URL,
@@ -71,7 +70,6 @@ function latestFetchedAt(bundle: ApartmentLocationInsightsBundle): Date {
     bundle.flood,
     bundle.air,
     bundle.radon,
-    bundle.micro,
     bundle.climate,
   ]
     .filter((s) => s.status !== "pending")
@@ -111,11 +109,12 @@ function OverpassBlock({
   longitude: number | null;
 }) {
   const data = snapshot.data;
+  const micro = data?.micro;
 
   return (
     <CollapsibleSection
       title="Umgebung"
-      subtitle="Infrastruktur und Einrichtungen im Umkreis 500 m und 1 km"
+      subtitle="Infrastruktur, Mikrolage und Einrichtungen im Umkreis"
       defaultOpen
       className="mb-3"
     >
@@ -125,8 +124,28 @@ function OverpassBlock({
       ) : snapshot.status === "no_data" ? (
         <p className="text-sm text-pn-text-secondary">Keine POIs im Suchradius gefunden.</p>
       ) : null}
+      {snapshot.status === "ok" && micro ? (
+        <ul className="mt-3 space-y-2">
+          {[
+            { label: "Gebäude & Denkmal", value: micro.buildingHeadline },
+            { label: "Gewerbe & Industrie", value: micro.industrialHeadline },
+            { label: "Straße & Schiene", value: micro.transportHeadline },
+            { label: "Bars & Clubs", value: micro.nightlifeHeadline },
+          ].map((row) => (
+            <li
+              key={row.label}
+              className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm"
+            >
+              <span className="font-medium text-pn-text-primary">{row.label}</span>
+              {": "}
+              <span className="text-pn-text-secondary">{row.value}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <p className="mt-3 text-xs text-pn-text-tertiary">
-        Orientierungswerte aus öffentlichen Kartendaten — keine Vollständigkeitsgarantie.
+        OpenStreetMap — unvollständig; ergänzt UBA-Lärm um lokale Straßen, Schienen und
+        Nachbarschaftslärm. Keine Vollständigkeitsgarantie für Infrastruktur-POIs.
       </p>
     </CollapsibleSection>
   );
@@ -210,10 +229,17 @@ function NoiseBlock({ snapshot }: { snapshot: LocationInsightSnapshot<NoiseUbaDa
   );
 }
 
-function floodBadgeClass(status: "betroffen" | "nicht_betroffen"): string {
-  return status === "betroffen"
-    ? "bg-pn-score-low-bg text-pn-score-low"
-    : "bg-pn-score-high-bg text-pn-score-high";
+function floodBadgeClass(
+  scenarioId: FloodScenarioId,
+  status: "betroffen" | "nicht_betroffen"
+): string {
+  if (status === "nicht_betroffen" || scenarioId === "HQextrem") {
+    return "bg-pn-score-high-bg text-pn-score-high";
+  }
+  if (scenarioId === "HQ100") {
+    return "bg-pn-score-mid-bg text-pn-score-mid";
+  }
+  return "bg-pn-score-low-bg text-pn-score-low";
 }
 
 function AirBlock({ snapshot }: { snapshot: LocationInsightSnapshot<AirQualityUbaData> }) {
@@ -294,7 +320,7 @@ function FloodBlock({ snapshot }: { snapshot: LocationInsightSnapshot<FloodBfgDa
           {(["HQhaeufig", "HQ100", "HQextrem"] as FloodScenarioId[]).map((id) => (
             <li
               key={id}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${floodBadgeClass(data.scenarios[id])}`}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${floodBadgeClass(id, data.scenarios[id])}`}
             >
               {FLOOD_SCENARIO_LABELS[id]}:{" "}
               {data.scenarios[id] === "betroffen" ? "betroffen" : "nicht betroffen"}
@@ -392,48 +418,6 @@ function RadonBlock({ snapshot }: { snapshot: LocationInsightSnapshot<RadonBfsDa
   );
 }
 
-function MicroBlock({ snapshot }: { snapshot: LocationInsightSnapshot<OverpassMicroData> }) {
-  const data = snapshot.data;
-
-  return (
-    <CollapsibleSection
-      title="Mikrolage (OSM)"
-      subtitle="Gebäude, Gewerbe, Verkehr und Nachtleben in der Nähe"
-      defaultOpen={false}
-      className="mb-3"
-    >
-      <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
-      {snapshot.status === "ok" && data ? (
-        <ul className="space-y-2">
-          {[
-            { label: "Gebäude & Denkmal", value: data.buildingHeadline },
-            { label: "Gewerbe & Industrie", value: data.industrialHeadline },
-            { label: "Straße & Schiene", value: data.transportHeadline },
-            { label: "Bars & Clubs", value: data.nightlifeHeadline },
-          ].map((row) => (
-            <li
-              key={row.label}
-              className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm"
-            >
-              <span className="font-medium text-pn-text-primary">{row.label}</span>
-              {": "}
-              <span className="text-pn-text-secondary">{row.value}</span>
-            </li>
-          ))}
-        </ul>
-      ) : snapshot.status === "no_data" ? (
-        <p className="text-sm text-pn-text-secondary">
-          Keine Mikrolage-Daten im Suchradius gefunden.
-        </p>
-      ) : null}
-      <p className="mt-3 text-xs text-pn-text-tertiary">
-        OpenStreetMap — unvollständig; ergänzt UBA-Lärm um lokale Straßen, Schienen und
-        Nachbarschaftslärm.
-      </p>
-    </CollapsibleSection>
-  );
-}
-
 function ClimateBlock({ snapshot }: { snapshot: LocationInsightSnapshot<ClimateNormalsData> }) {
   const data = snapshot.data;
 
@@ -521,7 +505,7 @@ export function ApartmentLocationInsights({
   return (
     <CollapsibleSection
       title="Standort & Umfeld"
-      subtitle="Anfahrt, Umgebung, Mikrolage, Radon, Klima, Lärm, Luft und Hochwasser — bundesweit, unverbindlich."
+      subtitle="Anfahrt, Umgebung, Radon, Klima, Lärm, Luft und Hochwasser — bundesweit, unverbindlich."
       defaultOpen={false}
     >
       <div id="location-insights" className="space-y-3">
@@ -542,7 +526,6 @@ export function ApartmentLocationInsights({
         <AirBlock snapshot={bundle.air} />
         <FloodBlock snapshot={bundle.flood} />
         <RadonBlock snapshot={bundle.radon} />
-        <MicroBlock snapshot={bundle.micro} />
         <ClimateBlock snapshot={bundle.climate} />
       </div>
       <LocationInsightsRefreshFooter apartmentId={apartmentId} fetchedAt={fetchedAt} />

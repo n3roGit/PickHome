@@ -21,6 +21,11 @@ describe("overpass-poi", () => {
         publicTransport: { countClose: 0, countWide: 3, nearest: null },
         park: { countClose: 0, countWide: 0, nearest: null },
         medical: { countClose: 0, countWide: 0, nearest: null },
+        building: { countClose: 0, countWide: 0, nearest: null },
+        industrial: { countClose: 0, countWide: 0, nearest: null },
+        majorRoad: { countClose: 0, countWide: 0, nearest: null },
+        railway: { countClose: 0, countWide: 0, nearest: null },
+        nightlife: { countClose: 0, countWide: 0, nearest: null },
       },
     };
     expect(formatPoiEnvironmentCompact(data)).toContain("Supermarkt");
@@ -49,6 +54,11 @@ describe("overpass-poi", () => {
         publicTransport: { countClose: 0, countWide: 0, nearest: null },
         park: { countClose: 0, countWide: 0, nearest: null },
         medical: { countClose: 0, countWide: 0, nearest: null },
+        building: { countClose: 0, countWide: 0, nearest: null },
+        industrial: { countClose: 0, countWide: 0, nearest: null },
+        majorRoad: { countClose: 0, countWide: 0, nearest: null },
+        railway: { countClose: 0, countWide: 0, nearest: null },
+        nightlife: { countClose: 0, countWide: 0, nearest: null },
       },
     };
     expect(markersForMap(data)).toHaveLength(1);

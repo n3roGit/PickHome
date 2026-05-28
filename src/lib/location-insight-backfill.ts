@@ -71,6 +71,7 @@ async function findStaleDomainForApartment(
   const byDomain = new Map(caches.map((row) => [row.domain, row.fetchedAt]));
 
   for (const domain of LOCATION_INSIGHT_DOMAINS) {
+    if (domain === "micro") continue;
     const fetchedAt = byDomain.get(domain);
     if (!fetchedAt || !isLocationInsightCacheFresh(fetchedAt)) {
       return { apartmentId, domain };

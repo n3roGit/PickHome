@@ -1,5 +1,11 @@
 import { fetchExternal } from "@/lib/external-fetch";
 import { distanceMeters } from "@/lib/geo-coords";
+import {
+  buildOverpassMicroQueryParts,
+  collectMicroMapMarkers,
+  parseOverpassMicroElements,
+  type OverpassMicroData,
+} from "@/lib/overpass-micro";
 
 export const OVERPASS_API_URL =
   process.env.OVERPASS_URL?.trim() || "https://overpass-api.de/api/interpreter";
@@ -14,7 +20,12 @@ export type PoiCategoryId =
   | "kindergarten"
   | "publicTransport"
   | "park"
-  | "medical";
+  | "medical"
+  | "building"
+  | "industrial"
+  | "majorRoad"
+  | "railway"
+  | "nightlife";
 
 export type PoiNearest = {
   name: string | null;
@@ -46,6 +57,8 @@ export type OverpassPoiData = {
   categories: Record<PoiCategoryId, PoiCategorySummary>;
   /** All POIs within the wide radius for map display; optional in older cache rows. */
   markers?: PoiMarker[];
+  /** Mikrolage summary from the same Overpass fetch (optional in older cache rows). */
+  micro?: OverpassMicroData;
 };
 
 type OverpassElement = {
@@ -99,14 +112,23 @@ const CATEGORY_DEFS: {
   },
 ];
 
+const MICRO_CATEGORY_DEFS: { id: PoiCategoryId; label: string }[] = [
+  { id: "building", label: "Gebäude" },
+  { id: "industrial", label: "Gewerbe/Industrie" },
+  { id: "majorRoad", label: "Hauptstraße" },
+  { id: "railway", label: "Schiene" },
+  { id: "nightlife", label: "Bar/Club" },
+];
+
 function buildOverpassQuery(latitude: number, longitude: number, radiusM: number): string {
-  const parts = CATEGORY_DEFS.map((def) =>
+  const poiParts = CATEGORY_DEFS.map((def) =>
     def.filter
       .replace(/\{r\}/g, String(radiusM))
       .replace(/\{lat\}/g, String(latitude))
       .replace(/\{lon\}/g, String(longitude))
-  );
-  return `[out:json][timeout:25];(${parts.join("")});out center;`;
+  ).join("");
+  const microParts = buildOverpassMicroQueryParts(latitude, longitude);
+  return `[out:json][timeout:35];(${poiParts}${microParts});out center tags;`;
 }
 
 function elementCoords(el: OverpassElement): { lat: number; lng: number } | null {
@@ -228,9 +250,50 @@ export function markersForMap(data: OverpassPoiData): PoiMarker[] {
   return fallback;
 }
 
+function summarizeMicroCategory(
+  markers: PoiMarker[],
+  categoryId: PoiCategoryId
+): PoiCategorySummary {
+  const matches = markers.filter((m) => m.categoryId === categoryId);
+  let countClose = 0;
+  let countWide = 0;
+  let nearest: PoiNearest | null = null;
+  for (const marker of matches) {
+    if (marker.distanceM <= OVERPASS_RADIUS_CLOSE_M) countClose += 1;
+    if (marker.distanceM <= OVERPASS_RADIUS_WIDE_M) countWide += 1;
+    if (!nearest || marker.distanceM < nearest.distanceM) {
+      nearest = {
+        name: marker.name,
+        distanceM: marker.distanceM,
+        lat: marker.lat,
+        lng: marker.lng,
+        osmType: marker.osmType,
+        osmId: marker.osmId,
+      };
+    }
+  }
+  return { countClose, countWide, nearest };
+}
+
+function microMarkersToPoiMarkers(
+  latitude: number,
+  longitude: number,
+  elements: OverpassElement[]
+): PoiMarker[] {
+  return collectMicroMapMarkers(elements, latitude, longitude).map((marker) => ({
+    categoryId: marker.categoryId,
+    name: marker.name,
+    distanceM: marker.distanceM,
+    lat: marker.lat,
+    lng: marker.lng,
+    osmType: marker.osmType,
+    osmId: marker.osmId,
+  }));
+}
+
 function emptyCategories(): Record<PoiCategoryId, PoiCategorySummary> {
   const out = {} as Record<PoiCategoryId, PoiCategorySummary>;
-  for (const def of CATEGORY_DEFS) {
+  for (const def of [...CATEGORY_DEFS, ...MICRO_CATEGORY_DEFS]) {
     out[def.id] = { countClose: 0, countWide: 0, nearest: null };
   }
   return out;
@@ -256,7 +319,7 @@ export async function fetchOverpassPois(
         "User-Agent": "PickHome/1.0 (overpass; self-hosted)",
       },
       body: `data=${encodeURIComponent(query)}`,
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(40_000),
     },
     options?.background ? { background: true } : undefined
   );
@@ -284,28 +347,44 @@ export async function fetchOverpassPois(
     );
   }
 
-  const markers = collectMarkers(
+  const infraMarkers = collectMarkers(
     elements,
     latitude,
     longitude,
     OVERPASS_RADIUS_WIDE_M
   );
-  const hasAny = markers.length > 0;
+  const microMarkers = microMarkersToPoiMarkers(latitude, longitude, elements);
+  for (const def of MICRO_CATEGORY_DEFS) {
+    categories[def.id] = summarizeMicroCategory(microMarkers, def.id);
+  }
+  const markers = [...infraMarkers, ...microMarkers];
+  const micro = parseOverpassMicroElements(elements, latitude, longitude);
+  const hasAny =
+    markers.length > 0 ||
+    micro.building != null ||
+    micro.industrial.count > 0 ||
+    micro.majorRoad.count > 0 ||
+    micro.railway.count > 0 ||
+    micro.nightlife.count > 0;
   return {
     ok: true,
     data: {
       radii: { close: OVERPASS_RADIUS_CLOSE_M, wider: OVERPASS_RADIUS_WIDE_M },
       categories,
       markers,
+      micro,
     },
     noData: !hasAny,
   };
 }
 
-export const POI_CATEGORY_ORDER: PoiCategoryId[] = CATEGORY_DEFS.map((d) => d.id);
+export const POI_CATEGORY_ORDER: PoiCategoryId[] = [
+  ...CATEGORY_DEFS.map((d) => d.id),
+  ...MICRO_CATEGORY_DEFS.map((d) => d.id),
+];
 
 export const POI_CATEGORY_LABELS: Record<PoiCategoryId, string> = Object.fromEntries(
-  CATEGORY_DEFS.map((d) => [d.id, d.label])
+  [...CATEGORY_DEFS, ...MICRO_CATEGORY_DEFS].map((d) => [d.id, d.label])
 ) as Record<PoiCategoryId, string>;
 
 export function countPoisByCategory(
@@ -329,6 +408,11 @@ export const POI_CATEGORY_COLORS: Record<PoiCategoryId, string> = {
   publicTransport: "#ea580c",
   park: "#059669",
   medical: "#dc2626",
+  building: "#64748b",
+  industrial: "#78716c",
+  majorRoad: "#475569",
+  railway: "#0d9488",
+  nightlife: "#9333ea",
 };
 
 export function osmLinkForPoi(poi: PoiNearest): string {
