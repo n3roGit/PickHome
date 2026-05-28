@@ -38,7 +38,7 @@ export function ApartmentListSort({
         <select
           value={current}
           onChange={(e) => navigate(e.target.value as ApartmentSortKey, currentOrder)}
-          className="mt-1 block border border-pn-border rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]"
+          className="mt-1 block border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text min-w-[140px]"
         >
           {SORT_OPTIONS.map(({ key, label }) => (
             <option key={key} value={key}>
@@ -52,7 +52,7 @@ export function ApartmentListSort({
         <select
           value={currentOrder}
           onChange={(e) => navigate(current, e.target.value as ApartmentSortOrder)}
-          className="mt-1 block border border-pn-border rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]"
+          className="mt-1 block border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text min-w-[140px]"
         >
           <option value="desc">Absteigend</option>
           <option value="asc">Aufsteigend</option>

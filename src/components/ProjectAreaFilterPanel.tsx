@@ -418,7 +418,7 @@ export function ProjectAreaFilterPanel({
           <select
             value={bundeslandFilter}
             onChange={(e) => setBundeslandFilter(e.target.value)}
-            className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+            className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text"
             disabled={pending}
           >
             <option value="">— Alle —</option>
@@ -442,7 +442,7 @@ export function ProjectAreaFilterPanel({
             />
           </label>
           {ortResults.length > 0 && (
-            <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-white border border-pn-border rounded-lg shadow-lg">
+            <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-pn-bg-surface border border-pn-border rounded-lg shadow-lg">
               {ortResults.map((entry) => {
                 const key = ortReferenceKey(entry.name, entry.bundesland);
                 const alreadyAdded = selectedOrte.some(

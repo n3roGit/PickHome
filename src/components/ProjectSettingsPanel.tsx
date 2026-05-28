@@ -99,7 +99,7 @@ export function ProjectSettingsPanel({
             <select
               name="federalStateCode"
               defaultValue={federalStateCode ?? ""}
-              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text"
             >
               <option value="">— nicht festgelegt —</option>
               {FEDERAL_STATES.map((s) => (

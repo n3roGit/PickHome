@@ -95,7 +95,7 @@ export function TravelModeForm({
             name="travelMode"
             value={mode}
             onChange={(e) => setMode(e.target.value as TravelMode)}
-            className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+            className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text"
           >
             {TRAVEL_MODES.map((m) => (
               <option key={m} value={m}>
@@ -132,7 +132,7 @@ export function TravelModeForm({
             <select
               name="transitArrivalWeekday"
               defaultValue={transitArrivalWeekday ?? DEFAULT_TRANSIT_ARRIVAL_WEEKDAY}
-              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+              className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text"
             >
               {TRANSIT_WEEKDAYS.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -165,7 +165,7 @@ export function TravelModeForm({
               <select
                 name="transitFallbackMode"
                 defaultValue={transitFallbackMode ?? "bike"}
-                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+                className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text"
               >
                 <option value="none">Kein Fallback</option>
                 {TRANSIT_FALLBACK_MODES.map((m) => (
@@ -205,7 +205,7 @@ export function TravelModeForm({
                 <select
                   name="companyCarRate"
                   defaultValue={companyCarRate}
-                  className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+                  className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text"
                 >
                   {COMPANY_CAR_RATES.map((rate) => (
                     <option key={rate} value={rate}>
@@ -241,7 +241,7 @@ export function TravelModeForm({
                   onChange={(e) =>
                     setCommuteMethod(parseCompanyCarCommuteMethod(e.target.value))
                   }
-                  className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+                  className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text"
                 >
                   {COMPANY_CAR_COMMUTE_METHODS.map((method) => (
                     <option key={method} value={method}>
@@ -334,7 +334,7 @@ export function TravelModeForm({
                 <select
                   name="marginalTaxRatePercent"
                   defaultValue={resolveMarginalTaxRatePercent(marginalTaxRatePercent)}
-                  className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-white"
+                  className="mt-1 w-full border border-pn-border rounded-lg px-3 py-2 text-sm bg-pn-input-bg text-pn-input-text"
                 >
                   {MARGINAL_TAX_RATE_OPTIONS.map((option) => (
                     <option key={option.percent} value={option.percent}>

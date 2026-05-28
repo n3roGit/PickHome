@@ -2,6 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --pn-brand: 21 128 61;
+  --pn-brand-muted: 220 252 231;
+  --pn-bg-base: 247 248 250;
+  --pn-bg-surface: 255 255 255;
+  --pn-bg-subtle: 238 241 245;
+  --pn-text-primary: 27 45 79;
+  --pn-text-secondary: 90 107 133;
+  --pn-text-tertiary: 139 155 181;
+  --pn-border: 226 232 240;
+  --pn-border-strong: 203 213 225;
+  --pn-accent: 22 163 74;
+  --pn-input-bg: 255 255 255;
+  --pn-input-text: 27 45 79;
+  --pn-score-high: 22 163 74;
+  --pn-score-high-bg: 220 252 231;
+  --pn-score-mid: 202 138 4;
+  --pn-score-mid-bg: 254 249 195;
+  --pn-score-low: 220 38 38;
+  --pn-score-low-bg: 254 226 226;
+}
+
+.dark {
+  --pn-brand: 74 222 128;
+  --pn-brand-muted: 20 83 45;
+  --pn-bg-base: 11 18 32;
+  --pn-bg-surface: 18 27 46;
+  --pn-bg-subtle: 28 39 63;
+  --pn-text-primary: 226 232 240;
+  --pn-text-secondary: 148 163 184;
+  --pn-text-tertiary: 100 116 139;
+  --pn-border: 51 65 85;
+  --pn-border-strong: 71 85 105;
+  --pn-accent: 74 222 128;
+  --pn-input-bg: 0 0 0;
+  --pn-input-text: 255 255 255;
+  --pn-score-high: 74 222 128;
+  --pn-score-high-bg: 20 83 45;
+  --pn-score-mid: 250 204 21;
+  --pn-score-mid-bg: 113 63 18;
+  --pn-score-low: 248 113 113;
+  --pn-score-low-bg: 127 29 29;
+}
+
 html {
   @apply overflow-x-hidden;
 }
@@ -10,7 +54,27 @@ body {
   @apply bg-pn-bg-base text-pn-text-primary antialiased overflow-x-hidden min-w-0;
 }
 
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="hidden"]):not([type="file"]):not([type="image"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select {
+    background-color: rgb(var(--pn-input-bg));
+    color: rgb(var(--pn-input-text));
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(var(--pn-text-tertiary));
+  }
+}
+
 @layer components {
+  .pn-input {
+    background-color: rgb(var(--pn-input-bg));
+    color: rgb(var(--pn-input-text));
+    @apply border border-pn-border;
+  }
+
   .pn-scroll-x {
     @apply -mx-4 px-4 overflow-x-auto overscroll-x-contain;
   }
