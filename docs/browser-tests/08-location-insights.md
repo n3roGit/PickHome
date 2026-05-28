@@ -12,13 +12,20 @@ Contract for apartment detail external location data. Master: [MCP_BROWSER_TEST_
 
 1. Navigate to `/project/{projectId}/apartment/{apartmentId}` (discover IDs from UI; do not hardcode production IDs).
 2. Scroll to section **Standort & Umfeld** (below Anfahrt, above Finanzen).
-3. Expand **Umgebung (OpenStreetMap)** — expect category counts or empty-state message; click **Aktualisieren** and confirm section reloads without error.
+3. Expand **Umgebung** — expect map with POI markers or empty-state message; confirm **Aktualisieren** at section bottom reloads without error.
 4. Expand **Lärm (UBA)** — expect hits or disclaimer that only major roads/rail/airports are mapped.
 5. Expand **Hochwasser (BfG)** — expect HQ scenario badges or “kein Risiko”.
 6. If toolbar warning badges appear (Hochwasser/Lärm), click one — page scrolls to `#location-insights`.
 7. Open **Kriterien bewerten** — for noise-related criteria (e.g. Straßenlärm), optional UBA hint under slider when UBA returned data.
 8. Export PDF (full) — section **Standort & Umfeld** present when data loaded.
 9. Optional: LLM chat — ask “Liegt die Wohnung in einem Hochwassergebiet?” — answer should reference BfG block if cached.
+
+## Project map tab (same feature)
+
+1. Open project **Karte** tab with geocoded apartments.
+2. Default: **POIs ausblenden** / no POI legend.
+3. Click **POIs anzeigen** — small category markers appear; legend chips (Supermarkt, ÖPNV, …) and count line below map.
+4. Click **POIs ausblenden** — markers and legend disappear.
 
 ## Pass criteria
 

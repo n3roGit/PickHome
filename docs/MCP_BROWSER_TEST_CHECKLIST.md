@@ -195,12 +195,13 @@ Use this sequence so authentication, project context, and data dependencies rema
 10. Checklist fill page
 11. Mutating feature checks on disposable data
 12. Calendar and iCal
-13. Map and area filters
-14. LLM and listing import if configured (project quick-add **and** apartment Auto-Fill; see [04-listing-llm.md](browser-tests/04-listing-llm.md))
-15. Viewing schedule conflict warnings if calendar or viewing code changed (see [02-project-tabs.md](browser-tests/02-project-tabs.md) §12.14)
-16. Mobile viewport
-17. Optional backup export, restore, TOTP full activation
-18. Session note
+13. Map and area filters (include optional project-map POIs; see [08-location-insights.md](browser-tests/08-location-insights.md) § Project map)
+14. Apartment **Standort & Umfeld** when geocoded (see [08-location-insights.md](browser-tests/08-location-insights.md))
+15. LLM and listing import if configured (project quick-add **and** apartment Auto-Fill; see [04-listing-llm.md](browser-tests/04-listing-llm.md))
+16. Viewing schedule conflict warnings if calendar or viewing code changed (see [02-project-tabs.md](browser-tests/02-project-tabs.md) §12.14)
+17. Mobile viewport
+18. Optional backup export, restore, TOTP full activation
+19. Session note
 
 ## 10. Preflight checklist
 
@@ -231,10 +232,10 @@ Confirm:
 | Admin | Users, backup, timezone, LLM tabs | Tabs load, save/test actions where safe |
 | Dashboard | Admin all projects, user own projects | Project cards and access behavior |
 | Project tabs | Immobilien, Archiv, Team, Einstellungen, Kriterien, Checkliste, Vergleich, Karte, Kalender | Every tab loads without runtime errors |
-| Apartment detail | Price/address, listing link, notes, **Sonnenstand** (Tagesdaten, time slider, optional map arc, viewing-time line), **Finanzen** (Fixkosten, Gesamtbelastung, Rest, optional **Kaltmiete / Mietdeckung / Eigenanteil Rate**, **Bodenrichtwert (Info)** list from BORIS-D with disclaimer and **Aktualisieren**), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF dialog (Vollständig + Bankberater)** | Save or controlled no-op; no flicker after save/reload; solar panel only with coordinates; slider updates sun values and map marker; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; Bodenrichtwert list appears for geocoded apartment (or `no_coords` hint); **Aktualisieren** refreshes without runtime errors; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
+| Apartment detail | Price/address, listing link, notes, **Standort & Umfeld** (Umgebung map/POIs, UBA Lärm summary, BfG Hochwasser, **Aktualisieren**), **Sonnenstand** (Tagesdaten, time slider, optional map arc, viewing-time line), **Finanzen** (Fixkosten, Gesamtbelastung, Rest, optional **Kaltmiete / Mietdeckung / Eigenanteil Rate**, **Bodenrichtwert (Info)** list from BORIS-D with disclaimer and **Aktualisieren**), **Förderungen prüfen** (KfW/BAFA-Hinweise, Status-Badges, offizielle Links), **KI** chat (Finanz/Pendel/Checkliste-Schätzungen), Auto-Fill + **KI-Vorschlag**, draft restore, rating scale (— + 0–10 tap segments), archive/delete, commute, checklist, **PDF dialog (Vollständig + Bankberater)** | Save or controlled no-op; no flicker after save/reload; solar panel only with coordinates; slider updates sun values and map marker; Förderhinweise aktualisieren nach Speichern von Baujahr/Sanierung; Bodenrichtwert list appears for geocoded apartment (or `no_coords` hint); **Aktualisieren** refreshes without runtime errors; chat shows **tippt…** and prose answers; Schätzwerte als Orientierung; no runtime errors |
 | Checklist fill | Assignment filtering, 3-symbol status buttons (○/✕/✓, tap only), notes, progress | Status persists after reload |
 | Compare | Select 2 or more apartments; **Gesamtbelastung/Monat (grob)** when finance configured | Comparison table appears |
-| Map | Load addresses, markers, overlays, mode toggle, Street View link | Coordinate count and overlay API if available |
+| Map | Load addresses, markers, overlays, mode toggle, Street View link; optional **POIs anzeigen** + category legend (default off) | Coordinate count and overlay API if available; POI toggle shows/hides markers without console errors |
 | Calendar | Upcoming and past viewings, iCal URL | URL host/port correct, no crash |
 | LLM/listing | Configured and not configured states; project import + apartment Auto-Fill on ≥2 portal types | Controlled success/partial/failure; `onlyEmpty` respected; **pending-only** session draft restore; save persists after reload |
 | Viewing conflicts | Two upcoming viewings same day, tight schedule | Warning on apartment detail (upcoming only) and project calendar (upcoming only); past section has no warnings |
@@ -253,6 +254,7 @@ Stable per-area contracts. UI labels may change; user outcomes must not break. S
 | Backup export/restore, mobile viewport | [05-backup-mobile.md](browser-tests/05-backup-mobile.md) |
 | Photo gallery, thumbnails, upload queue, camera | [06-photo-gallery.md](browser-tests/06-photo-gallery.md) |
 | Apartment Sonnenstand, sun path map, AR compass | [07-solar.md](browser-tests/07-solar.md) |
+| Standort & Umfeld (Overpass POIs, UBA Lärm, BfG Hochwasser), project-map POI overlay | [08-location-insights.md](browser-tests/08-location-insights.md) |
 | Regression case library (reference table) | [regression-library.md](browser-tests/regression-library.md) |
 
 New features: add or extend the matching contract file and register it in this table. Template: **§17**.

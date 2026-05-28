@@ -8,6 +8,7 @@ import {
   markersForMap,
   osmLinkForPoi,
   POI_CATEGORY_COLORS,
+  POI_CATEGORY_LABELS,
   countPoisByCategory,
   type OverpassPoiData,
   type PoiCategoryId,
