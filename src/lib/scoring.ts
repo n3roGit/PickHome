@@ -133,14 +133,14 @@ export function formatPricePerPlotSqm(
   return `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(perSqm)} €/m² Grundstück`;
 }
 
-export type ApartmentSortKey = "score" | "price" | "ppp" | "date";
+export type ApartmentSortKey = "score" | "price" | "ppp" | "date" | "appointment";
 export type ApartmentSortOrder = "asc" | "desc";
 
 export const DEFAULT_APARTMENT_SORT: ApartmentSortKey = "score";
 export const DEFAULT_APARTMENT_SORT_ORDER: ApartmentSortOrder = "desc";
 
 export function parseApartmentSort(value: string | undefined): ApartmentSortKey {
-  if (value === "price" || value === "ppp" || value === "date") return value;
+  if (value === "price" || value === "ppp" || value === "date" || value === "appointment") return value;
   return DEFAULT_APARTMENT_SORT;
 }
 
@@ -153,9 +153,23 @@ function apartmentSortScore(item: { score: number; displayScore?: number }): num
   return item.displayScore ?? item.score;
 }
 
+function nextViewingDate(viewings: { scheduledAt: Date }[], now: Date): Date | null {
+  const upcoming = viewings
+    .map((v) => v.scheduledAt)
+    .filter((d) => d > now)
+    .sort((a, b) => a.getTime() - b.getTime());
+  return upcoming[0] ?? null;
+}
+
 function compareApartments<
-  T extends { score: number; displayScore?: number; price: number | null; createdAt: Date },
->(a: T, b: T, sort: ApartmentSortKey): number {
+  T extends {
+    score: number;
+    displayScore?: number;
+    price: number | null;
+    createdAt: Date;
+    viewings: { scheduledAt: Date }[];
+  },
+>(a: T, b: T, sort: ApartmentSortKey, now: Date): number {
   switch (sort) {
     case "price": {
       if (a.price == null && b.price == null) return 0;
@@ -172,17 +186,33 @@ function compareApartments<
     }
     case "date":
       return a.createdAt.getTime() - b.createdAt.getTime();
+    case "appointment": {
+      const da = nextViewingDate(a.viewings, now);
+      const db = nextViewingDate(b.viewings, now);
+      if (da == null && db == null) return 0;
+      // apartments without upcoming appointment sort to the end
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da.getTime() - db.getTime();
+    }
     default:
       return apartmentSortScore(a) - apartmentSortScore(b);
   }
 }
 
 export function sortApartments<
-  T extends { score: number; displayScore?: number; price: number | null; createdAt: Date },
+  T extends {
+    score: number;
+    displayScore?: number;
+    price: number | null;
+    createdAt: Date;
+    viewings: { scheduledAt: Date }[];
+  },
 >(items: T[], sort: ApartmentSortKey, order: ApartmentSortOrder = DEFAULT_APARTMENT_SORT_ORDER): T[] {
   const copy = [...items];
+  const now = new Date();
   return copy.sort((a, b) => {
-    const base = compareApartments(a, b, sort);
+    const base = compareApartments(a, b, sort, now);
     return order === "asc" ? base : -base;
   });
 }

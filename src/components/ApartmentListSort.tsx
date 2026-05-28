@@ -9,6 +9,7 @@ const SORT_OPTIONS: { key: ApartmentSortKey; label: string }[] = [
   { key: "price", label: "Preis" },
   { key: "ppp", label: "€/Punkt" },
   { key: "date", label: "Datum" },
+  { key: "appointment", label: "Termin" },
 ];
 
 export function ApartmentListSort({
