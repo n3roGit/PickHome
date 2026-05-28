@@ -85,7 +85,6 @@ export function ApartmentSolarPanel({
       onOpenChange={(open) => {
         if (open) {
           syncTimeToNow();
-          setShowMap(true);
         }
       }}
     >

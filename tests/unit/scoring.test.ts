@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   budgetDelta,
   computeScore,
@@ -215,6 +215,7 @@ describe("parseApartmentSort", () => {
     expect(parseApartmentSort("price")).toBe("price");
     expect(parseApartmentSort("ppp")).toBe("ppp");
     expect(parseApartmentSort("date")).toBe("date");
+    expect(parseApartmentSort("appointment")).toBe("appointment");
   });
 });
 
@@ -231,9 +232,9 @@ describe("parseApartmentSortOrder", () => {
 
 describe("sortApartments", () => {
   const base = [
-    { id: "a", score: 80, price: 500_000, createdAt: new Date("2024-01-01") },
-    { id: "b", score: 60, price: 300_000, createdAt: new Date("2024-06-01") },
-    { id: "c", score: 40, price: null, createdAt: new Date("2024-03-01") },
+    { id: "a", score: 80, price: 500_000, createdAt: new Date("2024-01-01"), viewings: [] },
+    { id: "b", score: 60, price: 300_000, createdAt: new Date("2024-06-01"), viewings: [] },
+    { id: "c", score: 40, price: null, createdAt: new Date("2024-03-01"), viewings: [] },
   ];
 
   it("sorts by score descending by default", () => {
@@ -258,11 +259,63 @@ describe("sortApartments", () => {
 
   it("sorts by displayScore when dealbreaker zeros score", () => {
     const items = [
-      { id: "a", score: 0, displayScore: 68, price: 500_000, createdAt: new Date("2024-01-01") },
-      { id: "b", score: 50, displayScore: 50, price: 300_000, createdAt: new Date("2024-06-01") },
+      {
+        id: "a",
+        score: 0,
+        displayScore: 68,
+        price: 500_000,
+        createdAt: new Date("2024-01-01"),
+        viewings: [],
+      },
+      {
+        id: "b",
+        score: 50,
+        displayScore: 50,
+        price: 300_000,
+        createdAt: new Date("2024-06-01"),
+        viewings: [],
+      },
     ];
     const sorted = sortApartments(items, "score");
     expect(sorted.map((a) => a.id)).toEqual(["a", "b"]);
+  });
+
+  it("sorts by next upcoming appointment ascending", () => {
+    const now = new Date("2026-05-28T10:00:00Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      const items = [
+        {
+          id: "later",
+          score: 50,
+          price: 300_000,
+          createdAt: new Date("2024-01-01"),
+          viewings: [{ scheduledAt: new Date("2026-06-01T10:00:00Z") }],
+        },
+        {
+          id: "sooner",
+          score: 40,
+          price: 200_000,
+          createdAt: new Date("2024-02-01"),
+          viewings: [
+            { scheduledAt: new Date("2026-05-29T10:00:00Z") },
+            { scheduledAt: new Date("2026-07-01T10:00:00Z") },
+          ],
+        },
+        {
+          id: "none",
+          score: 90,
+          price: 500_000,
+          createdAt: new Date("2024-03-01"),
+          viewings: [{ scheduledAt: new Date("2026-05-01T10:00:00Z") }],
+        },
+      ];
+      const sorted = sortApartments(items, "appointment", "asc");
+      expect(sorted.map((a) => a.id)).toEqual(["sooner", "later", "none"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
