@@ -21,7 +21,6 @@ export type PoiCategoryId =
   | "publicTransport"
   | "park"
   | "medical"
-  | "building"
   | "industrial"
   | "majorRoad"
   | "railway"
@@ -113,7 +112,6 @@ const CATEGORY_DEFS: {
 ];
 
 const MICRO_CATEGORY_DEFS: { id: PoiCategoryId; label: string }[] = [
-  { id: "building", label: "Gebäude" },
   { id: "industrial", label: "Gewerbe/Industrie" },
   { id: "majorRoad", label: "Hauptstraße" },
   { id: "railway", label: "Schiene" },
@@ -239,15 +237,26 @@ function collectMarkers(
 
 /** Markers for map when cache predates the markers field (nearest POI per category only). */
 export function markersForMap(data: OverpassPoiData): PoiMarker[] {
-  if (data.markers && data.markers.length > 0) return data.markers;
-  const fallback: PoiMarker[] = [];
-  for (const def of CATEGORY_DEFS) {
-    const nearest = data.categories[def.id].nearest;
-    if (nearest) {
-      fallback.push({ categoryId: def.id, ...nearest });
-    }
-  }
-  return fallback;
+  const raw =
+    data.markers && data.markers.length > 0
+      ? data.markers
+      : (() => {
+          const fallback: PoiMarker[] = [];
+          for (const def of CATEGORY_DEFS) {
+            const nearest = data.categories[def.id].nearest;
+            if (nearest) {
+              fallback.push({ categoryId: def.id, ...nearest });
+            }
+          }
+          for (const def of MICRO_CATEGORY_DEFS) {
+            const nearest = data.categories[def.id]?.nearest;
+            if (nearest) {
+              fallback.push({ categoryId: def.id, ...nearest });
+            }
+          }
+          return fallback;
+        })();
+  return raw.filter((m) => (m.categoryId as string) !== "building");
 }
 
 function summarizeMicroCategory(
@@ -357,7 +366,9 @@ export async function fetchOverpassPois(
   for (const def of MICRO_CATEGORY_DEFS) {
     categories[def.id] = summarizeMicroCategory(microMarkers, def.id);
   }
-  const markers = [...infraMarkers, ...microMarkers];
+  const markers = [...infraMarkers, ...microMarkers].filter(
+    (m) => (m.categoryId as string) !== "building"
+  );
   const micro = parseOverpassMicroElements(elements, latitude, longitude);
   const hasAny =
     markers.length > 0 ||
@@ -408,7 +419,6 @@ export const POI_CATEGORY_COLORS: Record<PoiCategoryId, string> = {
   publicTransport: "#ea580c",
   park: "#059669",
   medical: "#dc2626",
-  building: "#64748b",
   industrial: "#78716c",
   majorRoad: "#475569",
   railway: "#0d9488",

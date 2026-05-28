@@ -9,7 +9,6 @@ export const MICRO_RAIL_RADIUS_M = 400;
 export const MICRO_NIGHTLIFE_RADIUS_M = 300;
 
 export type MicroMapCategoryId =
-  | "building"
   | "industrial"
   | "majorRoad"
   | "railway"
@@ -301,30 +300,6 @@ export function collectMicroMapMarkers(
 ): MicroMapMarker[] {
   const markers: MicroMapMarker[] = [];
   const seen = new Set<string>();
-
-  for (const el of elements) {
-    if (!el.tags?.building) continue;
-    const coords = elementCoords(el);
-    if (!coords) continue;
-    const distanceM = Math.round(distanceMeters(latitude, longitude, coords.lat, coords.lng));
-    if (distanceM > MICRO_BUILDING_RADIUS_M) continue;
-    const tags = el.tags ?? {};
-    pushMicroMarker(
-      markers,
-      seen,
-      "building",
-      {
-        name: tags.name?.trim() || null,
-        distanceM,
-        detail: formatBuildingDetail(tags),
-        osmType: el.type,
-        osmId: el.id,
-        lat: coords.lat,
-        lng: coords.lng,
-      },
-      "Gebäude"
-    );
-  }
 
   for (const el of elements) {
     const coords = elementCoords(el);
