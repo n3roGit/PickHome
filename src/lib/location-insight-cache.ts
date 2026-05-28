@@ -81,36 +81,39 @@ async function loadAndFetch<T>(
   }
 
   if (apartment.latitude == null || apartment.longitude == null) {
-    return persistSnapshot(prisma, apartmentId, domain, {
+    const snapshot: LocationInsightSnapshot<T> = {
       domain,
       status: "no_coords",
       errorMessage: null,
       fetchedAt: new Date(),
       data: null,
-    });
+    };
+    return persistSnapshot(prisma, apartmentId, domain, snapshot);
   }
 
   const fetched = await fetcher(apartment.latitude, apartment.longitude);
   const fetchedAt = new Date();
 
   if (!fetched.ok) {
-    return persistSnapshot(prisma, apartmentId, domain, {
+    const snapshot: LocationInsightSnapshot<T> = {
       domain,
       status: "error",
       errorMessage: fetched.error,
       fetchedAt,
       data: null,
-    });
+    };
+    return persistSnapshot(prisma, apartmentId, domain, snapshot);
   }
 
   if (fetched.noData) {
-    return persistSnapshot(prisma, apartmentId, domain, {
+    const snapshot: LocationInsightSnapshot<T> = {
       domain,
       status: "no_data",
       errorMessage: null,
       fetchedAt,
       data: null,
-    });
+    };
+    return persistSnapshot(prisma, apartmentId, domain, snapshot);
   }
 
   return persistSnapshot(prisma, apartmentId, domain, {

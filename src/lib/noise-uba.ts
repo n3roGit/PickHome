@@ -269,7 +269,7 @@ export function buildNoiseHumanSummary(hits: NoiseHit[]): NoiseHumanSummary {
       headline = "";
   }
 
-  const sourceOrder: NoiseSource[] = ["Straße", "Schiene", "Flughafen"];
+  const sourceOrder = ["Straße", "Schiene", "Flughafen"] as const;
   const sources: NoiseHumanSourceSummary[] = [];
 
   for (const source of sourceOrder) {
