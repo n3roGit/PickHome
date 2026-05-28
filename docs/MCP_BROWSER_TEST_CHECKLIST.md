@@ -327,6 +327,7 @@ Use this compact checklist before merging major UI, schema, or routing changes.
 [ ] Calendar tab and iCal URL passed if viewing, timezone, env, or route code changed
 [ ] LLM/listing flow passed if import, PDF, or LLM code changed
 [ ] KI chat passed if `ApartmentLlmChatButton`, `llm/chat`, or `llm-tools` changed (**tippt…**, no raw `web_search` JSON, web answer in prose)
+[ ] KI chat new contexts: viewing, price history, BORIS, subsidy, cold rent each answered with one question (or honest missing-data reply); error banner does not wipe chat history
 [ ] Project settings: **Monatliche Fixkosten** save/reload if finance settings changed
 [ ] Finanzen panel: **Gesamtbelastung/Monat** and **Rest nach allen Kosten** if Fixkosten + Haushaltsnetto set
 [ ] Finanzen panel: Kaltmiete in **Preis & Adresse** speichert; Mietdeckung, Eigenanteil und „nach Miete“-Belastung in Finanzen sichtbar

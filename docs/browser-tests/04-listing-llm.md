@@ -125,18 +125,31 @@ Toolbar button **KI** opens modal dialog (`ApartmentLlmChatButton`). API: `POST 
 - Finance estimate questions (e.g. „Was kostet mich das monatlich insgesamt?“, „Wie hoch sind die Kaufnebenkosten grob?“) use **Finanz-Schätzung (PickHome …)** context; answers must label values as **grobe Schätzung / Orientierung**, not as binding facts.
 - Commute questions (e.g. „Wie weit ist es zur Arbeit?“) use **Fahrtwege (PickHome-Schätzung …)** from commute cache; if route not calculated, say so honestly — no invented times.
 - Checklist questions (e.g. „Was wurde schon geprüft?“) use **Checkliste (PickHome)** entries with status and notes.
+- Viewing questions (e.g. „Wann ist die nächste Besichtigung?“) use **Besichtigungstermine**; if none are stored, say so honestly.
+- Price history questions (e.g. „Hat sich der Preis verändert?“) use **Preisverlauf**; if no history exists, say so honestly.
+- BORIS questions (e.g. „Wie hoch ist der Bodenrichtwert?“) use **Bodenrichtwert (BORIS)**; if no coordinates or no BORIS data, say so honestly.
+- Subsidy questions (e.g. „Welche Förderprogramme kommen in Frage?“) use **Förder-Hinweise (PickHome)** with program name and status.
+- Cold rent questions (e.g. „Wie hoch ist die Kaltmiete?“) use the Stammdaten field **Kaltmiete monatlich**, not the finance estimate.
+- Error banners in the modal (red box) must not remove prior chat turns; input and **Senden** stay usable after a failed request.
 
 #### MCP procedure
 
-1. Open disposable apartment with notes/description (or indexed PDF); project has Finanz-Annahmen (Eigenkapital, Laufzeit, Haushaltsnetto, optional Fixkosten); commute cache populated if testing Fahrtwege.
+1. Open disposable apartment with notes/description (or indexed PDF); project has Finanz-Annahmen (Eigenkapital, Laufzeit, Haushaltsnetto, optional Fixkosten); commute cache populated if testing Fahrtwege; prefer geocoded apartment with viewings, price history, and BORIS cache when testing new context sections.
 2. Click toolbar **KI** — modal opens, no console errors.
-3. Ask a **property-only** question → answer references on-page data; **tippt…** visible during wait.
-4. Ask **„Was kostet mich diese Immobilie monatlich insgesamt?“** → answer mentions Rate, Wohnnebenkosten, Fixkosten (if set), labels as Schätzung.
-5. Ask **„Was wurde in der Checkliste schon geprüft?“** (when checklist entries exist) → status + notes from context.
-6. Ask a **web** question (district quality, market norms) → wait for **tippt…** → answer in prose with sources/domains or explicit „keine Treffer“ / failure; **no** JSON tool bubble.
-7. Ask **„Was habe ich davor gefragt?“** (or similar) → assistant repeats or paraphrases the first user question from step 3.
-8. Optional DevTools: `POST /api/apartments/<id>/llm/chat` status 200; request body includes full `messages` array; response JSON has string `answer`, not a JSON object as the only content.
-9. Close modal with **×**; reopen — prior turns still visible in session until page reload.
+3. Ask **„Was steht in den Notizen zur Energieklasse?“** → answer references on-page data; **tippt…** visible during wait.
+4. Ask **„Wie hoch ist die Kaltmiete?“** → value from Stammdaten or honest „nicht hinterlegt“.
+5. Ask **„Wann ist die nächste Besichtigung?“** → date from **Besichtigungstermine** or honest „kein Termin hinterlegt“.
+6. Ask **„Hat sich der Preis seit dem ersten Eintrag verändert?“** → from **Preisverlauf** or honest „kein Preisverlauf“.
+7. Ask **„Wie hoch ist der Bodenrichtwert?“** → EUR/m² from **Bodenrichtwert (BORIS)** or honest „keine Koordinaten / kein Wert“.
+8. Ask **„Welche Förderprogramme kommen in Frage?“** → programs + status from **Förder-Hinweise (PickHome)**.
+9. Ask **„Was kostet mich diese Immobilie monatlich insgesamt?“** → answer mentions Rate, Wohnnebenkosten, Fixkosten (if set), labels as Schätzung.
+10. Ask **„Was wurde in der Checkliste schon geprüft?“** (when checklist entries exist) → status + notes from context.
+11. Ask **„Suche im Internet: Wie sind die typischen Sanierungskosten pro m² in Deutschland?“** → wait for **tippt…** (may take longer) → prose answer with sources/domains or explicit failure; **no** JSON tool bubble; `webSearchUsed: true` in network response when search ran.
+12. Ask **„Wie ist die Lage des Stadtteils und was kosten vergleichbare Objekte dort?“** → prose with sources or explicit „keine Treffer“ / controlled failure.
+13. Ask **„Was habe ich als erstes gefragt?“** → assistant names or paraphrases the question from step 3.
+14. **Error handling:** trigger a controlled failure (e.g. DevTools offline for one request, or POST with empty body via `evaluate_script`) → red error banner appears; prior turns from steps 3–13 remain visible; input and **Senden** stay enabled; no Next.js overlay.
+15. Optional DevTools: `POST /api/apartments/<id>/llm/chat` status 200 for successful turns; request body includes full `messages` array; response JSON has string `answer`, not a JSON object as the only content.
+16. Close modal with **×**; reopen — prior turns still visible in session until page reload.
 
 #### Negative cases
 
@@ -144,6 +157,7 @@ Toolbar button **KI** opens modal dialog (`ApartmentLlmChatButton`). API: `POST 
 - `no_source_text` → **KI** button disabled
 - Empty message → no request
 - `PICKHOME_WEB_SEARCH=0` → answers from property data only (no web claims)
+- Failed chat request (timeout, network, invalid body) → red banner in modal; prior chat history preserved; input remains usable
 
 #### Web search configuration (reference)
 
