@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { PoiCategoryLegend } from "@/components/PoiCategoryLegend";
+import { buildGoogleMapsPlaceUrl } from "@/lib/google-maps-links";
 import {
   markersForMap,
-  osmLinkForPoi,
   POI_CATEGORY_COLORS,
   POI_CATEGORY_LABELS,
   countPoisByCategory,
@@ -52,11 +52,15 @@ function apartmentIcon() {
 function popupHtml(marker: PoiMarker): string {
   const name = marker.name ?? "Unbenannt";
   const label = POI_CATEGORY_LABELS[marker.categoryId];
-  const link = osmLinkForPoi(marker);
+  const link = buildGoogleMapsPlaceUrl({
+    latitude: marker.lat,
+    longitude: marker.lng,
+    label: marker.name,
+  });
   return `<div class="text-sm leading-snug">
     <p class="font-semibold m-0">${escapeHtml(name)}</p>
     <p class="text-xs mt-1 m-0 opacity-80">${escapeHtml(label)} · ${marker.distanceM} m</p>
-    <a href="${link}" target="_blank" rel="noreferrer" class="text-xs mt-1 inline-block">OSM ↗</a>
+    <a href="${link}" target="_blank" rel="noreferrer" class="text-xs mt-1 inline-block">Google Maps ↗</a>
   </div>`;
 }
 

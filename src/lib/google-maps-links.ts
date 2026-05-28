@@ -27,6 +27,20 @@ export function buildGoogleMapsStreetViewUrl(options: {
   return `https://www.google.com/maps/search/?${params.toString()}`;
 }
 
+/** Opens Google Maps at a place (no API key; browser link only). */
+export function buildGoogleMapsPlaceUrl(options: {
+  latitude: number;
+  longitude: number;
+  label?: string | null;
+}): string {
+  const lat = options.latitude;
+  const lng = options.longitude;
+  const name = options.label?.trim();
+  const query = name ? `${name}@${lat},${lng}` : `${lat},${lng}`;
+  const params = new URLSearchParams({ api: "1", query });
+  return `https://www.google.com/maps/search/?${params.toString()}`;
+}
+
 export function hasGoogleMapsStreetViewCoords(
   latitude?: number | null,
   longitude?: number | null

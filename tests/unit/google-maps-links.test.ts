@@ -1,8 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildGoogleMapsPlaceUrl,
   buildGoogleMapsStreetViewUrl,
   hasGoogleMapsStreetViewCoords,
 } from "@/lib/google-maps-links";
+
+describe("buildGoogleMapsPlaceUrl", () => {
+  it("builds search URL from coordinates", () => {
+    const url = buildGoogleMapsPlaceUrl({ latitude: 52.52, longitude: 13.38 });
+    expect(url).toBe("https://www.google.com/maps/search/?api=1&query=52.52%2C13.38");
+  });
+
+  it("includes place name in query when provided", () => {
+    const url = buildGoogleMapsPlaceUrl({
+      latitude: 52.52,
+      longitude: 13.38,
+      label: "Demo Apotheke",
+    });
+    expect(url).toBe(
+      "https://www.google.com/maps/search/?api=1&query=Demo+Apotheke%4052.52%2C13.38"
+    );
+  });
+});
 
 describe("buildGoogleMapsStreetViewUrl", () => {
   it("builds pano URL from coordinates", () => {
