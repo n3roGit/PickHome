@@ -22,9 +22,60 @@ export type NoiseUbaData = {
   hits: NoiseHit[];
 };
 
+export type NoiseAssessmentLevel = "quiet" | "moderate" | "loud" | "very_loud";
+
+export type NoiseHumanSourceLine = {
+  metricLabel: string;
+  bandHuman: string;
+  assessment: string;
+};
+
+export type NoiseHumanSourceSummary = {
+  source: NoiseSource;
+  sourceLabel: string;
+  lines: NoiseHumanSourceLine[];
+};
+
+export type NoiseHumanSummary = {
+  headline: string;
+  overallLevel: NoiseAssessmentLevel | "none";
+  sources: NoiseHumanSourceSummary[];
+};
+
+const SKIP_LAYER_PREFIXES = ["Bundeslaender_", "Ballungsraeume_"];
+
+const SOURCE_LABELS: Record<Exclude<NoiseSource, "Sonstige" | "Ballungsraum">, string> = {
+  Straße: "Straßenverkehr",
+  Schiene: "Schienenverkehr",
+  Flughafen: "Fluglärm",
+};
+
+const METRIC_LABELS: Record<"Lden" | "Lnight", string> = {
+  Lden: "Tageslärm (Durchschnitt Tag/Abend/Nacht)",
+  Lnight: "Nachtlärm (22–6 Uhr)",
+};
+
+const ASSESSMENT_LABELS: Record<NoiseAssessmentLevel, string> = {
+  quiet: "eher ruhig",
+  moderate: "mäßig laut (typisch städtisch)",
+  loud: "laut",
+  very_loud: "sehr laut",
+};
+
+const BLR_NOISE_FIELDS: { key: string; source: NoiseSource }[] = [
+  { key: "road_den", source: "Straße" },
+  { key: "road_night", source: "Straße" },
+  { key: "rail_den", source: "Schiene" },
+  { key: "rail_night", source: "Schiene" },
+  { key: "air_den", source: "Flughafen" },
+  { key: "air_night", source: "Flughafen" },
+];
+
 function classifySource(layerName: string): NoiseSource {
   const n = layerName.toLowerCase();
-  if (n.includes("flughaf") || n.includes("airport") || n.includes("flug")) return "Flughafen";
+  if (n.includes("flughaf") || n.includes("airport") || n.includes("flug") || n.includes("_air")) {
+    return "Flughafen";
+  }
   if (n.includes("schiene") || n.includes("bahn") || n.includes("rail")) return "Schiene";
   if (n.includes("straße") || n.includes("strasse") || n.includes("road") || n.includes("verkehr")) {
     return "Straße";
@@ -33,57 +84,103 @@ function classifySource(layerName: string): NoiseSource {
   return "Sonstige";
 }
 
-function classifyMetric(layerName: string, attrs: Record<string, unknown>): NoiseMetric {
-  const blob = `${layerName} ${JSON.stringify(attrs)}`.toLowerCase();
-  if (blob.includes("lnight") || blob.includes("l_night") || blob.includes("nacht")) {
-    return "Lnight";
-  }
-  if (blob.includes("lden") || blob.includes("l_den") || blob.includes("tag")) {
-    return "Lden";
-  }
-  return "unknown";
-}
-
-function parseNoiseBand(attrs: Record<string, unknown>, layerName: string): string {
-  const keys = [
-    "Lden",
-    "LDEN",
-    "L_night",
-    "LNIGHT",
-    "Lnight",
-    "db",
-    "DB",
-    "LAERM",
-    "Lärm",
-    "PEGEL",
-    "pegel",
-    "WERT",
-    "wert",
-    "KLASSE",
-    "klasse",
-    "Label",
-    "label",
-    "Value",
-    "value",
-  ];
-  for (const key of keys) {
-    const v = attrs[key];
-    if (v != null && String(v).trim()) return String(v).trim();
-  }
-  const display = attrString(attrs, "Display", "NAME", "Name", "Beschreibung");
-  if (display) return display;
-  return layerName;
-}
-
-function normalizeBandDb(raw: string): string {
+/** UBA codes like Lden6064 → 60–64 dB, Lden75 → >75 dB. */
+export function parseUbaNoiseCode(raw: string): { metric: NoiseMetric; bandDb: string } | null {
   const text = raw.trim();
-  const range = text.match(/(\d{2})\s*[-–]\s*(\d{2})/);
-  if (range) return `${range[1]}-${range[2]}`;
-  const gt = text.match(/>\s*(\d{2})/);
-  if (gt) return `>${gt[1]}`;
-  const single = text.match(/\b(\d{2})\b/);
-  if (single) return single[1];
-  return text.slice(0, 40);
+  if (!text) return null;
+
+  const range = text.match(/^L(den|night)(\d{2})(\d{2})$/i);
+  if (range) {
+    return {
+      metric: range[1].toLowerCase() === "night" ? "Lnight" : "Lden",
+      bandDb: `${range[2]}-${range[3]}`,
+    };
+  }
+
+  const gt = text.match(/^L(den|night)(\d{2})$/i);
+  if (gt) {
+    return {
+      metric: gt[1].toLowerCase() === "night" ? "Lnight" : "Lden",
+      bandDb: `>${gt[2]}`,
+    };
+  }
+
+  const looseRange = text.match(/(\d{2})\s*[-–]\s*(\d{2})/);
+  if (looseRange) {
+    const metric: NoiseMetric = text.toLowerCase().includes("night") ? "Lnight" : "Lden";
+    return { metric, bandDb: `${looseRange[1]}-${looseRange[2]}` };
+  }
+
+  const looseGt = text.match(/>\s*(\d{2})/);
+  if (looseGt) {
+    const metric: NoiseMetric = text.toLowerCase().includes("night") ? "Lnight" : "Lden";
+    return { metric, bandDb: `>${looseGt[1]}` };
+  }
+
+  return null;
+}
+
+function shouldSkipLayer(layerName: string): boolean {
+  return SKIP_LAYER_PREFIXES.some((p) => layerName.startsWith(p));
+}
+
+function pushHit(
+  results: NoiseHit[],
+  source: NoiseSource,
+  metric: NoiseMetric,
+  bandDb: string,
+  layerName: string
+): void {
+  if (metric === "unknown" || !isMeaningfulBand(bandDb)) return;
+  results.push({ source, metric, bandDb, layerName });
+}
+
+function parseHitsFromAttributes(
+  attrs: Record<string, unknown>,
+  layerName: string,
+  results: NoiseHit[]
+): void {
+  const klasse = attrString(attrs, "Lärmpegelklasse", "Laermpegelklasse");
+  if (klasse) {
+    const parsed = parseUbaNoiseCode(klasse);
+    if (parsed) {
+      pushHit(results, classifySource(layerName), parsed.metric, parsed.bandDb, layerName);
+    }
+  }
+
+  for (const { key, source } of BLR_NOISE_FIELDS) {
+    const raw = attrs[key];
+    if (raw == null || String(raw).trim() === "") continue;
+    const parsed = parseUbaNoiseCode(String(raw));
+    if (parsed) {
+      pushHit(results, source, parsed.metric, parsed.bandDb, layerName);
+    }
+  }
+
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value == null) continue;
+    const keyLower = key.toLowerCase();
+    if (!keyLower.includes("lden") && !keyLower.includes("lnight")) continue;
+    if (typeof value === "number" && value > 200) continue;
+    const parsed = parseUbaNoiseCode(String(value));
+    if (parsed) {
+      pushHit(results, classifySource(layerName), parsed.metric, parsed.bandDb, layerName);
+    }
+  }
+}
+
+export function dedupeNoiseHits(hits: NoiseHit[]): NoiseHit[] {
+  const map = new Map<string, NoiseHit>();
+  for (const hit of hits) {
+    const key = `${hit.source}:${hit.metric}`;
+    const existing = map.get(key);
+    const hitDb = noiseBandLowerDb(hit.bandDb) ?? -1;
+    const existingDb = existing ? (noiseBandLowerDb(existing.bandDb) ?? -1) : -1;
+    if (!existing || hitDb > existingDb) {
+      map.set(key, hit);
+    }
+  }
+  return [...map.values()];
 }
 
 export function parseNoiseIdentifyResults(
@@ -93,17 +190,14 @@ export function parseNoiseIdentifyResults(
   for (const hit of hits) {
     const layerName = hit.layerName?.trim();
     const attrs = hit.attributes;
-    if (!layerName || !attrs) continue;
-    const bandRaw = parseNoiseBand(attrs, layerName);
-    if (!bandRaw) continue;
-    results.push({
-      source: classifySource(layerName),
-      metric: classifyMetric(layerName, attrs),
-      bandDb: normalizeBandDb(bandRaw),
-      layerName,
-    });
+    if (!layerName || !attrs || shouldSkipLayer(layerName)) continue;
+    parseHitsFromAttributes(attrs, layerName, results);
   }
-  return results;
+  return dedupeNoiseHits(results);
+}
+
+export function isMeaningfulBand(bandDb: string): boolean {
+  return noiseBandLowerDb(bandDb) != null;
 }
 
 /** Parse dB lower bound from band string for sorting/warnings. */
@@ -113,6 +207,96 @@ export function noiseBandLowerDb(bandDb: string): number | null {
   const range = bandDb.match(/^(\d+)/);
   if (range) return parseInt(range[1], 10);
   return null;
+}
+
+export function noiseBandAssessment(bandDb: string): NoiseAssessmentLevel {
+  const lower = noiseBandLowerDb(bandDb);
+  if (lower == null) return "moderate";
+  if (lower >= 70) return "very_loud";
+  if (lower >= 65) return "loud";
+  if (lower >= 55) return "moderate";
+  return "quiet";
+}
+
+export function formatBandDbHuman(bandDb: string): string {
+  if (bandDb.startsWith(">")) {
+    return `über ${bandDb.slice(1).trim()} dB`;
+  }
+  if (bandDb.includes("-")) {
+    return `ca. ${bandDb.replace("-", "–")} dB`;
+  }
+  return `ca. ${bandDb} dB`;
+}
+
+export function buildNoiseHumanSummary(hits: NoiseHit[]): NoiseHumanSummary {
+  const displayHits = hits.filter(
+    (h) => h.source !== "Sonstige" && h.source !== "Ballungsraum"
+  );
+  if (displayHits.length === 0) {
+    return {
+      headline: "Kein relevanter Lärmeintrag in der UBA-Karte an diesem Punkt.",
+      overallLevel: "none",
+      sources: [],
+    };
+  }
+
+  const worstHit = displayHits.reduce((best, hit) => {
+    const hitDb = noiseBandLowerDb(hit.bandDb) ?? -1;
+    const bestDb = noiseBandLowerDb(best.bandDb) ?? -1;
+    return hitDb > bestDb ? hit : best;
+  });
+  const overallLevel = noiseBandAssessment(worstHit.bandDb);
+
+  let headline: string;
+  switch (overallLevel) {
+    case "very_loud":
+      headline =
+        "Die UBA-Lärmkarte zeigt hier eine hohe Belastung durch Hauptverkehrswege (ab ca. 70 dB).";
+      break;
+    case "loud":
+      headline =
+        "Die UBA-Lärmkarte zeigt hier spürbaren Lärm von Hauptstraßen oder Schienen (ca. 65–70 dB).";
+      break;
+    case "moderate":
+      headline =
+        "Die UBA-Lärmkarte ordnet den Standort dem städtischen Mittelbereich zu (ca. 55–65 dB).";
+      break;
+    case "quiet":
+      headline =
+        "Die UBA-Lärmkarte zeigt hier eher niedrigere Pegel — trotzdem nur grobe Orientierung.";
+      break;
+    default:
+      headline = "";
+  }
+
+  const sourceOrder: NoiseSource[] = ["Straße", "Schiene", "Flughafen"];
+  const sources: NoiseHumanSourceSummary[] = [];
+
+  for (const source of sourceOrder) {
+    const sourceHits = displayHits.filter((h) => h.source === source);
+    if (sourceHits.length === 0) continue;
+
+    const lines: NoiseHumanSourceLine[] = [];
+    for (const metric of ["Lden", "Lnight"] as const) {
+      const hit = sourceHits.find((h) => h.metric === metric);
+      if (!hit) continue;
+      lines.push({
+        metricLabel: METRIC_LABELS[metric],
+        bandHuman: formatBandDbHuman(hit.bandDb),
+        assessment: ASSESSMENT_LABELS[noiseBandAssessment(hit.bandDb)],
+      });
+    }
+
+    if (lines.length > 0) {
+      sources.push({
+        source,
+        sourceLabel: SOURCE_LABELS[source],
+        lines,
+      });
+    }
+  }
+
+  return { headline, overallLevel, sources };
 }
 
 export function highestNoiseBandDb(hits: NoiseHit[]): number | null {
@@ -145,15 +329,22 @@ export function noiseHitsForCriterionName(hits: NoiseHit[], criterionName: strin
 }
 
 export function formatNoiseHitLine(hit: NoiseHit): string {
-  const metric = hit.metric === "unknown" ? "" : ` ${hit.metric}`;
-  return `${hit.source}${metric}: ${hit.bandDb} dB(A)`;
+  const metric =
+    hit.metric === "Lden" || hit.metric === "Lnight" ? METRIC_LABELS[hit.metric] : "Lärm";
+  const source =
+    hit.source in SOURCE_LABELS
+      ? SOURCE_LABELS[hit.source as keyof typeof SOURCE_LABELS]
+      : hit.source;
+  return `${source}, ${metric}: ${formatBandDbHuman(hit.bandDb)} (${ASSESSMENT_LABELS[noiseBandAssessment(hit.bandDb)]})`;
 }
 
 export function formatNoiseMaxCompact(hits: NoiseHit[] | null): string {
   if (!hits?.length) return "kein Treffer";
-  const maxDb = highestNoiseBandDb(hits);
-  const top = hits.find((h) => noiseBandLowerDb(h.bandDb) === maxDb) ?? hits[0];
-  return formatNoiseHitLine(top);
+  const summary = buildNoiseHumanSummary(hits);
+  if (summary.sources.length === 0) return "kein Treffer";
+  const top = summary.sources[0];
+  const line = top.lines[0];
+  return `${top.sourceLabel}: ${line.bandHuman}`;
 }
 
 export async function fetchNoiseUbaForCoords(

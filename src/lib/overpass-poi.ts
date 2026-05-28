@@ -31,9 +31,21 @@ export type PoiCategorySummary = {
   nearest: PoiNearest | null;
 };
 
+export type PoiMarker = {
+  categoryId: PoiCategoryId;
+  name: string | null;
+  distanceM: number;
+  lat: number;
+  lng: number;
+  osmType: string;
+  osmId: number;
+};
+
 export type OverpassPoiData = {
   radii: { close: number; wider: number };
   categories: Record<PoiCategoryId, PoiCategorySummary>;
+  /** All POIs within the wide radius for map display; optional in older cache rows. */
+  markers?: PoiMarker[];
 };
 
 type OverpassElement = {
@@ -169,6 +181,53 @@ function summarizeCategory(
   return { countClose, countWide, nearest };
 }
 
+function categoryForElement(el: OverpassElement): PoiCategoryId | null {
+  for (const def of CATEGORY_DEFS) {
+    if (elementMatchesCategory(el, def.id)) return def.id;
+  }
+  return null;
+}
+
+function collectMarkers(
+  elements: OverpassElement[],
+  originLat: number,
+  originLng: number,
+  radiusWide: number
+): PoiMarker[] {
+  const markers: PoiMarker[] = [];
+  for (const el of elements) {
+    const categoryId = categoryForElement(el);
+    if (!categoryId) continue;
+    const coords = elementCoords(el);
+    if (!coords) continue;
+    const distanceM = Math.round(distanceMeters(originLat, originLng, coords.lat, coords.lng));
+    if (distanceM > radiusWide) continue;
+    markers.push({
+      categoryId,
+      name: el.tags?.name?.trim() || null,
+      distanceM,
+      lat: coords.lat,
+      lng: coords.lng,
+      osmType: el.type,
+      osmId: el.id,
+    });
+  }
+  return markers;
+}
+
+/** Markers for map when cache predates the markers field (nearest POI per category only). */
+export function markersForMap(data: OverpassPoiData): PoiMarker[] {
+  if (data.markers && data.markers.length > 0) return data.markers;
+  const fallback: PoiMarker[] = [];
+  for (const def of CATEGORY_DEFS) {
+    const nearest = data.categories[def.id].nearest;
+    if (nearest) {
+      fallback.push({ categoryId: def.id, ...nearest });
+    }
+  }
+  return fallback;
+}
+
 function emptyCategories(): Record<PoiCategoryId, PoiCategorySummary> {
   const out = {} as Record<PoiCategoryId, PoiCategorySummary>;
   for (const def of CATEGORY_DEFS) {
@@ -219,20 +278,52 @@ export async function fetchOverpassPois(
     );
   }
 
-  const hasAny = Object.values(categories).some((c) => c.countWide > 0);
+  const markers = collectMarkers(
+    elements,
+    latitude,
+    longitude,
+    OVERPASS_RADIUS_WIDE_M
+  );
+  const hasAny = markers.length > 0;
   return {
     ok: true,
     data: {
       radii: { close: OVERPASS_RADIUS_CLOSE_M, wider: OVERPASS_RADIUS_WIDE_M },
       categories,
+      markers,
     },
     noData: !hasAny,
   };
 }
 
+export const POI_CATEGORY_ORDER: PoiCategoryId[] = CATEGORY_DEFS.map((d) => d.id);
+
 export const POI_CATEGORY_LABELS: Record<PoiCategoryId, string> = Object.fromEntries(
   CATEGORY_DEFS.map((d) => [d.id, d.label])
 ) as Record<PoiCategoryId, string>;
+
+export function countPoisByCategory(
+  markers: { categoryId: PoiCategoryId }[]
+): Record<PoiCategoryId, number> {
+  const counts = Object.fromEntries(POI_CATEGORY_ORDER.map((id) => [id, 0])) as Record<
+    PoiCategoryId,
+    number
+  >;
+  for (const m of markers) {
+    counts[m.categoryId] += 1;
+  }
+  return counts;
+}
+
+export const POI_CATEGORY_COLORS: Record<PoiCategoryId, string> = {
+  supermarket: "#16a34a",
+  pharmacy: "#db2777",
+  school: "#2563eb",
+  kindergarten: "#7c3aed",
+  publicTransport: "#ea580c",
+  park: "#059669",
+  medical: "#dc2626",
+};
 
 export function osmLinkForPoi(poi: PoiNearest): string {
   return `https://www.openstreetmap.org/${poi.osmType}/${poi.osmId}`;

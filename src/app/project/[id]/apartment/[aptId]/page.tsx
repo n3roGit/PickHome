@@ -480,7 +480,12 @@ export default async function ApartmentPage({
           settingsHref="/account/settings"
           viewerIsAdmin={admin}
         />
-        <ApartmentLocationInsights apartmentId={apartment.id} bundle={locationInsights} />
+        <ApartmentLocationInsights
+          apartmentId={apartment.id}
+          bundle={locationInsights}
+          latitude={apartment.latitude}
+          longitude={apartment.longitude}
+        />
         <ApartmentPurchaseCosts
           apartmentId={apartment.id}
           revision={apartment.revision}

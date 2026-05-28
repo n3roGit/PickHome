@@ -1,5 +1,6 @@
 import { refreshApartmentLocationInsightsAction } from "@/app/actions";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { OverpassPoiMap } from "@/components/OverpassPoiMap";
 import { formatDateTimeDe } from "@/lib/dates";
 import {
   FLOOD_SCENARIO_LABELS,
@@ -9,25 +10,10 @@ import {
 import type { LocationInsightSnapshot } from "@/lib/location-insight-cache";
 import type { ApartmentLocationInsightsBundle } from "@/lib/location-insights";
 import {
-  formatNoiseHitLine,
+  buildNoiseHumanSummary,
   type NoiseUbaData,
 } from "@/lib/noise-uba";
-import {
-  osmLinkForPoi,
-  POI_CATEGORY_LABELS,
-  type OverpassPoiData,
-  type PoiCategoryId,
-} from "@/lib/overpass-poi";
-
-const POI_ORDER: PoiCategoryId[] = [
-  "supermarket",
-  "pharmacy",
-  "school",
-  "kindergarten",
-  "publicTransport",
-  "park",
-  "medical",
-];
+import type { OverpassPoiData } from "@/lib/overpass-poi";
 
 function StatusMessage({
   status,
@@ -53,136 +39,124 @@ function StatusMessage({
   return null;
 }
 
-function RefreshForm({
+function latestFetchedAt(bundle: ApartmentLocationInsightsBundle): Date {
+  return new Date(
+    Math.max(
+      bundle.overpass.fetchedAt.getTime(),
+      bundle.noise.fetchedAt.getTime(),
+      bundle.flood.fetchedAt.getTime()
+    )
+  );
+}
+
+function LocationInsightsRefreshFooter({
   apartmentId,
-  domain,
-  label,
+  fetchedAt,
 }: {
   apartmentId: string;
-  domain?: string;
-  label: string;
+  fetchedAt: Date;
 }) {
   return (
-    <form action={refreshApartmentLocationInsightsAction.bind(null, apartmentId)}>
-      {domain ? <input type="hidden" name="domain" value={domain} /> : null}
-      <button
-        type="submit"
-        className="text-xs text-pn-accent hover:underline"
-      >
-        {label}
-      </button>
-    </form>
+    <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-pn-border pt-4">
+      <p className="text-xs text-pn-text-tertiary">Stand: {formatDateTimeDe(fetchedAt)}</p>
+      <form action={refreshApartmentLocationInsightsAction.bind(null, apartmentId)}>
+        <button
+          type="submit"
+          className="rounded-lg border border-pn-border bg-pn-bg-surface px-3 py-1.5 text-sm text-pn-text-secondary hover:text-pn-text-primary"
+        >
+          Aktualisieren
+        </button>
+      </form>
+    </div>
   );
 }
 
 function OverpassBlock({
-  apartmentId,
   snapshot,
+  latitude,
+  longitude,
 }: {
-  apartmentId: string;
   snapshot: LocationInsightSnapshot<OverpassPoiData>;
+  latitude: number | null;
+  longitude: number | null;
 }) {
-  const fetchedAt = formatDateTimeDe(snapshot.fetchedAt);
   const data = snapshot.data;
 
   return (
     <CollapsibleSection
-      title="Umgebung (OpenStreetMap)"
-      subtitle={`POIs im Umkreis · Stand ${fetchedAt}`}
+      title="Umgebung"
+      subtitle="Infrastruktur und Einrichtungen im Umkreis 500 m und 1 km"
       defaultOpen={snapshot.status === "ok"}
-      headerAside={
-        <RefreshForm apartmentId={apartmentId} domain="overpass" label="Aktualisieren" />
-      }
+      className="mb-3"
     >
       <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
-      {snapshot.status === "ok" && data ? (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {POI_ORDER.map((id) => {
-            const cat = data.categories[id];
-            const nearest = cat.nearest;
-            return (
-              <li
-                key={id}
-                className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm"
-              >
-                <p className="font-medium text-pn-text-primary">{POI_CATEGORY_LABELS[id]}</p>
-                <p className="text-pn-text-secondary">
-                  {cat.countClose} (500 m) · {cat.countWide} (1 km)
-                </p>
-                {nearest ? (
-                  <p className="mt-1 text-xs text-pn-text-tertiary">
-                    Nächste:{" "}
-                    {nearest.name ? (
-                      <a
-                        href={osmLinkForPoi(nearest)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-pn-accent hover:underline"
-                      >
-                        {nearest.name}
-                      </a>
-                    ) : (
-                      "Unbenannt"
-                    )}{" "}
-                    · {nearest.distanceM} m
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-pn-text-tertiary">Keine Treffer im Umkreis</p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+      {snapshot.status === "ok" && data && latitude != null && longitude != null ? (
+        <OverpassPoiMap latitude={latitude} longitude={longitude} data={data} />
       ) : snapshot.status === "no_data" ? (
         <p className="text-sm text-pn-text-secondary">Keine POIs im Suchradius gefunden.</p>
       ) : null}
       <p className="mt-3 text-xs text-pn-text-tertiary">
-        Daten:{" "}
-        <a
-          href="https://www.openstreetmap.org"
-          target="_blank"
-          rel="noreferrer"
-          className="text-pn-accent hover:underline"
-        >
-          OpenStreetMap
-        </a>{" "}
-        via Overpass API — Orientierung, keine Vollständigkeitsgarantie.
+        Orientierungswerte aus öffentlichen Kartendaten — keine Vollständigkeitsgarantie.
       </p>
     </CollapsibleSection>
   );
 }
 
-function NoiseBlock({
-  apartmentId,
-  snapshot,
-}: {
-  apartmentId: string;
-  snapshot: LocationInsightSnapshot<NoiseUbaData>;
-}) {
-  const fetchedAt = formatDateTimeDe(snapshot.fetchedAt);
+function NoiseBlock({ snapshot }: { snapshot: LocationInsightSnapshot<NoiseUbaData> }) {
   const hits = snapshot.data?.hits ?? [];
+  const summary = buildNoiseHumanSummary(hits);
+
+  const levelBadgeClass =
+    summary.overallLevel === "very_loud" || summary.overallLevel === "loud"
+      ? "bg-pn-score-low-bg text-pn-score-low"
+      : summary.overallLevel === "moderate"
+        ? "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
+        : summary.overallLevel === "quiet"
+          ? "bg-pn-score-high-bg text-pn-score-high"
+          : "";
 
   return (
     <CollapsibleSection
       title="Lärm (UBA)"
-      subtitle={`EU-Umgebungslärmkartierung · Stand ${fetchedAt}`}
+      subtitle="EU-Umgebungslärmkartierung — nur Hauptverkehr und Ballungsräume"
       defaultOpen={hits.length > 0}
-      headerAside={
-        <RefreshForm apartmentId={apartmentId} domain="noise" label="Aktualisieren" />
-      }
+      className="mb-3"
     >
       <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
-      {snapshot.status === "ok" && hits.length > 0 ? (
-        <ul className="space-y-2">
-          {hits.map((hit, i) => (
-            <li
-              key={`${hit.layerName}-${i}`}
-              className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm"
-            >
-              {formatNoiseHitLine(hit)}
-            </li>
-          ))}
-        </ul>
+      {snapshot.status === "ok" && summary.sources.length > 0 ? (
+        <div className="space-y-3">
+          <p
+            className={`rounded-lg px-3 py-2 text-sm font-medium ${
+              levelBadgeClass || "bg-pn-bg-subtle text-pn-text-primary"
+            }`}
+          >
+            {summary.headline}
+          </p>
+          <ul className="space-y-2">
+            {summary.sources.map((src) => (
+              <li
+                key={src.source}
+                className="rounded-lg border border-pn-border bg-pn-bg-subtle px-3 py-2 text-sm"
+              >
+                <p className="font-medium text-pn-text-primary">{src.sourceLabel}</p>
+                <ul className="mt-1 space-y-1 text-pn-text-secondary">
+                  {src.lines.map((line) => (
+                    <li key={line.metricLabel}>
+                      {line.metricLabel}:{" "}
+                      <span className="text-pn-text-primary">{line.bandHuman}</span>
+                      {" · "}
+                      <span className="text-pn-text-tertiary">{line.assessment}</span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-pn-text-tertiary">
+            Grobe Einordnung nach EU-Lärmkarte (Hauptstraßen &gt;3 Mio. Kfz/Jahr, Hauptschienen,
+            Flughäfen). Keine Messung vor Ort — Kleinststraßen und Nachbarschaftslärm fehlen oft.
+          </p>
+        </div>
       ) : snapshot.status === "ok" || snapshot.status === "no_data" ? (
         <p className="text-sm text-pn-text-secondary">
           Kein Treffer in der UBA-Karte. Die kartiert nur Hauptverkehrsstraßen (&gt;3 Mio.
@@ -212,27 +186,18 @@ function floodBadgeClass(status: "betroffen" | "nicht_betroffen"): string {
     : "bg-pn-score-high-bg text-pn-score-high";
 }
 
-function FloodBlock({
-  apartmentId,
-  snapshot,
-}: {
-  apartmentId: string;
-  snapshot: LocationInsightSnapshot<FloodBfgData>;
-}) {
-  const fetchedAt = formatDateTimeDe(snapshot.fetchedAt);
+function FloodBlock({ snapshot }: { snapshot: LocationInsightSnapshot<FloodBfgData> }) {
   const data = snapshot.data;
 
   return (
     <CollapsibleSection
       title="Hochwasser (BfG)"
-      subtitle={`Überflutungsrisikozonen HWRM-RL · Stand ${fetchedAt}`}
+      subtitle="Überflutungsrisikozonen nach HWRM-RL (3. Zyklus)"
       defaultOpen={
         data != null &&
         (data.scenarios.HQ100 === "betroffen" || data.scenarios.HQextrem === "betroffen")
       }
-      headerAside={
-        <RefreshForm apartmentId={apartmentId} domain="flood" label="Aktualisieren" />
-      }
+      className="mb-0"
     >
       <StatusMessage status={snapshot.status} errorMessage={snapshot.errorMessage} />
       {snapshot.status === "ok" && data ? (
@@ -263,24 +228,32 @@ function FloodBlock({
 export function ApartmentLocationInsights({
   apartmentId,
   bundle,
+  latitude,
+  longitude,
 }: {
   apartmentId: string;
   bundle: ApartmentLocationInsightsBundle;
+  latitude: number | null;
+  longitude: number | null;
 }) {
+  const fetchedAt = latestFetchedAt(bundle);
+
   return (
     <CollapsibleSection
       title="Standort & Umfeld"
-      subtitle="OpenStreetMap, UBA-Lärm, BfG-Hochwasser — bundesweit, unverbindlich."
+      subtitle="Umgebung, Lärm und Hochwasser — bundesweit, unverbindlich."
       defaultOpen={false}
-      headerAside={
-        <RefreshForm apartmentId={apartmentId} label="Alle aktualisieren" />
-      }
     >
       <div id="location-insights" className="space-y-3">
-        <OverpassBlock apartmentId={apartmentId} snapshot={bundle.overpass} />
-        <NoiseBlock apartmentId={apartmentId} snapshot={bundle.noise} />
-        <FloodBlock apartmentId={apartmentId} snapshot={bundle.flood} />
+        <OverpassBlock
+          snapshot={bundle.overpass}
+          latitude={latitude}
+          longitude={longitude}
+        />
+        <NoiseBlock snapshot={bundle.noise} />
+        <FloodBlock snapshot={bundle.flood} />
       </div>
+      <LocationInsightsRefreshFooter apartmentId={apartmentId} fetchedAt={fetchedAt} />
     </CollapsibleSection>
   );
 }

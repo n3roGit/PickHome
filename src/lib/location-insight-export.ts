@@ -4,7 +4,7 @@ import {
   formatFloodCompact,
   type FloodScenarioId,
 } from "@/lib/flood-bfg";
-import { formatNoiseHitLine, formatNoiseMaxCompact } from "@/lib/noise-uba";
+import { buildNoiseHumanSummary, formatNoiseMaxCompact } from "@/lib/noise-uba";
 import {
   formatPoiEnvironmentCompact,
   POI_CATEGORY_LABELS,
@@ -40,21 +40,32 @@ export function buildLocationInsightLlmBlocks(
     });
     blocks.push(
       "",
-      "--- Umgebung (OpenStreetMap, 500m/1000m) ---",
-      "Hinweis: OSM-Daten, keine Vollständigkeitsgarantie.",
+      "--- Umgebung (500m/1000m) ---",
+      "Hinweis: öffentliche Kartendaten, keine Vollständigkeitsgarantie.",
       ...lines
     );
   }
 
   if (bundle.noise.status === "ok") {
     const hits = bundle.noise.data?.hits ?? [];
+    const summary = buildNoiseHumanSummary(hits);
+    const noiseLines =
+      summary.sources.length > 0
+        ? [
+            `- ${summary.headline}`,
+            ...summary.sources.flatMap((src) =>
+              src.lines.map(
+                (line) =>
+                  `- ${src.sourceLabel}, ${line.metricLabel}: ${line.bandHuman} (${line.assessment})`
+              )
+            ),
+          ]
+        : ["- Kein Treffer in der UBA-Karte"];
     blocks.push(
       "",
       "--- Lärm (UBA, EU-Umgebungslärmrichtlinie) ---",
       "Hinweis: nur Hauptverkehrswege/Ballungsräume kartiert; kein Treffer ≠ leise.",
-      ...(hits.length > 0
-        ? hits.map((h) => `- ${formatNoiseHitLine(h)}`)
-        : ["- Kein Treffer in der UBA-Karte"])
+      ...noiseLines
     );
   }
 
@@ -101,14 +112,21 @@ export function buildLocationInsightPdfRows(
   const noise: ApartmentPdfLocationRow[] = [];
   if (bundle.noise.status === "ok") {
     const hits = bundle.noise.data?.hits ?? [];
-    if (hits.length === 0) {
+    const summary = buildNoiseHumanSummary(hits);
+    if (summary.sources.length === 0) {
       noise.push({
         label: "UBA",
         value: "Kein Treffer (nur Hauptverkehr/Ballungsraum kartiert)",
       });
     } else {
-      for (const hit of hits) {
-        noise.push({ label: hit.source, value: formatNoiseHitLine(hit) });
+      noise.push({ label: "Einschätzung", value: summary.headline });
+      for (const src of summary.sources) {
+        for (const line of src.lines) {
+          noise.push({
+            label: src.sourceLabel,
+            value: `${line.metricLabel}: ${line.bandHuman}`,
+          });
+        }
       }
     }
   }
