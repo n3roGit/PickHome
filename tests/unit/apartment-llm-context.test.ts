@@ -87,6 +87,50 @@ describe("buildApartmentLlmContext", () => {
     expect(descIdx).toBeGreaterThan(commuteIdx);
     expect(checklistIdx).toBeGreaterThan(descIdx);
   });
+
+  it("includes cold rent and extended context sections", () => {
+    const ctx = buildApartmentLlmContext({
+      projectName: "P",
+      title: "T",
+      address: TEST_ADDRESS_BERLIN_RAW,
+      price: 100_000,
+      coldRentMonthly: 850,
+      viewingDates: [{ scheduledAt: "15.03.2026, 14:00", note: "Mit Makler" }],
+      priceHistory: [
+        {
+          price: 320_000,
+          previousPrice: 340_000,
+          recordedAt: "1. Feb. 2026",
+          sourceLabel: "Inserat (automatisch)",
+        },
+      ],
+      borisResults: [
+        {
+          kategorieLabel: "Bauland",
+          brwEurPerSqm: 420,
+          nutzungsartLabel: "Wohnbaufläche",
+          stichtag: "01.01.2026",
+        },
+      ],
+      subsidyHints: [
+        {
+          name: "KfW 261 – Einzelmaßnahmen",
+          status: "Möglich",
+          reason: "Bestandsgebäude mit Sanierungsbedarf.",
+        },
+      ],
+    });
+    expect(ctx).toContain("Kaltmiete monatlich");
+    expect(ctx).toContain("850");
+    expect(ctx).toContain("--- Besichtigungstermine ---");
+    expect(ctx).toContain("Mit Makler");
+    expect(ctx).toContain("--- Preisverlauf ---");
+    expect(ctx).toContain("340.000");
+    expect(ctx).toContain("--- Bodenrichtwert (BORIS) ---");
+    expect(ctx).toContain("420 EUR/m²");
+    expect(ctx).toContain("--- Förder-Hinweise (PickHome) ---");
+    expect(ctx).toContain("KfW 261");
+  });
 });
 
 describe("buildApartmentListingExtractSupplement", () => {
