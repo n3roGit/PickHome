@@ -12,7 +12,7 @@ export type ArcGisIdentifyOptions = {
   mapServerUrl: string;
   latitude: number;
   longitude: number;
-  service: "boris" | "noise";
+  service: "boris" | "noise" | "flood";
   sr?: "4326" | "3857";
   tolerance?: number;
   extentPad?: number;
