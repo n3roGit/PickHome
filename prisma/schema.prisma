@@ -172,7 +172,8 @@ model Apartment {
   documents   ApartmentDocument[]
   viewings      ViewingAppointment[]
   commuteCaches CommuteCache[]
-  borisCache        ApartmentBorisCache?
+  borisCache                 ApartmentBorisCache?
+  locationInsightCaches      ApartmentLocationInsightCache[]
   priceHistory      ApartmentPriceHistory[]
   checklistEntries  ChecklistEntry[]
 }
@@ -184,6 +185,18 @@ model ApartmentBorisCache {
   errorMessage String?
   resultsJson  String?
   apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+}
+
+model ApartmentLocationInsightCache {
+  apartmentId  String
+  domain       String
+  fetchedAt    DateTime  @default(now())
+  status       String
+  errorMessage String?
+  payloadJson  String?
+  apartment    Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@id([apartmentId, domain])
 }
 
 model ChecklistItem {

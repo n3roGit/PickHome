@@ -1,4 +1,8 @@
-import { fetchExternal } from "@/lib/external-fetch";
+import {
+  attrString,
+  fetchArcGisIdentify,
+  type ArcGisIdentifyHit,
+} from "@/lib/arcgis-identify";
 
 export const BORIS_MAP_SERVER_URL =
   "https://www.gis.nrw.de/arcgis/rest/services/immobilien/boris_de_bodenrichtwerte_current/MapServer";
@@ -94,21 +98,6 @@ const BEITRAGSRECHT_LABELS: Record<string, string> = {
   "1000": "Beitragsfrei (frei)",
 };
 
-type ArcGisIdentifyHit = {
-  layerName?: string;
-  attributes?: Record<string, unknown>;
-};
-
-function attrString(attrs: Record<string, unknown>, ...keys: string[]): string | null {
-  for (const key of keys) {
-    const value = attrs[key];
-    if (value == null) continue;
-    const text = String(value).trim();
-    if (text) return text;
-  }
-  return null;
-}
-
 function mapCodeLabel(code: string | null, table: Record<string, string>): string | null {
   if (!code) return null;
   return table[code] ?? null;
@@ -195,61 +184,21 @@ export async function fetchBorisForCoords(
   latitude: number,
   longitude: number
 ): Promise<BorisFetchOutcome> {
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return { ok: false, error: "invalid_coords" };
-  }
-
-  const extentPad = 0.015;
-  const params = new URLSearchParams({
-    f: "json",
-    geometry: `${longitude},${latitude}`,
-    geometryType: "esriGeometryPoint",
-    sr: "4326",
-    layers: "all",
-    tolerance: "8",
-    mapExtent: [
-      longitude - extentPad,
-      latitude - extentPad,
-      longitude + extentPad,
-      latitude + extentPad,
-    ].join(","),
-    imageDisplay: "800,600,96",
-    returnGeometry: "false",
+  const identified = await fetchArcGisIdentify({
+    mapServerUrl: BORIS_MAP_SERVER_URL,
+    latitude,
+    longitude,
+    service: "boris",
+    headers: {
+      Referer: BORIS_PORTAL_REFERER,
+      Origin: "https://www.bodenrichtwerte-boris.de",
+    },
   });
 
-  const res = await fetchExternal(
-    "boris",
-    `${BORIS_MAP_SERVER_URL}/identify?${params}`,
-    {
-      headers: {
-        Referer: BORIS_PORTAL_REFERER,
-        Origin: "https://www.bodenrichtwerte-boris.de",
-        Accept: "application/json",
-        "User-Agent": "PickHome/1.0 (boris lookup; self-hosted)",
-      },
-      signal: AbortSignal.timeout(30_000),
-    }
-  );
-
-  if (!res) {
-    return { ok: false, error: "fetch_failed" };
+  if (!identified.ok) {
+    return { ok: false, error: identified.error };
   }
 
-  if (!res.ok) {
-    return { ok: false, error: `http_${res.status}` };
-  }
-
-  let payload: { results?: ArcGisIdentifyHit[]; error?: { message?: string } };
-  try {
-    payload = (await res.json()) as typeof payload;
-  } catch {
-    return { ok: false, error: "invalid_json" };
-  }
-
-  if (payload.error?.message) {
-    return { ok: false, error: payload.error.message };
-  }
-
-  const results = parseBorisIdentifyResults(payload.results ?? []);
+  const results = parseBorisIdentifyResults(identified.results);
   return { ok: true, results };
 }

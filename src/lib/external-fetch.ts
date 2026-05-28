@@ -4,7 +4,15 @@ import {
   yieldToEventLoop,
 } from "@/lib/background-task";
 
-export type ExternalService = "nominatim" | "osrm" | "transit" | "listing" | "boris";
+export type ExternalService =
+  | "nominatim"
+  | "osrm"
+  | "transit"
+  | "listing"
+  | "boris"
+  | "overpass"
+  | "noise"
+  | "flood";
 
 export type FetchExternalOptions = {
   /** Slower rate limits and yields so interactive requests stay responsive. */
@@ -67,6 +75,27 @@ const BORIS_CONFIG: ServiceConfig = {
   retryMaxDelayMs: 8000,
 };
 
+const OVERPASS_CONFIG: ServiceConfig = {
+  minIntervalMs: 2000,
+  maxRetries: 2,
+  retryBaseDelayMs: 2000,
+  retryMaxDelayMs: 8000,
+};
+
+const NOISE_CONFIG: ServiceConfig = {
+  minIntervalMs: 3000,
+  maxRetries: 2,
+  retryBaseDelayMs: 2000,
+  retryMaxDelayMs: 8000,
+};
+
+const FLOOD_CONFIG: ServiceConfig = {
+  minIntervalMs: 3000,
+  maxRetries: 2,
+  retryBaseDelayMs: 2000,
+  retryMaxDelayMs: 8000,
+};
+
 const foregroundNextSlotAt = new Map<ExternalService, number>();
 const backgroundNextSlotAt = new Map<ExternalService, number>();
 const serviceCooldownUntil = new Map<ExternalService, number>();
@@ -79,12 +108,18 @@ const BACKGROUND_SERVICE_COOLDOWN_MS: Record<ExternalService, number> = {
   nominatim: 60_000,
   listing: 60_000,
   boris: 60_000,
+  overpass: 60_000,
+  noise: 60_000,
+  flood: 60_000,
 };
 
 function serviceConfig(service: ExternalService): ServiceConfig {
   if (service === "nominatim") return NOMINATIM_CONFIG;
   if (service === "listing") return LISTING_CONFIG;
   if (service === "boris") return BORIS_CONFIG;
+  if (service === "overpass") return OVERPASS_CONFIG;
+  if (service === "noise") return NOISE_CONFIG;
+  if (service === "flood") return FLOOD_CONFIG;
   if (service === "transit") return TRANSIT_CONFIG;
   return process.env.OSRM_BASE_URL ? OSRM_SELF_HOSTED_CONFIG : OSRM_PUBLIC_CONFIG;
 }

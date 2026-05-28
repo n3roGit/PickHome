@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { enrichApartmentAddressRecord } from "@/lib/apartment-address-enrichment";
 import { getSessionUser } from "@/lib/auth";
-import { invalidateCommuteCacheForApartment } from "@/lib/commute-cache";
+import { invalidateLocationDataForApartment } from "@/lib/location-insight-cache";
 import { projectAccessWhere } from "@/lib/project-access";
 import { prisma } from "@/lib/prisma";
 
@@ -48,7 +48,7 @@ export async function POST(
       },
     });
     if (result.coordsChanged) {
-      await invalidateCommuteCacheForApartment(apt.id);
+      await invalidateLocationDataForApartment(apt.id);
     }
   }
 

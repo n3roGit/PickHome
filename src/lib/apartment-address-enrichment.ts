@@ -4,7 +4,7 @@ import {
   beginBackgroundTask,
   endBackgroundTask,
 } from "@/lib/background-task";
-import { invalidateCommuteCacheForApartment } from "@/lib/commute-cache";
+import { invalidateLocationDataForApartment } from "@/lib/location-insight-cache";
 import type { GeocodeResult } from "@/lib/geocode";
 import {
   applyGeocodeToStoredAddress,
@@ -91,7 +91,7 @@ export async function enrichApartmentAddressInBackground(apartmentId: string): P
       },
     });
     if (result.coordsChanged) {
-      await invalidateCommuteCacheForApartment(apartmentId);
+      await invalidateLocationDataForApartment(apartmentId);
     }
 
     revalidatePath(`/project/${apt.projectId}/apartment/${apartmentId}`);
@@ -203,7 +203,7 @@ export async function reindexProjectAddresses(
       },
     });
     if (result.coordsChanged) {
-      await invalidateCommuteCacheForApartment(apt.id);
+      await invalidateLocationDataForApartment(apt.id);
     }
     updated++;
     await backgroundThrottlePause(1100);
@@ -262,7 +262,7 @@ export async function runAddressEnrichmentBackfillTick(
       },
     });
     if (result.coordsChanged) {
-      await invalidateCommuteCacheForApartment(apt.id);
+      await invalidateLocationDataForApartment(apt.id);
     }
     updated++;
     await backgroundThrottlePause(1100);
